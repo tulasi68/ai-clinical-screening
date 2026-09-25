@@ -22,7 +22,8 @@ async function finish(s,reason){
   await saveOutput(s.screening_id,out); s.status=out.screening_status; s.completed_at=new Date().toISOString(); await saveSession(s);
   await sendText(s.patient.phone, reason==='urgent' ? 'Thank you. Please seek urgent medical care now for the concern you described. This chat does not provide a diagnosis or treatment.' : 'Thank you. Your information has been collected and will be available to your healthcare professional.');
 }
-app.get('/health',(req,res)=>res.json({ok:true,service:'ai-clinical-screening',openai:Boolean(process.env.OPENAI_API_KEY),whatsapp:Boolean(process.env.WA_PHONE_NUMBER_ID&&process.env.WA_ACCESS_TOKEN)}));
+app.get('/',(req,res)=>res.json({service:'ai-clinical-screening',status:'ok',message:'AI Clinical Screening API'}));
+app.get('/health',(req,res)=>res.json({ok:true,service:'ai-clinical-screening',whatsapp:Boolean(process.env.WA_PHONE_NUMBER_ID&&process.env.WA_ACCESS_TOKEN)}));
 app.post('/api/screenings',async(req,res)=>{
   try{if(!validInput(req.body))return res.status(400).json({error:'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.'});
     const s=await createSession(req.body); await sendInitial(s.patient.phone,s.patient.patient_name,s.patient.complaint); await continueSession(s);
@@ -39,4 +40,8 @@ app.post('/webhooks/whatsapp',async(req,res)=>{res.sendStatus(200); try{
     }}
   }catch(e){console.error('webhook processing error',e.message);}
 });
-app.listen(port,()=>console.log(`AI Clinical Screening listening on :${port}`));
+export default app;
+
+if (process.env.VERCEL !== '1') {
+  app.listen(port,()=>console.log(`AI Clinical Screening listening on :${port}`));
+}
