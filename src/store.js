@@ -125,12 +125,19 @@ export async function findActiveByPhone(phone) {
   const target = String(phone || '').replace(/\D/g, '');
   if (!target) return null;
 
-  const filter = encodeURIComponent(`eq.${target}`);
-  const rows = await request(
-    `screening_sessions?status=eq.in_progress&patient->>phone=${filter}&order=created_at.desc&limit=1&select=*`
-  );
+  // Meta webhook numbers are digits-only; stored values may include a leading '+'.
+  const candidates = [target, '+' + target];
+  for (const candidate of candidates) {
+    const filter = encodeURIComponent('eq.' + candidate);
+    const rows = await request(
+      `screening_sessions?status=eq.in_progress&patient->>phone=${filter}&order=created_at.desc&limit=1&select=*`
+    );
 
-  return fromRow(rows?.[0]);
+    const session = fromRow(rows?.[0]);
+    if (session) return session;
+  }
+
+  return null;
 }
 
 export async function saveOutput(screeningId, obj) {
