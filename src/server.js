@@ -33,12 +33,31 @@ app.post('/api/screenings',async(req,res)=>{
 app.get('/api/screenings/:id/output',async(req,res)=>{const o=await getOutput(req.params.id); if(!o)return res.status(404).json({screening_id:req.params.id,status:'in_progress'}); res.json(o);});
 app.get('/api/screenings/:id',async(req,res)=>{const s=await getSession(req.params.id); if(!s)return res.status(404).json({error:'Not found'}); res.json({...s,patient:{...s.patient,phone:undefined}});});
 app.get('/webhooks/whatsapp',(req,res)=>{const mode=req.query['hub.mode'],token=req.query['hub.verify_token'],challenge=req.query['hub.challenge']; if(mode==='subscribe'&&token===process.env.WA_WEBHOOK_VERIFY_TOKEN)return res.status(200).send(challenge); res.sendStatus(403);});
-app.post('/webhooks/whatsapp',async(req,res)=>{res.sendStatus(200); try{
-  const body=req.body; for(const entry of body?.entry||[]) for(const change of entry?.changes||[]){const value=change?.value||{}; for(const msg of value.messages||[]){const from=normalizePhone(msg.from); const text=msg.text?.body||msg.button?.text||msg.interactive?.button_reply?.title||''; if(!text)continue;
-      const s=await findActiveByPhone(from); if(!s){await forwardWebhook(body);continue;} if(s.last_inbound_message_id===msg.id)continue;
-      s.last_inbound_message_id=msg.id; s.conversation.push({role:'patient',message:text,at:new Date().toISOString()}); await saveSession(s); await continueSession(s);
-    }}
-  }catch(e){console.error('webhook processing error',e.message);}
+app.post('/webhooks/whatsapp',async(req,res)=>{
+  try{
+    const body=req.body;
+    for(const entry of body?.entry||[]) for(const change of entry?.changes||[]){
+      const value=change?.value||{};
+      for(const msg of value.messages||[]){
+        const from=normalizePhone(msg.from);
+        const text=msg.text?.body||msg.button?.text||msg.interactive?.button_reply?.title||'';
+        if(!text)continue;
+        const s=await findActiveByPhone(from);
+        if(!s){await forwardWebhook(body);continue;}
+        if(s.last_inbound_message_id===msg.id)continue;
+        s.last_inbound_message_id=msg.id;
+        s.conversation.push({role:'patient',message:text,at:new Date().toISOString()});
+        await saveSession(s);
+        await continueSession(s);
+      }
+    }
+    // Acknowledge only after processing so the Vercel serverless invocation
+    // cannot terminate before the Supabase/Sarvam/WhatsApp work completes.
+    res.sendStatus(200);
+  }catch(e){
+    console.error('webhook processing error',e.message);
+    res.sendStatus(500);
+  }
 });
 export default app;
 
