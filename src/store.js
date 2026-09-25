@@ -40,6 +40,24 @@ async function request(path, options = {}) {
 const id = () =>
   `SCR-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
+/** Digits only */
+function digitsOnly(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
+/**
+ * Normalize Indian mobile numbers to a canonical digits-only form
+ * with country code (e.g. 919844771724).
+ * Handles: 9844771724, 09844771724, +91 98447 71724, 91-9844771724, etc.
+ */
+export function normalizePhone(phone) {
+  let d = digitsOnly(phone);
+  if (!d) return '';
+  if (d.length === 10) d = '91' + d;
+  if (d.length === 11 && d.startsWith('0')) d = '91' + d.slice(1);
+  return d;
+}
+
 function sessionRow(s) {
   return {
     screening_id: s.screening_id,
@@ -83,7 +101,8 @@ export async function createSession(input) {
       age: input.age,
       gender: input.gender,
       complaint: input.complaint,
-      phone: input.phone
+      // Always store canonical digits-only form so webhook lookup matches Meta.
+      phone: normalizePhone(input.phone)
     },
     conversation: [],
     question_count: 0,
@@ -122,11 +141,12 @@ export async function saveSession(s) {
 }
 
 export async function findActiveByPhone(phone) {
-  const target = String(phone || '').replace(/\D/g, '');
+  const target = normalizePhone(phone);
   if (!target) return null;
 
-  // Meta webhook numbers are digits-only; stored values may include a leading '+'.
+  // Try exact matches on common stored forms.
   const candidates = [target, '+' + target];
+
   for (const candidate of candidates) {
     const filter = encodeURIComponent('eq.' + candidate);
     const rows = await request(
@@ -135,6 +155,21 @@ export async function findActiveByPhone(phone) {
 
     const session = fromRow(rows?.[0]);
     if (session) return session;
+  }
+
+  // Fallback: scan recent in-progress sessions and match on last 10 digits.
+  // Covers legacy rows stored with spaces, dashes, leading 0, missing 91, etc.
+  const last10 = target.slice(-10);
+  const rows = await request(
+    `screening_sessions?status=eq.in_progress&order=created_at.desc&limit=50&select=*`
+  );
+
+  for (const row of rows || []) {
+    const stored = normalizePhone(row.patient?.phone);
+    if (!stored) continue;
+    if (stored === target || stored.endsWith(last10) || last10.endsWith(stored.slice(-10))) {
+      return fromRow(row);
+    }
   }
 
   return null;
