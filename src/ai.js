@@ -14,6 +14,7 @@ async function sarvamChat(messages, options = {}) {
     model: SARVAM_MODEL,
     messages,
     temperature: options.temperature ?? 0.2,
+    reasoning_effort: options.reasoning_effort ?? null,
     max_tokens: options.max_tokens ?? 500
   };
 
@@ -40,13 +41,20 @@ async function sarvamChat(messages, options = {}) {
 
   const content = data.choices?.[0]?.message?.content;
 
-  if (!content) {
+  const cleaned = String(content || "")
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
+  if (!cleaned) {
     throw new Error(
       `Sarvam returned no message content: ${JSON.stringify(data)}`
     );
   }
 
-  return content;
+  return cleaned;
 }
 
 
@@ -157,6 +165,7 @@ ${process.env.MAX_QUESTIONS || 12}
     ],
     {
       temperature: 0.2,
+      reasoning_effort: null,
       max_tokens: 300,
       response_format: {
         type: "json_schema",
@@ -397,7 +406,7 @@ ${transcript}
     ],
     {
       temperature: 0.1,
-      max_tokens: 1200,
+      max_tokens: 2500,
       response_format: {
         type: "json_schema",
         json_schema: {
