@@ -2,7 +2,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-const root=path.resolve(process.env.DATA_DIR || './data');
+const root=process.env.VERCEL === '1'
+  ? path.join('/tmp', 'ai-clinical-screening')
+  : path.resolve(process.env.DATA_DIR || './data');
 const sessions=path.join(root,'sessions');
 const outputs=path.join(root,'outputs');
 await fs.mkdir(sessions,{recursive:true}); await fs.mkdir(outputs,{recursive:true});
