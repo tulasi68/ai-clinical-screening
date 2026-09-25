@@ -182,13 +182,41 @@ ${process.env.MAX_QUESTIONS || 12}
   try {
     const result = JSON.parse(raw);
 
-    // Sarvam can occasionally return COMPLETE with a question.
-    // Treat a question-shaped message as a follow-up question.
-    if (
+    // Do not allow the model to finish too early. A screening should
+    // collect at least a small amount of clinically useful detail before
+    // consolidation. URGENT is always allowed to finish immediately.
+    const minQuestions = Number(process.env.MIN_QUESTIONS || 3);
+
+    if (result.status === "COMPLETE" && session.question_count < minQuestions) {
+      result.status = "QUESTION";
+
+      // If the model returned a usable question, keep it.
+      if (
+        typeof result.message === "string" &&
+        /\?\s*$/.test(result.message.trim())
+      ) {
+        result.reason = "minimum_questions_not_reached";
+      } else {
+        // Robust fallback if the model ignored the minimum-question rule.
+        const transcriptLower = transcript.toLowerCase();
+
+        if (!/(severity|severe|mild|moderate|pain.*[0-9]|[0-9].*10)/i.test(transcriptLower)) {
+          result.message = "How severe is the pain right now — mild, moderate, or severe?";
+        } else if (!/(fever|discharge|vomit|vomiting|dizziness|headache|swelling|bleeding|hearing|associated)/i.test(transcriptLower)) {
+          result.message = "Have you noticed any other symptoms along with the pain?";
+        } else if (!/(medical history|history|diabetes|hypertension|asthma|past illness|previous)/i.test(transcriptLower)) {
+          result.message = "Do you have any medical conditions or past health problems?";
+        } else {
+          result.message = "Are you currently taking any medicines for this problem or any other condition?";
+        }
+        result.reason = "minimum_questions_fallback";
+      }
+    } else if (
       result.status === "COMPLETE" &&
       typeof result.message === "string" &&
       /\?\s*$/.test(result.message.trim())
     ) {
+      // Sarvam can occasionally return COMPLETE with a question.
       result.status = "QUESTION";
       result.reason = result.reason || "follow_up_question";
     }
