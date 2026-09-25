@@ -4,41 +4,35 @@ Standalone API for adaptive clinical information collection over WhatsApp.
 
 ## Flow
 
-1. Consumer sends `POST /api/screenings` with exactly the patient JSON.
-2. Service creates a `screening_id` and sends the patient a WhatsApp message.
-3. OpenAI asks one question at a time and adapts to patient answers.
-4. Meta WhatsApp webhook delivers replies to `/webhooks/whatsapp`.
-5. When sufficient information is collected, OpenAI consolidates the conversation into strict structured JSON.
-6. Consumer retrieves `GET /api/screenings/:id/output`.
+1. A consumer application sends `POST /api/screenings` with patient JSON.
+2. The service creates a `screening_id` and sends the patient a WhatsApp message.
+3. Sarvam AI asks one question at a time and adapts to patient answers.
+4. Meta WhatsApp delivers patient replies to `/webhooks/whatsapp`.
+5. When sufficient information is collected, Sarvam AI consolidates the conversation into strict structured JSON.
+6. The consumer application retrieves `GET /api/screenings/:id/output`.
 
-OpenAI is used through the Responses API; the model is configurable with `OPENAI_MODEL`. Structured Outputs is used for the final JSON and for the question-control response. OpenAI documents the Responses API and JSON-schema structured output support. See the official docs linked in the project notes.
+The AI is deliberately limited to information collection and structuring. It does not diagnose, prescribe, recommend treatment, or make clinical decisions.
 
-## Reusing MediLoop Meta WhatsApp
+## API
 
-The current MediLoop code uses:
-- `WA_PHONE_NUMBER_ID`
-- `WA_ACCESS_TOKEN`
-- `WA_API_VERSION`
-- `WA_WEBHOOK_VERIFY_TOKEN`
+### Start a screening
 
-This project deliberately uses the same names so the existing values can be reused without putting credentials in code.
-
-Important: a Meta app/webhook has one configured callback URL. If the same Meta app/number is shared, point Meta's webhook at this service and set `MEDILOOP_WEBHOOK_FORWARD_URL` to the current MediLoop webhook. This service routes messages belonging to an active screening session here and forwards other webhook payloads to MediLoop.
-
-## Install
-
-```bash
-npm install
-cp .env.example .env
-npm start
+```http
+POST /api/screenings
+Content-Type: application/json
+Authorization: Bearer <SCREENING_API_KEY>
 ```
 
-## Start a screening
+Body:
 
-```bash
-curl -X POST http://localhost:3000/api/screenings \\
-  -H 'Content-Type: application/json' \\
-  -d '{"patient_name":"Ravi Kumar","age":42,"gender":"Male","complaint":"Ear pain for 3 days","phone":"+91XXXXXXXXXX"}'
+```json
+{
+  "patient_name": "Ravi Kumar",
+  "age": 42,
+  "gender": "Male",
+  "complaint": "Ear pain for 3 days",
+  "phone": "+91XXXXXXXXXX"
+}
 ```
 
 Response:
@@ -47,27 +41,62 @@ Response:
 {"screening_id":"SCR-...","status":"started"}
 ```
 
-## Get completed JSON
+The Authorization header is required when `SCREENING_API_KEY` is configured.
 
-```bash
-curl http://localhost:3000/api/screenings/SCR-.../output
+### Get completed JSON
+
+```http
+GET /api/screenings/SCR-.../output
+Authorization: Bearer <SCREENING_API_KEY>
 ```
 
-## Meta webhook
+### Get screening status
+
+```http
+GET /api/screenings/SCR-...
+Authorization: Bearer <SCREENING_API_KEY>
+```
+
+The patient phone number is never returned by this endpoint.
+
+## Meta WhatsApp
 
 Set the callback URL to:
 
 `https://YOUR-DOMAIN/webhooks/whatsapp`
 
-Verify token must equal `WA_WEBHOOK_VERIFY_TOKEN`.
+The Meta verification token must equal `WA_WEBHOOK_VERIFY_TOKEN`.
 
 For proactive messages outside WhatsApp's customer-service window, configure an approved Meta template in `WA_INITIAL_TEMPLATE_NAME`. If no template is configured, the service sends a text message; Meta may reject that outbound message when a customer-service window is not open.
 
-## Safety boundary
-
-This service collects and structures information. It does not diagnose, prescribe, recommend treatment, or make clinical decisions. It is not a substitute for a clinician. Real deployment requires appropriate privacy/security controls, consent/notice, auditability, durable storage, monitoring, and clinical validation.
+If the same Meta app/number is shared with MediLoop, this service can forward non-screening webhook payloads to `MEDILOOP_WEBHOOK_FORWARD_URL`.
 
 ## Storage
 
-The included JSON-file store is intentionally simple for a prototype. Do not use it as the production persistence layer on a multi-instance/serverless deployment. Replace `src/store.js` with a durable database before production.
-"# ai-clinical-screening" 
+The current `src/store.js` implementation uses JSON files intentionally for development and controlled pilot testing.
+
+This is **not durable production storage on a serverless deployment**. The storage interface is kept isolated so it can be replaced with Supabase/Postgres later without changing the screening workflow or API contract.
+
+## Local setup
+
+```bash
+npm install
+copy .env.example .env
+npm start
+```
+
+Health check:
+
+```
+GET /health
+```
+
+## Safety boundary
+
+This service collects and structures information. It does not diagnose, prescribe, recommend treatment, or make clinical decisions. It is not a substitute for a clinician.
+
+Before real clinical deployment, implement appropriate privacy/security controls, consent/notice, durable storage, auditability, monitoring, access control, and clinical validation.
+
+## Runtime
+
+The project targets Node.js 24.x for deployment. Vercel currently supports Express/Node server deployments, but the JSON datastore must be replaced before relying on deployment persistence.
