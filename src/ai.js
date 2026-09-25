@@ -2,11 +2,12 @@
 
 const SARVAM_API_URL = "https://api.sarvam.ai/v1/chat/completions";
 
-const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 const SARVAM_MODEL = process.env.SARVAM_MODEL || "sarvam-105b";
 
-if (!SARVAM_API_KEY) {
-  throw new Error("Missing SARVAM_API_KEY environment variable.");
+function getSarvamApiKey() {
+  const key = process.env.SARVAM_API_KEY;
+  if (!key) throw new Error("Missing SARVAM_API_KEY environment variable.");
+  return key;
 }
 
 async function sarvamChat(messages, options = {}) {
@@ -26,7 +27,7 @@ async function sarvamChat(messages, options = {}) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "api-subscription-key": SARVAM_API_KEY
+      "api-subscription-key": getSarvamApiKey()
     },
     body: JSON.stringify(body)
   });
