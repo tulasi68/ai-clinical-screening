@@ -180,11 +180,23 @@ ${process.env.MAX_QUESTIONS || 12}
   );
 
   try {
-    return JSON.parse(raw);
-  } catch (error) {
-    throw new Error(
-      `Sarvam returned invalid JSON for nextStep: ${raw}`
-    );
+    const result = JSON.parse(raw);
+
+    // Sarvam can occasionally return a semantically inconsistent object
+    // despite the JSON schema (for example COMPLETE with a question).
+    // A message ending in a question mark is still a question for the
+    // patient, so normalize that case instead of failing the screening.
+    if (
+      result.status === "COMPLETE" &&
+      typeof result.message === "string" &&
+      /\\?\\s*$/.test(result.message.trim())
+    ) {
+      result.status = "QUESTION";
+      result.reason = result.reason || "follow_up_question";
+    }
+
+    result.reason = result.reason || "";
+    return result;
   }
 }
 
