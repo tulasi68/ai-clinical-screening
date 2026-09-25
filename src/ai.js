@@ -104,7 +104,16 @@ Avoid alarming language.
 If the conversation has enough useful information, return COMPLETE
 instead of another question.
 
-If the patient mentions an emergency or severe warning symptom:
+Only use URGENT for an explicit emergency or severe warning symptom
+described by the patient, such as severe breathing difficulty, loss of
+consciousness, uncontrolled bleeding, sudden severe neurological symptoms,
+or another clearly emergent situation.
+
+Do not classify ordinary symptoms such as ear pain, reduced hearing,
+fever, headache, or dizziness as URGENT by themselves. Continue asking
+questions unless the patient's description clearly indicates an emergency.
+
+If the patient does describe an emergency:
 - do not diagnose
 - advise them to seek urgent medical care immediately
 - return COMPLETE/URGENT
@@ -181,6 +190,13 @@ ${process.env.MAX_QUESTIONS || 12}
 
   try {
     const result = JSON.parse(raw);
+
+    // The schema requires reason, but tolerate a missing value from the
+    // model instead of failing an otherwise valid response.
+    if (!result || typeof result !== "object") {
+      throw new Error("Sarvam returned a non-object nextStep response.");
+    }
+    result.reason = typeof result.reason === "string" ? result.reason : "";
 
     // Do not allow the model to finish too early. A screening should
     // collect at least a small amount of clinically useful detail before
