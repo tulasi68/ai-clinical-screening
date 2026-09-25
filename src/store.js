@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -37,8 +39,6 @@ async function request(path, options = {}) {
 
 const id = () =>
   `SCR-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-
-import crypto from 'node:crypto';
 
 function sessionRow(s) {
   return {
