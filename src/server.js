@@ -6,7 +6,6 @@ import {
   createSession, getSession, saveSession, saveOutput, getOutput,
   getSessionByPatientToken
 } from './store.js';
-import { forwardWebhook } from './whatsapp.js';
 import { nextStep, consolidate } from './ai.js';
 
 const app = express();
@@ -100,9 +99,11 @@ function editableOutput(input, current) {
 
 function validServerApiKey(req) {
   const expected = String(process.env.SCREENING_API_KEY || "").trim();
-  if (!expected) return true;
-  const supplied = String(req.headers["x-api-key"] || "").trim();
-  return supplied && supplied === expected;
+  if (!expected) return process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1";
+  const suppliedKey = String(req.headers["x-api-key"] || "").trim();
+  const authorization = String(req.headers.authorization || "").trim();
+  const bearerKey = authorization.replace(/^Bearer\\s+/i, "").trim();
+  return suppliedKey === expected || bearerKey === expected;
 }
 
 function patientUrl(req, token) {
@@ -274,35 +275,11 @@ app.get('/api/screenings/:id', async (req, res) => {
   res.json({ ...publicSession(s), patient_token_hash: undefined });
 });
 
-// Legacy Meta webhook endpoints remain available but are no longer used by the
-// patient conversation architecture.
-app.get('/webhooks/whatsapp', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-  if (mode === 'subscribe' && token === process.env.WA_WEBHOOK_VERIFY_TOKEN) return res.status(200).send(challenge);
-  res.sendStatus(403);
-});
-
-app.post('/webhooks/whatsapp', async (req, res) => {
-  // Kept only for backwards compatibility with old sessions. New screenings
-  // never depend on inbound WhatsApp messages.
-  try {
-    const body = req.body;
-    console.log('[webhook] received legacy event; browser architecture does not consume inbound WhatsApp replies.');
-    await forwardWebhook(body);
-    res.sendStatus(200);
-  } catch (e) {
-    console.error('legacy webhook error', e);
-    res.sendStatus(200);
-  }
-});
-
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'ai-clinical-screening',
   architecture: 'browser-screening',
-  whatsapp: Boolean(process.env.WA_PHONE_NUMBER_ID && process.env.WA_ACCESS_TOKEN),
+  link_delivery: "consumer_application",
   inbound_whatsapp_conversation: false
 }));
 
