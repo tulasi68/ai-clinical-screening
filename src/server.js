@@ -182,7 +182,7 @@ app.get('/api/patient/s/:token/summary', async (req, res) => {
     if (!s) return;
     const output = await getOutput(s.screening_id);
     if (!output) return res.status(409).json({ error: 'The screening is still in progress.' });
-    res.json({ output });
+    res.json({ output: publicOutput(output) });
   } catch (e) {
     console.error('patient summary error', e);
     res.status(500).json({ error: 'Unable to load screening summary.' });
