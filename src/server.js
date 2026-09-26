@@ -283,7 +283,7 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     s.submitted_at = finalOutput.submitted_at;
     await saveSession(s);
 
-    const complaintLink = String(s.patient_token ? `${String(process.env.BASE_URL || '').replace(/\\/$/, '')}/s/${s.patient_token}` : '').trim();
+    const complaintLink = String(req.params.token ? `${String(process.env.BASE_URL || '').replace(/\\/$/, '')}/s/${encodeURIComponent(req.params.token)}` : '').trim();
     const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink) : { ok: false, error: 'Patient link unavailable' };
 
     res.json({
