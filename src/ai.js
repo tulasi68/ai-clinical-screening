@@ -1,8 +1,6 @@
 //src/ai.js
-//
-// Conversation: Sarvam speaks as a specialty doctor taking history.
-// Fallback: short clinical script if the model is down.
-// Consolidation: structured summary for the treating clinician.
+// Sarvam speaks as a specialty doctor taking a prescribe-ready history.
+// Patient never fills extra forms — chat ends → structured summary.
 
 const SARVAM_API_URL = "https://api.sarvam.ai/v1/chat/completions";
 const SARVAM_MODEL = process.env.SARVAM_MODEL || "sarvam-105b";
@@ -57,9 +55,9 @@ async function sarvamChat(messages, options = {}, attempt = 1) {
   const body = {
     model: SARVAM_MODEL,
     messages,
-    temperature: options.temperature ?? 0.35,
+    temperature: options.temperature ?? 0.4,
     reasoning_effort: options.reasoning_effort ?? null,
-    max_tokens: options.max_tokens ?? 400,
+    max_tokens: options.max_tokens ?? 450,
   };
   if (options.response_format) body.response_format = options.response_format;
 
@@ -110,13 +108,7 @@ function normalizeSpecialty(value) {
 
 function isEnt(specialty) {
   const s = normalizeSpecialty(specialty);
-  return (
-    !s ||
-    s === "ent" ||
-    s === "oto" ||
-    s === "otolaryngology" ||
-    s === "ear_nose_throat"
-  );
+  return !s || ["ent", "oto", "otolaryngology", "ear_nose_throat"].includes(s);
 }
 
 function patientText(session) {
@@ -134,8 +126,11 @@ function assistantQuestions(session) {
 }
 
 function allText(session) {
-  const complaint = String(session.patient?.complaint || "").toLowerCase();
-  return (complaint + " \n " + patientText(session)).toLowerCase();
+  return (
+    String(session.patient?.complaint || "").toLowerCase() +
+    " \n " +
+    patientText(session)
+  ).toLowerCase();
 }
 
 function detectSite(session) {
@@ -147,82 +142,112 @@ function detectSite(session) {
   return sites;
 }
 
+/**
+ * Lightweight coverage so we know when a prescribe-ready note is plausible.
+ * Depth comes from the doctor persona prompt, not from a rigid checklist UI.
+ */
 function coverage(session) {
   const t = patientText(session);
   const sites = detectSite(session);
   return {
-    site: sites.length > 0,
     sites,
-    detail: /pain|ache|block|discharge|pus|bleed|itch|hearing|hear|ring|fever|cold|sore|voice|swallow|smell|sneeze|runny|congest|pressure|mild|moderate|severe/i.test(
-      t
-    ),
-    duration:
-      /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|few|several)\s*(day|days|week|weeks|month|months|hour|hours)\b|\bsince\b|\byesterday\b|\btoday\b|\blast\s+(night|week|month)/i.test(
+    site: sites.length > 0,
+    detail:
+      /pain|ache|block|discharge|pus|bleed|itch|hearing|hear|ring|vertigo|dizzy|fever|cold|sore|voice|swallow|smell|sneeze|runny|congest|pressure|throb|sharp|dull/i.test(
         t
       ),
+    duration:
+      /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|few|several)\s*(day|days|week|weeks|month|months|hour|hours)\b|\bsince\b|\byesterday\b|\btoday\b/i.test(
+        t
+      ),
+    severity: /mild|moderate|severe|bad| unbearable|\b[0-9]\s*\/?\s*10\b|very painful|not much pain/i.test(t),
     location: /\bleft\b|\bright\b|\bboth\b|one side|both sides|middle/.test(t),
+    associated:
+      /fever|discharge|hearing|vertigo|dizzy|tinnitus|ring|smell|voice|swallow|cough|cold|headache|face|swelling|node/i.test(t),
     medicine:
-      /\b(no|not|none|nil|haven't|havent|never)\b.*\b(medicine|tablet|drop|syrup|antibiotic)\b|\b(medicine|tablet|drop|syrup|antibiotic|taking|took|using)\b/i.test(
+      /\b(no|not|none|nil|haven't|havent|never)\b.*\b(medicine|tablet|drop|syrup|antibiotic)\b|\b(medicine|tablet|drop|syrup|antibiotic|paracetamol|dolo|amox|taking|took|using)\b/i.test(
         t
       ),
     allergy: /\ballerg|\bno known|nka|\bnil\b|\bnone\b|\bno allergy|not allergic/i.test(t),
+    comorbidity:
+      /diabetes|sugar|pressure|hypertension|bp|asthma|thyroid|pregnant|pregnancy|breastfeed|kidney|heart|no other|nothing else|only this/i.test(
+        t
+      ),
   };
+}
+
+function prescribeReady(session) {
+  const c = coverage(session);
+  // Enough for a clinician to open the chart and choose treatment direction
+  return (
+    c.site &&
+    c.detail &&
+    c.duration &&
+    (c.location || (c.sites.length === 1 && c.sites[0] === "throat")) &&
+    c.severity &&
+    c.medicine &&
+    c.allergy
+  );
 }
 
 function doctorPersona(specialty) {
   if (isEnt(specialty)) {
     return `
-You are an ENT (ear, nose, throat) doctor speaking directly with a patient
-before clinic consultation. You are not a chatbot, not a form, and not a triage bot.
+You are an experienced ENT specialist speaking directly with a patient in a private
+pre-consultation chat for e-consultation. You are the doctor in the conversation.
+You are not a chatbot, form, triage bot, or "assistant".
 
-Speak the way a real doctor speaks in the consulting room:
-- Warm, calm, clear English (or simple words a patient understands)
-- Short turns — usually one question, sometimes a brief acknowledgement + one question
-- Natural phrases like "I see", "Alright", "Thank you", "Can you tell me…"
-- Never say you are an AI, assistant, bot, or screening tool
-- Never diagnose, prescribe, or give treatment advice
+PURPOSE
+Collect a history rich enough that another ENT doctor can open the summary and be
+ready to decide on treatment and medication — without needing to re-ask the basics.
+You yourself must NEVER prescribe, diagnose, or name specific drugs as advice.
+You only take history.
 
-Your only job is to take a focused ENT history so the treating doctor is prepared.
+HOW YOU SPEAK
+- Like a real doctor in the room: warm, concise, one question at a time
+- Brief acknowledgement of the last answer, then the next clinical question
+- Simple language a patient understands
+- Never say you are an AI, model, bot, or screening tool
+- Never use bullet lists or "Question 1" style wording with the patient
 
-Stay strictly within ear, nose, and throat. Do not wander into unrelated systems
-unless the patient brings them up in relation to the ENT complaint.
+CLINICAL DEPTH (work through these naturally; skip what is already answered)
+For every ENT complaint, aim to understand:
+1) Site — ear, nose, throat (or combination)
+2) Exact symptoms — what they feel day to day
+3) Laterality — left / right / both when relevant
+4) Duration and course — how many days; same / better / worse
+5) Severity — mild / moderate / severe (or how it limits sleep, work, eating)
+6) Important associated features for that site, for example:
+   - Ear: discharge (colour), hearing change, tinnitus, vertigo/dizziness, fever, recent cold, trauma/water/cotton buds
+   - Nose: blockage vs runny, discharge colour, facial pressure, smell, sneezing, bleeding
+   - Throat: pain on swallowing, fever, voice change, neck swellings, reflux symptoms
+7) What they already tried — medicine names if known, drops, home remedies, and whether it helped
+8) Drug allergies — name of drug and what happens if known; or clearly none
+9) Ongoing illnesses / regular medicines that affect prescribing (diabetes, BP, asthma, pregnancy, breastfeeding) — ask briefly when relevant
 
-Clinical goals — gather these, in a natural order, without sounding like a checklist:
-1) What is the problem — ear, nose, or throat (or more than one)
-2) What is happening there (pain, blockage, discharge, hearing change, etc.)
-3) How long — days / weeks
-4) Where — left, right, both, or which area
-5) Any medicine or drops already taken
-6) Any allergies
+Do NOT race through a checklist. Follow the patient's story. If they give a rich answer,
+acknowledge it and go deeper on the most clinically useful missing piece.
+Do NOT repeat questions already answered.
+Do NOT ask vague prompts like "tell me more" without a focus.
 
-Rules for good questions:
-- Ask only ONE question at a time
-- Build on what the patient just said; do not ignore their words
-- Never repeat a question already answered
-- Never ask the same thing in different words if they already answered
-- Prefer concrete, useful clinical detail over vague prompts
-- Do not ask "tell me more" or "how are you feeling" without a clear focus
-- If they say they don't know, accept it and move on
+WHEN TO FINISH
+Return COMPLETE only when the history is strong enough for a prescribe-ready pre-consult note
+(site, symptoms, duration, severity, key associated features, self-medication, allergies).
+Closing line should thank them and say the doctor will review this before the consultation.
 
-When you have enough for a useful pre-consult note (the goals above are largely covered),
-stop asking and return COMPLETE with a short thank-you line.
-
-Use URGENT only for true emergencies (severe breathing difficulty, loss of consciousness,
-uncontrolled bleeding, sudden severe neurological symptoms). Ordinary ear pain, blocked
-nose, sore throat, fever, or reduced hearing alone are NOT urgent.
+URGENT only for true emergencies (severe breathing difficulty, uncontrolled bleeding,
+loss of consciousness, sudden severe neurological signs, facial weakness with ear infection, etc.).
 
 Output JSON only:
-{ "status": "QUESTION" | "COMPLETE" | "URGENT", "message": "...", "reason": "..." }
-
-In QUESTION, "message" is exactly what you say to the patient (plain speech, no labels).
+{"status":"QUESTION"|"COMPLETE"|"URGENT","message":"exactly what you say to the patient","reason":"short internal note"}
 `.trim();
   }
 
   return `
-You are a clinic doctor speaking directly with a patient before consultation.
-Speak naturally, warmly, one question at a time. You are not an AI bot or a form.
-Do not diagnose or prescribe. Collect: main problem, what is happening, how long,
-where, medicines already taken, allergies. Stay relevant to the patient's complaint.
+You are a clinic doctor taking a thorough pre-consultation history so another doctor
+can review and decide treatment. Speak naturally, one question at a time. Never claim
+to be an AI. Never prescribe. Gather: problem, details, duration, severity, location,
+associated features, medicines already taken, allergies, relevant medical background.
 Output JSON only with status, message, reason.
 `.trim();
 }
@@ -238,38 +263,52 @@ const nextSchema = {
   required: ["status", "message", "reason"],
 };
 
-/** Emergency scripted fallback if Sarvam is unavailable — still doctor-like tone. */
+function missingHints(session) {
+  const c = coverage(session);
+  const hints = [];
+  if (!c.site) hints.push("which of ear / nose / throat");
+  if (!c.detail) hints.push("main symptoms in that area");
+  if (!c.location && !(c.sites.length === 1 && c.sites[0] === "throat"))
+    hints.push("left / right / both");
+  if (!c.duration) hints.push("how many days and whether better/worse/same");
+  if (!c.severity) hints.push("how severe it is");
+  if (!c.associated) hints.push("key associated features for that site (fever, discharge, hearing, etc.)");
+  if (!c.medicine) hints.push("any medicine or drops already tried and if they helped");
+  if (!c.allergy) hints.push("drug allergies");
+  if (!c.comorbidity) hints.push("any diabetes, BP, asthma, pregnancy, or regular medicines (briefly)");
+  return hints;
+}
+
 function fallbackDoctorQuestion(session) {
   const c = coverage(session);
-  if (!c.site) {
-    return "Hello. Before you see the doctor, can you tell me — is the problem mainly with your ear, nose, or throat?";
-  }
+  if (!c.site)
+    return "Hello. Before your consultation, I’d like to understand what’s troubling you. Is it mainly the ear, the nose, or the throat?";
   if (!c.detail) {
-    if (c.sites.includes("ear") && c.sites.length === 1) {
-      return "Alright. What’s going on in the ear — pain, blockage, discharge, or trouble hearing?";
-    }
-    if (c.sites.includes("nose") && c.sites.length === 1) {
-      return "Alright. What’s been happening with the nose?";
-    }
-    if (c.sites.includes("throat") && c.sites.length === 1) {
-      return "Alright. What’s been happening with the throat?";
-    }
-    return "Okay. What exactly have you been feeling?";
+    if (c.sites[0] === "ear")
+      return "What’s been happening in the ear — pain, blockage, discharge, or hearing trouble?";
+    if (c.sites[0] === "nose") return "What’s been happening with the nose?";
+    if (c.sites[0] === "throat") return "What’s been happening with the throat?";
+    return "What exactly have you been feeling?";
   }
-  if (!c.duration) return "I see. How many days has this been going on?";
-  if (!c.location) {
-    if (c.sites.includes("ear") && c.sites.length === 1) {
-      return "Is it the left ear, the right, or both?";
-    }
-    return "Where do you feel it most — left, right, or both sides?";
+  if (!c.location && !(c.sites.length === 1 && c.sites[0] === "throat"))
+    return "Is it on the left, the right, or both sides?";
+  if (!c.duration) return "How many days has this been going on, and is it getting better or worse?";
+  if (!c.severity) return "How bad is it right now — mild, moderate, or severe?";
+  if (!c.associated) {
+    if (c.sites.includes("ear"))
+      return "Any fever, discharge from the ear, or change in hearing with this?";
+    if (c.sites.includes("nose"))
+      return "Any fever, facial pressure, or change in smell?";
+    if (c.sites.includes("throat"))
+      return "Any fever, or pain when you swallow?";
+    return "Have you noticed any fever or other symptoms with this?";
   }
-  if (!c.medicine) {
-    return "Have you taken any medicine or used any drops for this already?";
-  }
-  if (!c.allergy) {
-    return "Do you have any medicine allergies we should know about?";
-  }
-  return null; // means complete
+  if (!c.medicine)
+    return "Have you already taken any medicine or used drops for this? If yes, what did you take, and did it help?";
+  if (!c.allergy) return "Any allergy to medicines that we should know about?";
+  if (!c.comorbidity)
+    return "Do you have any ongoing illness like diabetes or blood pressure, or take any regular medicines?";
+  return null;
 }
 
 function looksLikeRepeat(session, message) {
@@ -279,71 +318,51 @@ function looksLikeRepeat(session, message) {
     .replace(/\s+/g, " ")
     .trim();
   if (!next) return true;
-  const prev = assistantQuestions(session);
-  for (const p of prev) {
+  for (const p of assistantQuestions(session)) {
     const norm = p.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
     if (!norm) continue;
     if (norm === next) return true;
-    // High overlap on content words
     const a = new Set(norm.split(" ").filter((w) => w.length > 3));
     const b = next.split(" ").filter((w) => w.length > 3);
-    if (b.length >= 4) {
+    if (b.length >= 5) {
       const hit = b.filter((w) => a.has(w)).length;
-      if (hit / b.length >= 0.75) return true;
+      if (hit / b.length >= 0.8) return true;
     }
   }
   return false;
 }
 
-function goalsMet(session) {
-  const c = coverage(session);
-  // Core history a specialty doctor would want before consult
-  return c.site && c.detail && c.duration && (c.location || c.sites.includes("throat")) && c.medicine && c.allergy;
-}
-
 export async function nextStep(session) {
   const specialty = session.patient?.specialty || "ent";
-  const maxQ = Number(process.env.MAX_QUESTIONS || 10);
-  const minQ = Number(process.env.MIN_QUESTIONS || 4);
+  const maxQ = Number(process.env.MAX_QUESTIONS || 14);
+  const minQ = Number(process.env.MIN_QUESTIONS || 6);
   const qCount = session.question_count || 0;
 
   const transcript = (session.conversation || [])
     .map((x) => `${x.role === "patient" ? "Patient" : "Doctor"}: ${x.message}`)
     .join("\n");
 
-  const c = coverage(session);
-  const stillNeeded = [];
-  if (!c.site) stillNeeded.push("which area: ear / nose / throat");
-  if (!c.detail) stillNeeded.push("what is happening in that area");
-  if (!c.duration) stillNeeded.push("how many days");
-  if (!c.location && !(c.sites.length === 1 && c.sites[0] === "throat"))
-    stillNeeded.push("left / right / both or exact place");
-  if (!c.medicine) stillNeeded.push("any medicine already taken");
-  if (!c.allergy) stillNeeded.push("any allergies");
-
-  if (qCount >= maxQ || (goalsMet(session) && qCount >= minQ)) {
-    // Prefer model goodbye; if we skip model, use natural close
-  }
+  const hints = missingHints(session);
 
   const input = `
-Patient record:
+Patient:
 - Name: ${session.patient?.patient_name || "Patient"}
 - Age: ${session.patient?.age ?? "unknown"}
 - Gender: ${session.patient?.gender || "unknown"}
-- Clinic specialty: ${normalizeSpecialty(specialty) || "ent"}
+- Specialty context: ${normalizeSpecialty(specialty) || "ent"}
 - Registration note: ${session.patient?.complaint || "(none)"}
 
 Conversation so far:
-${transcript || "(The patient has just opened the chat. Greet them briefly and begin the history.)"}
+${transcript || "(Patient just opened the chat. Greet briefly as the doctor and begin a proper history.)"}
 
-Doctor questions already asked: ${qCount}
-Minimum useful exchanges before finishing: ${minQ}
-Maximum questions: ${maxQ}
+Doctor turns so far: ${qCount}
+Minimum turns before you may finish: ${minQ}
+Maximum turns: ${maxQ}
 
-History still missing (do not ask about items already answered):
-${stillNeeded.length ? stillNeeded.map((x) => "- " + x).join("\n") : "- Core history appears complete — thank the patient and finish."}
+Still thin or missing for a prescribe-ready note (do not re-ask what is already clear):
+${hints.length ? hints.map((h) => "- " + h).join("\n") : "- Core history looks adequate — thank the patient and finish."}
 
-Respond as the doctor for the next turn only.
+Your next turn as the doctor only.
 `.trim();
 
   let result;
@@ -354,8 +373,8 @@ Respond as the doctor for the next turn only.
         { role: "user", content: input },
       ],
       {
-        temperature: 0.4,
-        max_tokens: 220,
+        temperature: 0.45,
+        max_tokens: 260,
         response_format: {
           type: "json_schema",
           json_schema: { name: "next_step", strict: true, schema: nextSchema },
@@ -367,13 +386,13 @@ Respond as the doctor for the next turn only.
       throw new Error("invalid nextStep JSON: " + String(raw).slice(0, 300));
     }
   } catch (err) {
-    console.error("nextStep sarvam error, doctor fallback", err?.message || err);
+    console.error("nextStep sarvam error", err?.message || err);
     const fb = fallbackDoctorQuestion(session);
     if (!fb) {
       return {
         status: "COMPLETE",
         message:
-          "Thank you for talking through this with me. I’ve noted it for the doctor before your consultation.",
+          "Thank you for going through this with me. I’ve noted the details for the doctor to review before your consultation.",
         reason: "fallback_complete",
       };
     }
@@ -385,47 +404,48 @@ Respond as the doctor for the next turn only.
   result.message = typeof result.message === "string" ? result.message.trim() : "";
   result.reason = typeof result.reason === "string" ? result.reason : "";
 
-  // Strip bot-like self-references if the model slips
   result.message = result.message
-    .replace(/\b(as an AI|I'm an AI|I am an AI|language model|chatbot|screening bot)\b/gi, "")
+    .replace(/\b(as an AI|I'm an AI|I am an AI|language model|chatbot|screening bot|AI assistant)\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 
-  // Too early to finish
-  if (result.status === "COMPLETE" && qCount < minQ && !goalsMet(session)) {
+  // Hold the model back from finishing too early
+  if (result.status === "COMPLETE" && qCount < minQ && !prescribeReady(session)) {
     result.status = "QUESTION";
-    if (!result.message || !/\?/.test(result.message) || looksLikeRepeat(session, result.message)) {
-      result.message = fallbackDoctorQuestion(session) || result.message;
+    const fb = fallbackDoctorQuestion(session);
+    if (fb && (!result.message || !/\?/.test(result.message) || looksLikeRepeat(session, result.message))) {
+      result.message = fb;
     }
-    result.reason = "minimum_history_not_reached";
+    result.reason = "history_still_thin";
   }
 
-  // COMPLETE with a question mark → treat as question
   if (result.status === "COMPLETE" && /\?\s*$/.test(result.message)) {
     result.status = "QUESTION";
     result.reason = result.reason || "follow_up_question";
   }
 
-  // Goals met or max questions → finish
-  if (result.status === "QUESTION" && (goalsMet(session) && qCount >= minQ || qCount >= maxQ)) {
+  // Finish when ready or at cap
+  if (
+    result.status === "QUESTION" &&
+    ((prescribeReady(session) && qCount >= minQ) || qCount >= maxQ)
+  ) {
     result.status = "COMPLETE";
     result.message =
       result.message && !/\?\s*$/.test(result.message)
         ? result.message
-        : "Thank you for talking through this with me. I’ve noted everything for the doctor before your consultation.";
-    result.reason = qCount >= maxQ ? "max_questions_reached" : "goals_met";
+        : "Thank you for going through this carefully with me. I’ve noted everything so the doctor can review it before your consultation.";
+    result.reason = qCount >= maxQ ? "max_questions" : "prescribe_ready";
   }
 
-  // Avoid repeating earlier questions
   if (result.status === "QUESTION" && looksLikeRepeat(session, result.message)) {
     const fb = fallbackDoctorQuestion(session);
     if (fb && !looksLikeRepeat(session, fb)) {
       result.message = fb;
-      result.reason = "deduped_to_fallback";
-    } else if (goalsMet(session) || qCount >= minQ) {
+      result.reason = "deduped_fallback";
+    } else if (qCount >= minQ) {
       result.status = "COMPLETE";
       result.message =
-        "Thank you. That’s helpful — I’ve noted it for the doctor.";
+        "Thank you. That’s enough for the doctor to review before seeing you.";
       result.reason = "dedupe_complete";
     }
   }
@@ -433,8 +453,8 @@ Respond as the doctor for the next turn only.
   if (result.status === "QUESTION" && !result.message) {
     result.message =
       fallbackDoctorQuestion(session) ||
-      "Can you tell me a little more about what you’ve been feeling?";
-    result.reason = "empty_message_fallback";
+      "Can you help me understand what troubles you the most right now?";
+    result.reason = "empty_message";
   }
 
   return result;
@@ -500,12 +520,16 @@ const outputSchema = {
 };
 
 const consolidationInstructions = `
-Convert the completed doctor–patient conversation into structured clinical information.
-Use ONLY facts explicitly stated by the patient or in the patient record.
-Never invent diagnoses, medicines, allergies, history, symptoms, severity, or duration.
-Missing information must be null or [].
-Do not provide diagnosis, treatment, or advice.
-The summary is a concise factual pre-consult note for the treating clinician.
+You are preparing a concise pre-consultation clinical note for an ENT doctor.
+Use ONLY facts the patient stated or that appear in the patient record.
+Never invent diagnoses, drugs, allergies, or findings.
+Missing items: null or [].
+Do not prescribe or advise.
+
+The summary MUST be a dense, usable clinical paragraph a doctor can skim before
+prescribing — include site, laterality, duration, severity, key associated features,
+self-medication tried, allergies, and relevant background when stated.
+
 Output only the requested JSON.
 `.trim();
 
@@ -517,7 +541,7 @@ export async function consolidate(session) {
   const input = `
 screening_id: ${session.screening_id}
 specialty: ${session.patient?.specialty || "ent"}
-patient record: ${JSON.stringify(session.patient)}
+patient: ${JSON.stringify(session.patient)}
 conversation:
 ${transcript}
 `.trim();
@@ -540,7 +564,7 @@ ${transcript}
     const parsed = extractJsonObject(raw);
     if (parsed) return parsed;
   } catch (err) {
-    console.error("consolidate sarvam error", err?.message || err);
+    console.error("consolidate error", err?.message || err);
   }
 
   const sites = detectSite(session);
@@ -559,7 +583,7 @@ ${transcript}
       duration: null,
       severity: null,
       location: null,
-      details: pt.slice(0, 500) || null,
+      details: pt.slice(0, 600) || null,
     })),
     associated_symptoms: [],
     medical_history: [],
@@ -567,7 +591,7 @@ ${transcript}
     allergies: [],
     red_flags: [],
     patient_concerns: [],
-    summary: `Patient reported: ${pt.slice(0, 800) || session.patient?.complaint || "(see conversation)"}.`,
+    summary: pt.slice(0, 1200) || session.patient?.complaint || "See conversation transcript.",
     screening_status: "completed",
     data_quality_notes: ["fallback_summary"],
     conversation_transcript: transcript,
