@@ -427,6 +427,10 @@ Preserve uncertainty in data_quality_notes.
 
 The summary is a factual collection summary, not a clinical conclusion.
 
+The presenting_complaint MUST be populated from the patient's stated complaint in the patient record or conversation when available. Do not leave it empty when the patient record contains a complaint.
+
+The summary MUST be a concise, non-empty factual paragraph describing the main complaint and the key information explicitly provided by the patient. If details are missing, say that they were not provided rather than returning an empty string.
+
 Output only the requested JSON structure.
 `.trim();
 
