@@ -16,7 +16,7 @@ const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
 function normalizePhone(phone) {
-  const raw = String(phone || '').replace(/\\D/g, '');
+  const raw = String(phone || '').replace(/\D/g, '');
   if (raw.length === 10) return '91' + raw;
   if (raw.length === 11 && raw.startsWith('0')) return '91' + raw.slice(1);
   return raw;
@@ -149,7 +149,11 @@ function editableOutput(input, current) {
 }
 
 function validServerApiKey(req) {
-  const expected = String(process.env.SCREENING_API_KEY || "").trim();
+  // Prefer SCREENING_API_KEY; also accept CLINICAL_SCREENING_API_KEY for convenience
+  // when the same secret name is used across MediLoop and this service.
+  const expected = String(
+    process.env.SCREENING_API_KEY || process.env.CLINICAL_SCREENING_API_KEY || ""
+  ).trim();
   if (!expected) return process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1";
   const suppliedKey = String(req.headers["x-api-key"] || "").trim();
   const authorization = String(req.headers.authorization || "").trim();
