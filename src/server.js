@@ -16,9 +16,10 @@ const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
 function normalizePhone(phone) {
-  const raw = String(phone || '').replace(/\D/g, '');
+  let raw = String(phone || '').replace(/\D/g, '');
+  while (raw.startsWith('00')) raw = raw.slice(2);
+  if (raw.startsWith('0') && !raw.startsWith('91')) raw = raw.replace(/^0+/, '');
   if (raw.length === 10) return '91' + raw;
-  if (raw.length === 11 && raw.startsWith('0')) return '91' + raw.slice(1);
   return raw;
 }
 
@@ -33,6 +34,15 @@ async function sendComplaintLink(phone, patientUrl) {
 
   const to = normalizePhone(phone);
   if (!to) return { ok: false, error: 'Patient phone number is invalid' };
+
+  // URL button templates expect only the dynamic suffix (token after /s/)
+  let buttonParam = patientUrl;
+  try {
+    const u = new URL(patientUrl);
+    const parts = u.pathname.split('/').filter(Boolean);
+    const sIdx = parts.indexOf('s');
+    if (sIdx >= 0 && parts[sIdx + 1]) buttonParam = decodeURIComponent(parts[sIdx + 1]);
+  } catch { /* keep full url */ }
 
   const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: 'POST',
@@ -51,7 +61,7 @@ async function sendComplaintLink(phone, patientUrl) {
           type: 'button',
           sub_type: 'url',
           index: '0',
-          parameters: [{ type: 'text', text: patientUrl }]
+          parameters: [{ type: 'text', text: buttonParam }]
         }]
       }
     })
@@ -89,7 +99,8 @@ function publicSession(s) {
       patient_name: s.patient.patient_name,
       age: s.patient.age,
       gender: s.patient.gender,
-      complaint: s.patient.complaint
+      complaint: s.patient.complaint,
+      specialty: s.patient.specialty || null
     },
     question_count: s.question_count,
     conversation: (s.conversation || []).map(x => ({ role: x.role, message: x.message, at: x.at })),
@@ -149,8 +160,6 @@ function editableOutput(input, current) {
 }
 
 function validServerApiKey(req) {
-  // Prefer SCREENING_API_KEY; also accept CLINICAL_SCREENING_API_KEY for convenience
-  // when the same secret name is used across MediLoop and this service.
   const expected = String(
     process.env.SCREENING_API_KEY || process.env.CLINICAL_SCREENING_API_KEY || ""
   ).trim();
@@ -176,8 +185,6 @@ async function getPatientContext(token, res) {
 }
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
-
-// Browser patient application.
 app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
 app.get('/api/patient/s/:token', async (req, res) => {
@@ -204,7 +211,6 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     }
     if (s.status !== 'in_progress') return res.status(409).json({ error: 'Screening is not available.' });
 
-    // The first AI question is generated only when the patient presses Start Chat.
     if (s.conversation.some(x => x.role === 'assistant')) {
       const last = [...s.conversation].reverse().find(x => x.role === 'assistant');
       return res.json({ type: 'question', message: last.message, question_count: s.question_count });
@@ -214,7 +220,10 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('patient start error', e);
-    res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
+    res.status(502).json({
+      error: 'Clinical assistant is temporarily unavailable. Please try again in a moment.',
+      detail: String(e?.message || e).slice(0, 200)
+    });
   }
 });
 
@@ -235,7 +244,23 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('patient message error', e);
-    res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
+    // Soft recovery: keep patient answer saved; ask a simple follow-up so chat does not die
+    try {
+      const s = await getSessionByPatientToken(req.params.token);
+      if (s && s.status === 'in_progress') {
+        const fallback = 'Thank you. How long have you had this problem (in days)?';
+        s.conversation.push({ role: 'assistant', message: fallback, at: new Date().toISOString() });
+        s.question_count = (s.question_count || 0) + 1;
+        await saveSession(s);
+        return res.json({ type: 'question', message: fallback, question_count: s.question_count, recovered: true });
+      }
+    } catch (inner) {
+      console.error('patient message recovery failed', inner);
+    }
+    res.status(502).json({
+      error: 'Clinical assistant is temporarily unavailable. Please try again in a moment.',
+      detail: String(e?.message || e).slice(0, 200)
+    });
   }
 });
 
@@ -303,8 +328,6 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
   }
 });
 
-// Existing server-to-server creation endpoint. WhatsApp is no longer part of the
-// conversation. It now creates the session and returns the patient link.
 app.post('/api/screenings', async (req, res) => {
   try {
     if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
@@ -315,7 +338,8 @@ app.post('/api/screenings', async (req, res) => {
     res.status(201).json({
       screening_id: s.screening_id,
       status: s.status,
-      patient_url: patientUrl(req, s.patient_token)
+      patient_url: patientUrl(req, s.patient_token),
+      specialty: s.patient?.specialty || null
     });
   } catch (e) {
     console.error('screening creation error', e);
@@ -341,7 +365,7 @@ app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'ai-clinical-screening',
   architecture: 'browser-screening',
-  link_delivery: "consumer_application",
+  link_delivery: 'consumer_application',
   inbound_whatsapp_conversation: false
 }));
 
