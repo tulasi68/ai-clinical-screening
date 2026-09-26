@@ -102,7 +102,7 @@ function validServerApiKey(req) {
   if (!expected) return process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1";
   const suppliedKey = String(req.headers["x-api-key"] || "").trim();
   const authorization = String(req.headers.authorization || "").trim();
-  const bearerKey = authorization.replace(/^Bearer\\s+/i, "").trim();
+  const bearerKey = authorization.replace(/^Bearer\s+/i, "").trim();
   return suppliedKey === expected || bearerKey === expected;
 }
 
