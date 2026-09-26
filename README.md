@@ -1,25 +1,61 @@
 # AI Clinical Screening
 
-Standalone API for adaptive clinical information collection over WhatsApp.
+A small Utsavam-style browser conversation for collecting structured pre-consultation information.
 
-## Flow
+## Architecture
 
-1. A consumer application sends `POST /api/screenings` with patient JSON.
-2. The service creates a `screening_id` and sends the patient a WhatsApp message.
-3. Sarvam AI asks one question at a time and adapts to patient answers.
-4. Meta WhatsApp delivers patient replies to `/webhooks/whatsapp`.
-5. When sufficient information is collected, Sarvam AI consolidates the conversation into strict structured JSON.
-6. The consumer application retrieves `GET /api/screenings/:id/output`.
+```
+MediLoop
+   │
+   ├── creates screening session
+   │
+   └── sends patient a WhatsApp link
+                 │
+                 ▼
+        Small browser chat
+                 │
+                 ▼
+             Sarvam AI
+                 │
+                 ▼
+       Patient reviews/edits
+                 │
+                 ▼
+        End & Send to Doctor
+                 │
+                 ▼
+              MediLoop
+```
 
-The AI is deliberately limited to information collection and structuring. It does not diagnose, prescribe, recommend treatment, or make clinical decisions.
+WhatsApp is only the delivery channel for the link. This service does **not** run a WhatsApp chatbot and does **not** consume inbound WhatsApp patient replies.
+
+The conversation is deliberately limited to information collection and structuring. It does not diagnose, prescribe, recommend treatment, or make clinical decisions.
+
+## Patient experience
+
+1. Patient opens the private screening link.
+2. Patient sees a small welcome screen and presses **Start Chat**.
+3. Sarvam asks one short question at a time and adapts to the answers.
+4. When enough information has been collected, the patient sees a structured screening summary.
+5. Patient can correct the information.
+6. Patient presses **End & Send to Doctor**.
+7. The final structured JSON becomes available to MediLoop.
+
+The interaction is intentionally modeled on Utsavam's **Talk about this** pattern: a quiet, private conversation rather than a large application workflow.
 
 ## API
 
-### Start a screening
+### Create a screening
 
 ```http
 POST /api/screenings
 Content-Type: application/json
+X-API-Key: <SCREENING_API_KEY>
+```
+
+Bearer authentication is also accepted:
+
+```http
 Authorization: Bearer <SCREENING_API_KEY>
 ```
 
@@ -38,44 +74,42 @@ Body:
 Response:
 
 ```json
-{"screening_id":"SCR-...","status":"started"}
+{
+  "screening_id": "SCR-...",
+  "status": "in_progress",
+  "patient_url": "https://YOUR-DOMAIN/s/<opaque-token>"
+}
 ```
 
-The Authorization header is required when `SCREENING_API_KEY` is configured.
+MediLoop is responsible for sending `patient_url` to the patient through WhatsApp.
 
-### Get completed JSON
+### Retrieve completed screening
 
 ```http
 GET /api/screenings/SCR-.../output
-Authorization: Bearer <SCREENING_API_KEY>
+X-API-Key: <SCREENING_API_KEY>
 ```
 
-### Get screening status
+Returns the consolidated structured JSON after the patient has submitted the screening.
+
+### Health check
 
 ```http
-GET /api/screenings/SCR-...
-Authorization: Bearer <SCREENING_API_KEY>
+GET /health
 ```
 
-The patient phone number is never returned by this endpoint.
+## Security model
 
-## Meta WhatsApp
-
-Set the callback URL to:
-
-`https://YOUR-DOMAIN/webhooks/whatsapp`
-
-The Meta verification token must equal `WA_WEBHOOK_VERIFY_TOKEN`.
-
-For proactive messages outside WhatsApp's customer-service window, configure an approved Meta template in `WA_INITIAL_TEMPLATE_NAME`. If no template is configured, the service sends a text message; Meta may reject that outbound message when a customer-service window is not open.
-
-If the same Meta app/number is shared with MediLoop, this service can forward non-screening webhook payloads to `MEDILOOP_WEBHOOK_FORWARD_URL`.
+- The patient link contains a high-entropy opaque token.
+- Only a SHA-256 hash of the patient token is stored.
+- Patient tokens expire after `PATIENT_TOKEN_TTL_HOURS`.
+- Patient-facing routes do not expose the patient's phone number.
+- Server-to-server screening endpoints require `SCREENING_API_KEY` outside local development.
+- The Supabase service-role key is server-side only and must never be exposed to browser code.
 
 ## Storage
 
-The current `src/store.js` implementation uses JSON files intentionally for development and controlled pilot testing.
-
-This is **not durable production storage on a serverless deployment**. The storage interface is kept isolated so it can be replaced with Supabase/Postgres later without changing the screening workflow or API contract.
+Screening sessions and consolidated outputs are stored in Supabase. The service does not rely on local JSON files or serverless filesystem persistence.
 
 ## Local setup
 
@@ -85,18 +119,16 @@ copy .env.example .env
 npm start
 ```
 
-Health check:
+Open:
 
 ```
-GET /health
+http://localhost:3000
 ```
 
-## Safety boundary
+For an actual patient session, first create a screening through `POST /api/screenings` and open the returned `patient_url`.
 
-This service collects and structures information. It does not diagnose, prescribe, recommend treatment, or make clinical decisions. It is not a substitute for a clinician.
+## Clinical boundary
 
-Before real clinical deployment, implement appropriate privacy/security controls, consent/notice, durable storage, auditability, monitoring, access control, and clinical validation.
+This service collects and structures patient-provided information for clinician review. It is not a diagnostic or treatment system.
 
-## Runtime
-
-The project targets Node.js 24.x for deployment. Vercel currently supports Express/Node server deployments, but the JSON datastore must be replaced before relying on deployment persistence.
+Before real clinical deployment, validate the workflow clinically and implement the required privacy, consent/notice, access-control, audit, monitoring, retention, and operational controls.
