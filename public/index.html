@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AI Clinical Screening</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18202a;background:#fafafa}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:680px;margin:auto;min-height:100vh;padding:24px 18px 34px}
+.card{background:#fff;border:1px solid #e6e8eb;border-radius:22px;padding:24px;box-shadow:0 4px 20px #00000008}
+h1{font-size:24px;margin:0 0 8px}h2{font-size:20px;margin:0 0 16px}.muted{color:#68717d;line-height:1.55;font-size:14px}.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+button{border:0;border-radius:999px;padding:13px 20px;font-weight:650;font-size:15px;cursor:pointer}button.primary{background:#1d6f5b;color:#fff}button.secondary{background:#f0f2f3;color:#26313b}button:disabled{opacity:.5;cursor:not-allowed}
+.center{text-align:center;padding:46px 12px}.start-note{margin:18px auto 24px;max-width:430px}
+.chat{display:flex;flex-direction:column;gap:12px;margin:22px 0 16px}.bubble{max-width:88%;padding:12px 15px;border-radius:18px;line-height:1.5;font-size:15px;white-space:pre-wrap}.ai{background:#f0f2f3;align-self:flex-start}.patient{background:#1d6f5b;color:#fff;align-self:flex-end}
+.composer{display:flex;gap:8px;position:sticky;bottom:0;background:#fafafa;padding:10px 0}.composer input{min-width:0;flex:1;border:1px solid #d7dce0;border-radius:999px;padding:13px 16px;font:inherit;outline:none}.composer input:focus{border-color:#1d6f5b}
+.summary-grid{display:grid;gap:15px}.field{border:1px solid #e2e5e8;border-radius:14px;padding:13px}.field label{display:block;font-size:12px;color:#68717d;margin-bottom:7px;font-weight:650}.field textarea,.field input{width:100%;border:0;outline:0;font:inherit;line-height:1.45;resize:vertical;background:transparent}.field textarea{min-height:55px}.list-item{margin:5px 0}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.notice{margin:14px 0;padding:12px 14px;border-radius:14px;background:#fff7df;color:#5f4c15;font-size:14px;line-height:1.45}.error{color:#9b1c1c;background:#fff0f0;padding:11px 13px;border-radius:12px;font-size:14px;margin-top:14px}
+.small{font-size:12px;color:#7b8490}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<main class="shell"><div id="app" class="card"></div></main>
+<script>
+const token = decodeURIComponent(location.pathname.split('/s/')[1] || '');
+const app = document.getElementById('app');
+let state = null;
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showError(msg){let e=document.getElementById('error');if(e){e.textContent=msg;e.classList.remove('hidden');}}
+function clearError(){let e=document.getElementById('error');if(e)e.classList.add('hidden');}
+function btn(text,cls='primary',id=''){return '<button id="'+id+'" class="'+cls+'">'+esc(text)+'</button>';}
+
+async function api(path,opts={}){
+  const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||'Something went wrong.');
+  return d;
+}
+
+async function load(){
+  if(!token){app.innerHTML='<div class="center"><h1>AI Clinical Screening</h1><p class="muted">This link is incomplete.</p></div>';return;}
+  try{
+    state=await api('/api/patient/s/'+encodeURIComponent(token));
+    if(state.status==='submitted'){renderSubmitted();return;}
+    if(state.status==='awaiting_review'||state.output){renderReview(state.output);return;}
+    renderWelcome();
+  }catch(e){app.innerHTML='<div class="center"><h1>AI Clinical Screening</h1><p class="muted">This screening link is invalid or has expired.</p></div>';}
+}
+
+function renderWelcome(){
+  const p=state.patient;
+  app.innerHTML='<div class="center"><div class="eyebrow">Private patient screening</div><h1>AI Clinical Screening</h1>'+
+  '<p class="muted start-note">Hello, '+esc(p.patient_name)+'. I’ll ask you a few questions about your health concern before your consultation.</p>'+
+  '<p class="small">This is not a diagnosis or prescription.</p><div style="margin-top:24px">'+btn('Start Chat','primary','start')+'</div><div id="error" class="error hidden"></div></div>';
+  document.getElementById('start').onclick=startChat;
+}
+async function startChat(){
+  clearError();document.getElementById('start').disabled=true;
+  try{const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:'{}'}); if(d.type==='review')renderReview(d.output);else renderChat(d.message);}
+  catch(e){document.getElementById('start').disabled=false;showError(e.message);}
+}
+function renderChat(first){
+  state.messages=state.messages||[];
+  if(first && !state.messages.length)state.messages.push({role:'assistant',message:first});
+  app.innerHTML='<div class="eyebrow">Clinical assistant</div><h2>Let’s talk about your concern</h2>'+
+  '<p class="muted">One question at a time. Answer in your own words.</p><div id="chat" class="chat"></div>'+
+  '<form id="form" class="composer"><input id="input" autocomplete="off" placeholder="Type your answer…"><button class="primary" type="submit">Send</button></form><div id="error" class="error hidden"></div>';
+  drawMessages();
+  document.getElementById('form').onsubmit=sendMessage;
+}
+function drawMessages(){
+  const c=document.getElementById('chat');if(!c)return;
+  c.innerHTML=(state.messages||[]).map(m=>'<div class="bubble '+(m.role==='patient'?'patient':'ai')+'">'+esc(m.message)+'</div>').join('');
+  c.scrollTop=c.scrollHeight;
+}
+async function sendMessage(ev){
+  ev.preventDefault();const input=document.getElementById('input'),text=input.value.trim();if(!text)return;
+  input.disabled=true;ev.submitter.disabled=true;clearError();
+  state.messages.push({role:'patient',message:text});drawMessages();
+  try{
+    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/message',{method:'POST',body:JSON.stringify({message:text})});
+    if(d.type==='review'){renderReview(d.output);return;}
+    state.messages.push({role:'assistant',message:d.message});drawMessages();input.value='';
+  }catch(e){showError(e.message);}
+  finally{if(document.getElementById('input')){document.getElementById('input').disabled=false;document.querySelector('#form button').disabled=false;document.getElementById('input').focus();}}
+}
+
+function arr(v){return Array.isArray(v)?v:[]}
+function renderReview(output){
+  state.output=output;
+  const urgent=output?.screening_status==='urgent';
+  app.innerHTML='<div class="eyebrow">Please review</div><h2>Screening Summary</h2>'+
+  (urgent?'<div class="notice"><strong>Important:</strong> Your answers indicate a concern that may need urgent medical attention. Please seek urgent medical care now. This screening does not provide a diagnosis or treatment.</div>':'')+
+  '<p class="muted">Please check the information below. You can correct anything that is inaccurate before sending it to your doctor.</p>'+
+  '<div id="summary" class="summary-grid">'+summaryFields(output)+'</div>'+
+  '<div class="actions">'+btn('Save Changes','secondary','save')+btn('End & Send to Doctor','primary','submit')+'</div>'+
+  '<div id="error" class="error hidden"></div><p class="small" style="margin-top:18px">Your information is sent only after you press “End & Send to Doctor”.</p>';
+  document.getElementById('save').onclick=saveSummary;
+  document.getElementById('submit').onclick=submitSummary;
+}
+function summaryFields(o){
+  const symptomText=arr(o.symptoms).map(x=>[x.symptom,x.duration,x.severity,x.location,x.details].filter(Boolean).join(' — ')).join('\n');
+  const fields=[
+    ['presenting_complaint','Main concern',o.presenting_complaint||''],
+    ['symptoms','Symptoms',symptomText],
+    ['associated_symptoms','Associated symptoms',arr(o.associated_symptoms).join('\n')],
+    ['medical_history','Medical history',arr(o.medical_history).join('\n')],
+    ['medications','Medications',arr(o.medications).join('\n')],
+    ['allergies','Allergies',arr(o.allergies).join('\n')],
+    ['patient_concerns','Patient concerns',arr(o.patient_concerns).join('\n')],
+    ['summary','Summary',o.summary||'']
+  ];
+  return fields.map(([k,l,v])=>'<div class="field"><label>'+esc(l)+'</label><textarea data-key="'+k+'">'+esc(v)+'</textarea></div>').join('');
+}
+function collectSummary(){
+  const out={};
+  document.querySelectorAll('[data-key]').forEach(el=>{
+    const k=el.dataset.key,v=el.value.trim();
+    if(k==='presenting_complaint'||k==='summary')out[k]=v;
+    else out[k]=v? v.split('\n').map(x=>x.trim()).filter(Boolean):[];
+  });
+  const lines=out.symptoms||[];
+  out.symptoms=lines.map(x=>({symptom:x,duration:null,severity:null,location:null,details:null}));
+  return out;
+}
+async function saveSummary(){
+  clearError();const b=document.getElementById('save');b.disabled=true;
+  try{const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/summary',{method:'PUT',body:JSON.stringify(collectSummary())});state.output=d.output;renderReview(d.output);}
+  catch(e){showError(e.message);b.disabled=false;}
+}
+async function submitSummary(){
+  clearError();
+  if(!confirm('Send this screening to your doctor? You will not be able to edit it after submission.'))return;
+  const b=document.getElementById('submit');b.disabled=true;
+  try{await saveSummary();const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/submit',{method:'POST',body:'{}'});state.output=d.output;renderSubmitted();}
+  catch(e){showError(e.message);b.disabled=false;}
+}
+function renderSubmitted(){
+  app.innerHTML='<div class="center"><div class="eyebrow">Submitted</div><h1>Thank you</h1><p class="muted start-note">Your screening information has been sent to your doctor for your consultation.</p><p class="small">You can close this page now.</p></div>';
+}
+load();
+</script>
+</body>
+</html>
