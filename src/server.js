@@ -6,7 +6,7 @@ import {
   createSession, getSession, saveSession, saveOutput, getOutput,
   getSessionByPatientToken
 } from './store.js';
-import { sendInitial, sendText, forwardWebhook, normalizePhone } from './whatsapp.js';
+import { forwardWebhook } from './whatsapp.js';
 import { nextStep, consolidate } from './ai.js';
 
 const app = express();
