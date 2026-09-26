@@ -24,7 +24,8 @@ async function request(path, options = {}) {
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!response.ok) {
     const message = data?.message || data?.hint || data?.details || data?.error || text || `Supabase HTTP ${response.status}`;
-    throw new Error(message);
+    const suffix = response.status === 401 ? 'Supabase authentication failed. Check that SUPABASE_SERVICE_ROLE_KEY belongs to this project and is current.' : '';
+    throw new Error(`Supabase HTTP ${response.status}: ${message}${suffix ? ` — ${suffix}` : ''}`);
   }
   return data;
 }
