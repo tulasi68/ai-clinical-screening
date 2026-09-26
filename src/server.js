@@ -270,6 +270,7 @@ app.get('/api/screenings/:id/output', async (req, res) => {
 });
 
 app.get('/api/screenings/:id', async (req, res) => {
+  if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
   const s = await getSession(req.params.id);
   if (!s) return res.status(404).json({ error: 'Not found' });
   res.json({ ...publicSession(s), patient_token_hash: undefined });
