@@ -464,136 +464,201 @@ const outputSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    contract_version: { type: "string" },
     screening_id: { type: "string" },
-    patient: {
-      type: "object",
-      additionalProperties: false,
+    screening: {
+      type: "object", additionalProperties: false,
       properties: {
-        name: { type: ["string", "null"] },
-        age: { type: ["integer", "null"] },
-        gender: { type: ["string", "null"] },
-        phone: { type: ["string", "null"] },
+        screening_id: { type: "string" },
+        status: { type: "string", enum: ["not_started", "in_progress", "completed", "failed", "abandoned"] },
+        started_at: { type: ["string", "null"] },
+        completed_at: { type: ["string", "null"] }
       },
-      required: ["name", "age", "gender", "phone"],
+      required: ["screening_id", "status", "started_at", "completed_at"]
     },
-    presenting_complaint: { type: ["string", "null"] },
-    symptoms: {
+    patient: {
+      type: "object", additionalProperties: false,
+      properties: {
+        patient_id: { type: ["string", "null"] }, name: { type: ["string", "null"] },
+        age: { type: ["integer", "null"] }, age_unit: { type: ["string", "null"] },
+        gender: { type: ["string", "null"] }, phone_last10: { type: ["string", "null"] },
+        date: { type: ["string", "null"] }
+      },
+      required: ["patient_id", "name", "age", "age_unit", "gender", "phone_last10", "date"]
+    },
+    vitals: {
+      type: "object", additionalProperties: false,
+      properties: {
+        bp: { type: ["object", "null"] }, pulse: { type: ["object", "null"] },
+        temperature: { type: ["object", "null"] }, spo2: { type: ["object", "null"] },
+        weight: { type: ["object", "null"] }, respiratory_rate: { type: ["object", "null"] },
+        rbs: { type: ["object", "null"] }
+      },
+      required: ["bp", "pulse", "temperature", "spo2", "weight", "respiratory_rate", "rbs"]
+    },
+    complaints: {
       type: "array",
       items: {
-        type: "object",
-        additionalProperties: false,
+        type: "object", additionalProperties: false,
         properties: {
-          symptom: { type: "string" },
-          duration: { type: ["string", "null"] },
-          severity: { type: ["string", "null"] },
-          location: { type: ["string", "null"] },
-          details: { type: ["string", "null"] },
+          id: { type: "string" }, text: { type: "string" },
+          laterality: { type: "string", enum: ["left", "right", "bilateral", "midline", "not_applicable", "unknown"] },
+          duration: {
+            type: "object", additionalProperties: false,
+            properties: { value: { type: ["number", "null"] }, unit: { type: "string", enum: ["hours", "days", "weeks", "months", "years", "unknown"] } },
+            required: ["value", "unit"]
+          },
+          qualifiers: { type: "array", items: { type: "string" } },
+          priority: { type: "string", enum: ["chief", "secondary", "unknown"] },
+          source: { type: "string", enum: ["patient_reported", "desk", "screening", "doctor", "system", "unknown"] },
+          confidence: { type: "string", enum: ["high", "medium", "low"] }
         },
-        required: ["symptom", "duration", "severity", "location", "details"],
-      },
+        required: ["id", "text", "laterality", "duration", "qualifiers", "priority", "source", "confidence"]
+      }
     },
-    associated_symptoms: { type: "array", items: { type: "string" } },
-    medical_history: { type: "array", items: { type: "string" } },
-    medications: { type: "array", items: { type: "string" } },
-    allergies: { type: "array", items: { type: "string" } },
-    red_flags: { type: "array", items: { type: "string" } },
-    patient_concerns: { type: "array", items: { type: "string" } },
+    allergies: {
+      type: "object", additionalProperties: false,
+      properties: { status: { type: "string", enum: ["reported", "none_reported", "unknown"] }, items: { type: "array", items: { type: "string" } } },
+      required: ["status", "items"]
+    },
+    current_medications: {
+      type: "object", additionalProperties: false,
+      properties: { status: { type: "string", enum: ["reported", "none_reported", "unknown"] }, items: { type: "array", items: { type: "string" } } },
+      required: ["status", "items"]
+    },
+    red_flags: {
+      type: "array",
+      items: {
+        type: "object", additionalProperties: false,
+        properties: {
+          id: { type: "string" }, text: { type: "string" },
+          source: { type: "string", enum: ["patient_reported", "desk", "screening", "doctor", "system", "unknown"] },
+          confidence: { type: "string", enum: ["high", "medium", "low"] }
+        },
+        required: ["id", "text", "source", "confidence"]
+      }
+    },
+    provenance: {
+      type: "object", additionalProperties: false,
+      properties: { complaints: { type: "string" }, allergies: { type: "string" }, current_medications: { type: "string" }, vitals: { type: "object" } },
+      required: ["complaints", "allergies", "current_medications", "vitals"]
+    },
+    completion: {
+      type: "object", additionalProperties: false,
+      properties: {
+        patient_details: { type: "boolean" }, vitals: { type: "boolean" }, complaints: { type: "boolean" },
+        allergies: { type: "boolean" }, current_medications: { type: "boolean" }, screening_complete: { type: "boolean" }
+      },
+      required: ["patient_details", "vitals", "complaints", "allergies", "current_medications", "screening_complete"]
+    },
     summary: { type: "string" },
     screening_status: { type: "string", enum: ["completed", "urgent"] },
-    data_quality_notes: { type: "array", items: { type: "string" } },
+    patient_approved: { type: "boolean" },
+    submitted_at: { type: ["string", "null"] },
+    data_quality_notes: { type: "array", items: { type: "string" } }
   },
-  required: [
-    "screening_id",
-    "patient",
-    "presenting_complaint",
-    "symptoms",
-    "associated_symptoms",
-    "medical_history",
-    "medications",
-    "allergies",
-    "red_flags",
-    "patient_concerns",
-    "summary",
-    "screening_status",
-    "data_quality_notes",
-  ],
+  required: ["contract_version", "screening_id", "screening", "patient", "vitals", "complaints", "allergies", "current_medications", "red_flags", "provenance", "completion", "summary", "screening_status", "patient_approved", "submitted_at", "data_quality_notes"]
 };
 
 const consolidationInstructions = `
-You are preparing a concise pre-consultation clinical note for an ENT doctor.
-Use ONLY facts the patient stated or that appear in the patient record.
-Never invent diagnoses, drugs, allergies, or findings.
-Missing items: null or [].
-Do not prescribe or advise.
+You are the clinical-information consolidation component of AI Clinical Screening.
 
-The summary MUST be a dense, usable clinical paragraph a doctor can skim before
-prescribing — include site, laterality, duration, severity, key associated features,
-self-medication tried, allergies, and relevant background when stated.
+Convert the patient conversation into Contract Version 1.0 for MediLoop Clinical AI.
 
-Output only the requested JSON.
+You are NOT diagnosing the patient.
+You are NOT prescribing medication.
+You are NOT recommending treatment.
+You are NOT deciding what the doctor should do.
+You are NOT ranking symptoms by medical severity.
+
+Use ONLY information explicitly stated by the patient or supplied in the session.
+Never invent a diagnosis, medication, allergy, vital sign, duration, laterality, or symptom.
+
+Return the exact structured contract requested by the JSON schema.
+
+COMPLAINTS
+- Each distinct patient-reported complaint becomes one complaints[] item.
+- text must be concise clinical shorthand, never a patient narrative.
+- Preserve duration only when explicitly stated.
+- Preserve useful short qualifiers.
+- Mark one complaint "chief" only when clearly the main reason for the conversation; this is conversational prominence, NOT medical severity.
+- Use priority "unknown" when uncertain.
+- source for patient symptoms is "patient_reported".
+- confidence describes extraction confidence, not diagnostic certainty.
+- Do not turn symptoms into diagnoses.
+
+DURATION: Use a numeric value only when supported by the patient. Allowed units: hours, days, weeks, months, years, unknown. If uncertain, use value null and unit unknown.
+LATERALITY: Allowed left, right, bilateral, midline, not_applicable, unknown. Never infer it.
+
+RED FLAGS: Represent only patient-reported concerning symptoms. Do not output diagnoses or tell the doctor what action to take.
+
+ALLERGIES: Explicit no-known-allergy becomes none_reported. If the patient does not know, use unknown. Never convert unknown to none_reported.
+
+CURRENT MEDICATIONS: Capture only medications explicitly reported. Do not invent names, doses, frequencies or indications. Do not recommend medication changes.
+
+VITALS: Never invent vitals. Unless a structured vital was supplied in the session, return null for that vital.
+
+PROVENANCE: Patient complaints, allergies and current medications from the conversation are patient_reported. Do not claim doctor or desk provenance unless actually supplied.
+
+COMPLETION: Set each boolean according to whether that category was actually obtained. An empty category is not automatically none_reported. screening_complete reflects completion of the screening conversation.
+
+SUMMARY: Provide a concise human-readable summary for the patient review UI. It must contain reported history only and no diagnosis, prescription, treatment recommendation, or instruction to the doctor.
+
+Return JSON only.
 `.trim();
-
 export async function consolidate(session) {
-  const transcript = (session.conversation || [])
-    .map((x) => `${x.role === "patient" ? "Patient" : "Doctor"}: ${x.message}`)
-    .join("\n");
-
-  const input = `
-screening_id: ${session.screening_id}
-specialty: ${session.patient?.specialty || "ent"}
-patient: ${JSON.stringify(session.patient)}
-conversation:
-${transcript}
-`.trim();
-
+  const transcript = (session.conversation || []).
+    map((x) => `${x.role === "patient" ? "Patient" : "Doctor"}: ${x.message}`).
+    join("\n");
+  const startedAt = session.created_at || session.started_at || null;
+  const input = `screening_id: ${session.screening_id}\nspecialty: ${session.patient?.specialty || "ent"}\npatient: ${JSON.stringify(session.patient)}\nconversation:\n${transcript}`;
+  const base = {
+    contract_version: "1.0", screening_id: session.screening_id,
+    screening: { screening_id: session.screening_id, status: "completed", started_at: startedAt, completed_at: new Date().toISOString() },
+    patient: { patient_id: session.patient?.patient_id || null, name: session.patient?.patient_name || null, age: session.patient?.age ?? null, age_unit: "Y", gender: session.patient?.gender || null, phone_last10: String(session.patient?.phone || "").replace(/\D/g, "").slice(-10) || null, date: new Date().toISOString().slice(0, 10) },
+    vitals: { bp: null, pulse: null, temperature: null, spo2: null, weight: null, respiratory_rate: null, rbs: null },
+    complaints: [], allergies: { status: "unknown", items: [] }, current_medications: { status: "unknown", items: [] },
+    red_flags: [], provenance: { complaints: "patient_reported", allergies: "patient_reported", current_medications: "patient_reported", vitals: {} },
+    completion: { patient_details: true, vitals: false, complaints: false, allergies: false, current_medications: false, screening_complete: true },
+    summary: session.patient?.complaint || "See conversation transcript.", screening_status: "completed", patient_approved: false, submitted_at: null, data_quality_notes: []
+  };
   try {
-    const raw = await sarvamChat(
-      [
-        { role: "system", content: consolidationInstructions },
-        { role: "user", content: input },
-      ],
-      {
-        temperature: 0.1,
-        max_tokens: 2500,
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "clinical_screening", strict: true, schema: outputSchema },
-        },
-      }
-    );
+    const raw = await sarvamChat([
+      { role: "system", content: consolidationInstructions },
+      { role: "user", content: input },
+    ], {
+      temperature: 0.1, max_tokens: 2500,
+      response_format: { type: "json_schema", json_schema: { name: "clinical_screening_contract_v1", strict: true, schema: outputSchema } },
+    });
     const parsed = extractJsonObject(raw);
-    if (parsed) return parsed;
-  } catch (err) {
-    console.error("consolidate error", err?.message || err);
-  }
-
+    if (parsed && typeof parsed === "object") {
+      return {
+        ...base, ...parsed, contract_version: "1.0", screening_id: session.screening_id,
+        screening: { ...base.screening, ...(parsed.screening || {}), screening_id: session.screening_id },
+        patient: { ...base.patient, ...(parsed.patient || {}) },
+        vitals: { ...base.vitals, ...(parsed.vitals || {}) },
+        provenance: { ...base.provenance, ...(parsed.provenance || {}) },
+        completion: { ...base.completion, ...(parsed.completion || {}) },
+      };
+    }
+  } catch (err) { console.error("consolidate error", err?.message || err); }
   const sites = detectSite(session);
   const pt = patientText(session);
-  return {
-    screening_id: session.screening_id,
-    patient: {
-      name: session.patient?.patient_name || null,
-      age: session.patient?.age ?? null,
-      gender: session.patient?.gender || null,
-      phone: session.patient?.phone || null,
-    },
-    presenting_complaint: session.patient?.complaint || sites.join(", ") || null,
-    symptoms: sites.map((s) => ({
-      symptom: s,
-      duration: null,
-      severity: null,
-      location: null,
-      details: pt.slice(0, 600) || null,
-    })),
-    associated_symptoms: [],
-    medical_history: [],
-    medications: [],
-    allergies: [],
-    red_flags: [],
-    patient_concerns: [],
-    summary: pt.slice(0, 1200) || session.patient?.complaint || "See conversation transcript.",
-    screening_status: "completed",
-    data_quality_notes: ["fallback_summary"],
-    conversation_transcript: transcript,
-  };
+  base.complaints = sites.map((s, i) => ({ id: `c${i + 1}`, text: s === "ear" ? "Ear symptoms" : s === "nose" ? "Nasal symptoms" : "Throat symptoms", laterality: "unknown", duration: { value: null, unit: "unknown" }, qualifiers: [], priority: i === 0 ? "chief" : "secondary", source: "patient_reported", confidence: "low" }));
+  base.completion.complaints = base.complaints.length > 0;
+  base.summary = pt.slice(0, 1200) || base.summary;
+  base.data_quality_notes = ["fallback_summary"];
+  return base;
+}
+
+function buildLegacySummary(contract) {
+  const bits = [];
+  (contract.complaints || []).forEach((c) => {
+    const parts = [c.text, c.laterality !== "unknown" && c.laterality !== "not_applicable" ? c.laterality : "", c.duration?.value != null && c.duration?.unit !== "unknown" ? `${c.duration.value} ${c.duration.unit}` : "", ...(Array.isArray(c.qualifiers) ? c.qualifiers : [])].filter(Boolean);
+    if (parts.length) bits.push(parts.join(", "));
+  });
+  if ((contract.red_flags || []).length) bits.push("Flags: " + contract.red_flags.map((x) => x.text).join(", "));
+  if (contract.allergies?.status === "reported") bits.push("Allergies: " + contract.allergies.items.join(", "));
+  if (contract.current_medications?.status === "reported") bits.push("Medicines: " + contract.current_medications.items.join(", "));
+  return bits.join("\n") || "See conversation transcript.";
 }
