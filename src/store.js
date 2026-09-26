@@ -38,9 +38,15 @@ export function hashPatientToken(token) {
 export function normalizePhone(phone) {
   let d = String(phone || '').replace(/\D/g, '');
   if (!d) return '';
+  while (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0') && !d.startsWith('91')) d = d.replace(/^0+/, '');
+  if (d.startsWith('0')) d = d.replace(/^0+/, '');
   if (d.length === 10) d = '91' + d;
-  if (d.length === 11 && d.startsWith('0')) d = '91' + d.slice(1);
   return d;
+}
+
+function normalizeSpecialty(value) {
+  return String(value || '').toLowerCase().trim().replace(/\s+/g, '_').slice(0, 40);
 }
 
 function sessionRow(s) {
@@ -76,8 +82,12 @@ export async function createSession(input) {
     screening_id, status: 'in_progress', created_at: now, updated_at: now,
     completed_at: null, submitted_at: null,
     patient: {
-      patient_name: input.patient_name, age: input.age, gender: input.gender,
-      complaint: input.complaint, phone: normalizePhone(input.phone)
+      patient_name: input.patient_name,
+      age: input.age,
+      gender: input.gender,
+      complaint: input.complaint,
+      phone: normalizePhone(input.phone),
+      specialty: normalizeSpecialty(input.specialty || input.clinic_specialty || 'ent')
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
     patient_token_hash: hashPatientToken(token), patient_token_expires_at: expires
@@ -122,7 +132,6 @@ export async function getOutput(screeningId) {
   return rows?.[0]?.output || null;
 }
 
-// Legacy WhatsApp lookup retained only for compatibility with existing records/routes.
 export async function findActiveByPhone(phone) {
   const target = normalizePhone(phone);
   if (!target) return null;
