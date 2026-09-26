@@ -1,6 +1,6 @@
 //src/ai.js
 //
-// Question flow is a fixed, purposeful checklist (not free-form LLM).
+// Fixed clinical path, spoken like a doctor in clinic — not a bot checklist.
 // Consolidation still uses Sarvam when available.
 
 const SARVAM_API_URL = "https://api.sarvam.ai/v1/chat/completions";
@@ -103,6 +103,11 @@ function patientText(session) {
     .toLowerCase();
 }
 
+function lastPatientMessage(session) {
+  const msgs = (session.conversation || []).filter((x) => x.role === "patient");
+  return String(msgs[msgs.length - 1]?.message || "").trim();
+}
+
 function allText(session) {
   const complaint = String(session.patient?.complaint || "").toLowerCase();
   return (complaint + " \n " + patientText(session)).toLowerCase();
@@ -120,6 +125,13 @@ function detectSite(session) {
   return sites;
 }
 
+function siteLabel(sites) {
+  if (!sites.length) return "that";
+  if (sites.length === 1) return sites[0];
+  if (sites.length === 2) return sites[0] + " and " + sites[1];
+  return sites.slice(0, -1).join(", ") + " and " + sites[sites.length - 1];
+}
+
 function hasDuration(session) {
   const t = patientText(session);
   return /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|few|several)\s*(day|days|week|weeks|month|months|hour|hours)\b|\bsince\b|\byesterday\b|\btoday\b|\blast\s+(night|week|month)\b|\bfor\s+\d+/i.test(
@@ -130,16 +142,13 @@ function hasDuration(session) {
 function hasLocation(session) {
   const t = patientText(session);
   const sites = detectSite(session);
-  // Laterality or specific place mentioned by patient
   if (/\bleft\b|\bright\b|\bboth\b|one side|both sides|middle|front|back of/.test(t)) return true;
-  // If only throat (no laterality needed as often midline), accept "throat" as location once answered in detail step
   if (sites.length === 1 && sites[0] === "throat" && /throat/.test(t)) return true;
   return false;
 }
 
 function hasDetail(session) {
   const t = patientText(session);
-  // Patient described what is happening (pain, blockage, discharge, etc.) beyond just naming the organ
   return /pain|ache|block|blockage|discharge|pus|bleed|itch|hearing|hear|ring|buzz|fever|cold|cough|swell|sore|burn|dry|voice|swallow|smell|sneeze|runny|congest|fullness|pressure|throb|sharp|mild|moderate|severe|cannot|can't|worse|better/i.test(
     t
   );
@@ -161,75 +170,94 @@ function hasSiteAnswer(session) {
   return detectSite(session).length > 0;
 }
 
+/** Short human acknowledgements so it feels like a real consult, not a form. */
+function acknowledge(session, nextId) {
+  const last = lastPatientMessage(session);
+  if (!last) return "";
+
+  // First question — no prior answer to acknowledge
+  if ((session.question_count || 0) === 0) return "";
+
+  const soft = [
+    "Okay, thank you.",
+    "Alright, I understand.",
+    "Got it, thank you.",
+    "Okay.",
+  ];
+  // Stable pick from last message length so it does not feel random every refresh
+  const pick = soft[last.length % soft.length];
+
+  if (nextId === "detail") return "Okay, thank you. ";
+  if (nextId === "duration") return pick + " ";
+  if (nextId === "location") return "Alright. ";
+  if (nextId === "medicine") return "Thank you. ";
+  if (nextId === "allergy") return "Okay. ";
+  return pick + " ";
+}
+
 /**
- * Fixed purposeful ENT checklist — one step at a time, never repeats a step.
- *
- * 1. What is the problem? (ear / nose / throat)
- * 2. What is happening there?
- * 3. Since how many days?
- * 4. Where exactly is the problem? (left/right/both or area)
- * 5. Any medicine already taken?
- * 6. Any allergy?
+ * Same clinical order, spoken the way a doctor would in the room.
  */
 const ENT_STEPS = [
   {
     id: "site",
     done: hasSiteAnswer,
-    question:
-      "What is the main problem today — is it with your ear, nose, or throat?",
+    question: () =>
+      "Hello. Before you see the doctor, I’d like to understand what brought you in. Is the problem mainly with your ear, your nose, or your throat?",
   },
   {
     id: "detail",
     done: hasDetail,
     question: (session) => {
       const sites = detectSite(session);
+      const label = siteLabel(sites);
       if (sites.length === 1 && sites[0] === "ear") {
-        return "What is happening in your ear — for example pain, blockage, discharge, reduced hearing, or itching?";
+        return "Can you tell me what’s going on in the ear — is there pain, a blocked feeling, discharge, or trouble hearing?";
       }
       if (sites.length === 1 && sites[0] === "nose") {
-        return "What is happening in your nose — for example blockage, runny nose, bleeding, reduced smell, or sneezing?";
+        return "What’s been happening with the nose — blocked, runny, bleeding, or any change in smell?";
       }
       if (sites.length === 1 && sites[0] === "throat") {
-        return "What is happening in your throat — for example pain, difficulty swallowing, voice change, or dryness?";
+        return "What’s been happening with the throat — pain, difficulty swallowing, or any change in your voice?";
       }
       if (sites.length > 1) {
-        return `What exactly is happening in your ${sites.join(" and ")}? Please describe the main symptoms.`;
+        return `You mentioned the ${label}. What exactly have you been feeling there?`;
       }
-      return "What exactly is happening — please describe the main symptoms in your own words.";
+      return "In your own words, what have you been feeling?";
     },
   },
   {
     id: "duration",
     done: hasDuration,
-    question: "Since how many days have you had this problem?",
+    question: () => "How many days has this been going on?",
   },
   {
     id: "location",
     done: hasLocation,
     question: (session) => {
       const sites = detectSite(session);
-      if (sites.includes("ear") && !sites.includes("nose") && !sites.includes("throat")) {
-        return "Where is the problem — left ear, right ear, or both ears?";
+      if (sites.includes("ear") && sites.length === 1) {
+        return "Is it the left ear, the right ear, or both?";
       }
-      if (sites.includes("nose") && !sites.includes("ear") && !sites.includes("throat")) {
-        return "Where is the problem — left side of the nose, right side, or both sides?";
+      if (sites.includes("nose") && sites.length === 1) {
+        return "Is it more on the left side, the right side, or both sides of the nose?";
       }
       if (sites.includes("throat") && sites.length === 1) {
-        return "Is the throat pain more on the left, right, or in the middle / both sides?";
+        return "Is the discomfort more on one side of the throat, or all over?";
       }
-      return "Where exactly is the problem located (left, right, both, or which area)?";
+      return "Where exactly do you feel it most — left, right, or both sides?";
     },
   },
   {
     id: "medicine",
     done: hasMedicine,
-    question:
-      "Have you already taken any medicine or used any drops for this problem? If yes, which ones?",
+    question: () =>
+      "Have you taken any medicine or used any drops for this already? If you have, what did you take?",
   },
   {
     id: "allergy",
     done: hasAllergy,
-    question: "Do you have any allergy to medicines or anything else?",
+    question: () => "One last thing — do you have any medicine allergies, or any other allergies we should know about?",
   },
 ];
 
@@ -238,32 +266,33 @@ function generalSteps() {
     {
       id: "site",
       done: (s) => patientText(s).length > 8 || String(s.patient?.complaint || "").length > 8,
-      question: "What is the main problem you want the doctor to help with today?",
+      question: () =>
+        "Hello. Before you see the doctor, can you tell me what the main problem is today?",
     },
     {
       id: "detail",
       done: hasDetail,
-      question: "What exactly is happening? Please describe the main symptoms.",
+      question: () => "What exactly have you been feeling?",
     },
     {
       id: "duration",
       done: hasDuration,
-      question: "Since how many days have you had this problem?",
+      question: () => "How many days has this been going on?",
     },
     {
       id: "location",
       done: hasLocation,
-      question: "Where is the problem located in the body?",
+      question: () => "Where do you feel it most?",
     },
     {
       id: "medicine",
       done: hasMedicine,
-      question: "Have you already taken any medicine for this? If yes, which ones?",
+      question: () => "Have you taken any medicine for this already?",
     },
     {
       id: "allergy",
       done: hasAllergy,
-      question: "Do you have any allergy to medicines or anything else?",
+      question: () => "Do you have any medicine allergies we should know about?",
     },
   ];
 }
@@ -286,17 +315,19 @@ function nextScriptedStep(session) {
   const script = getScript(session);
   for (const step of script) {
     if (!step.done(session)) {
-      const message = typeof step.question === "function" ? step.question(session) : step.question;
+      const core = typeof step.question === "function" ? step.question(session) : step.question;
+      const prefix = acknowledge(session, step.id);
       return {
         status: "QUESTION",
-        message,
+        message: (prefix + core).trim(),
         reason: `scripted_${step.id}`,
       };
     }
   }
   return {
     status: "COMPLETE",
-    message: "Thank you. We have the information needed for your doctor to review before the consultation.",
+    message:
+      "Thank you for answering these questions. I’ve noted everything for the doctor to review before your consultation.",
     reason: "script_complete",
   };
 }
@@ -308,10 +339,6 @@ function detectUrgent(session) {
   );
 }
 
-/**
- * Deterministic next question from the specialty checklist.
- * Does not call the LLM for questions (avoids repetition and vague prompts).
- */
 export async function nextStep(session) {
   const maxQ = Number(process.env.MAX_QUESTIONS || 10);
 
@@ -319,7 +346,7 @@ export async function nextStep(session) {
     return {
       status: "URGENT",
       message:
-        "Based on what you described, please seek urgent medical care immediately. Your clinic team will also be notified.",
+        "From what you’ve described, please get urgent medical help right away. The clinic team will also be informed.",
       reason: "urgent_red_flag",
     };
   }
@@ -327,7 +354,8 @@ export async function nextStep(session) {
   if ((session.question_count || 0) >= maxQ) {
     return {
       status: "COMPLETE",
-      message: "Thank you. We have enough information for the doctor to review.",
+      message:
+        "Thank you. That’s enough for the doctor to review before seeing you.",
       reason: "max_questions_reached",
     };
   }
