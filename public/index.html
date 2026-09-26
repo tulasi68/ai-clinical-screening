@@ -131,8 +131,12 @@ async function submitSummary(){
   clearError();
   if(!confirm('Send this screening to your doctor? You will not be able to edit it after submission.'))return;
   const b=document.getElementById('submit');b.disabled=true;
-  try{await saveSummary();const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/submit',{method:'POST',body:'{}'});state.output=d.output;renderSubmitted();}
-  catch(e){showError(e.message);b.disabled=false;}
+  try{
+    const edited=collectSummary();
+    await api('/api/patient/s/'+encodeURIComponent(token)+'/summary',{method:'PUT',body:JSON.stringify(edited)});
+    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/submit',{method:'POST',body:'{}'});
+    state.output=d.output;renderSubmitted();
+  }catch(e){showError(e.message);b.disabled=false;}
 }
 function renderSubmitted(){
   app.innerHTML='<div class="center"><div class="eyebrow">Submitted</div><h1>Thank you</h1><p class="muted start-note">Your screening information has been sent to your doctor for your consultation.</p><p class="small">You can close this page now.</p></div>';
