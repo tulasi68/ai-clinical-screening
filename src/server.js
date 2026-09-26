@@ -23,6 +23,14 @@ function validInput(x) {
     typeof x.phone === 'string';
 }
 
+function publicOutput(output) {
+  if (!output) return null;
+  return {
+    ...output,
+    patient: output.patient ? { ...output.patient, phone: undefined } : output.patient
+  };
+}
+
 function publicSession(s) {
   return {
     screening_id: s.screening_id,
@@ -54,7 +62,7 @@ async function finishForReview(s, reason) {
 
 async function continueBrowserSession(s) {
   if (s.question_count >= maxQuestions()) {
-    return { type: 'review', output: await finishForReview(s, 'question_limit') };
+    return { type: 'review', output: publicOutput(await finishForReview(s, 'question_limit')) };
   }
 
   const step = await nextStep(s);
@@ -70,7 +78,7 @@ async function continueBrowserSession(s) {
 
   return {
     type: 'review',
-    output: await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed')
+    output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed'))
   };
 }
 
@@ -116,7 +124,7 @@ app.get('/api/patient/s/:token', async (req, res) => {
     const output = await getOutput(s.screening_id);
     res.json({
       ...publicSession(s),
-      output: output ? { ...output, patient: { ...output.patient, phone: undefined } } : null
+      output: publicOutput(output)
     });
   } catch (e) {
     console.error('patient session error', e);
@@ -129,7 +137,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
-      return res.json({ type: 'review', output: await getOutput(s.screening_id) });
+      return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
     }
     if (s.status !== 'in_progress') return res.status(409).json({ error: 'Screening is not available.' });
 
