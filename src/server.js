@@ -98,6 +98,13 @@ function editableOutput(input, current) {
   return out;
 }
 
+function validServerApiKey(req) {
+  const expected = String(process.env.SCREENING_API_KEY || "").trim();
+  if (!expected) return true;
+  const supplied = String(req.headers["x-api-key"] || "").trim();
+  return supplied && supplied === expected;
+}
+
 function patientUrl(req, token) {
   const base = String(process.env.PATIENT_APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   return `${base}/s/${encodeURIComponent(token)}`;
@@ -238,6 +245,7 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
 // conversation. It now creates the session and returns the patient link.
 app.post('/api/screenings', async (req, res) => {
   try {
+    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
     if (!validInput(req.body)) {
       return res.status(400).json({ error: 'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.' });
     }
@@ -254,6 +262,7 @@ app.post('/api/screenings', async (req, res) => {
 });
 
 app.get('/api/screenings/:id/output', async (req, res) => {
+  if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
   const o = await getOutput(req.params.id);
   if (!o) return res.status(404).json({ screening_id: req.params.id, status: 'in_progress' });
   res.json(o);
