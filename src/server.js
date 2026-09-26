@@ -15,6 +15,57 @@ app.use(express.static(path.join(__dirname, '../public')));
 const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
+function normalizePhone(phone) {
+  const raw = String(phone || '').replace(/\\D/g, '');
+  if (raw.length === 10) return '91' + raw;
+  if (raw.length === 11 && raw.startsWith('0')) return '91' + raw.slice(1);
+  return raw;
+}
+
+async function sendComplaintLink(phone, patientUrl) {
+  const phoneNumberId = String(process.env.WA_PHONE_NUMBER_ID || '').trim();
+  const accessToken = String(process.env.WA_ACCESS_TOKEN || '').trim();
+  const apiVersion = String(process.env.WA_API_VERSION || 'v21.0').trim();
+  const templateName = String(process.env.WA_COMPLAINT_TEMPLATE_NAME || 'mediloop_add_complaints').trim();
+  const languageCode = String(process.env.WA_COMPLAINT_TEMPLATE_LANGUAGE || 'en').trim();
+
+  if (!phoneNumberId || !accessToken) return { ok: false, error: 'WhatsApp not configured' };
+
+  const to = normalizePhone(phone);
+  if (!to) return { ok: false, error: 'Patient phone number is invalid' };
+
+  const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+        components: [{
+          type: 'button',
+          sub_type: 'url',
+          index: '0',
+          parameters: [{ type: 'text', text: patientUrl }]
+        }]
+      }
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error('WhatsApp complaint link send failed', { status: response.status, data });
+    return { ok: false, error: data?.error?.message || `WhatsApp API returned HTTP ${response.status}` };
+  }
+
+  return { ok: true, message_id: data?.messages?.[0]?.id || null };
+}
+
 function validInput(x) {
   return x && typeof x.patient_name === 'string' && x.patient_name.trim() &&
     Number.isInteger(x.age) && x.age > 0 && x.age < 130 &&
@@ -231,10 +282,16 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     s.status = 'submitted';
     s.submitted_at = finalOutput.submitted_at;
     await saveSession(s);
+
+    const complaintLink = String(s.patient_token ? `${String(process.env.BASE_URL || '').replace(/\\/$/, '')}/s/${s.patient_token}` : '').trim();
+    const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink) : { ok: false, error: 'Patient link unavailable' };
+
     res.json({
       status: 'submitted',
       screening_id: s.screening_id,
-      output: finalOutput
+      output: finalOutput,
+      whatsapp_sent: Boolean(whatsapp.ok),
+      whatsapp_error: whatsapp.ok ? null : whatsapp.error
     });
   } catch (e) {
     console.error('patient submit error', e);
