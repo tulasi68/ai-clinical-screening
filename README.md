@@ -101,7 +101,7 @@ Confirmation
 Screening becomes submitted
 ```
 
-The current patient UI is intentionally lightweight: a single HTML page with chat bubbles, text input and a final summary.
+The current patient UI is intentionally lightweight: a single HTML page with chat bubbles and guided answer-choice boxes below each question. Free typing is no longer the normal path; choices are mapped back to the exact question that produced them. A limited fallback may be used for questions that genuinely require free-form detail.
 
 ## 4. Clinical conversation design
 
