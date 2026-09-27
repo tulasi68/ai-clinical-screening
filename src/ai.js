@@ -673,7 +673,13 @@ Return JSON only.
 `.trim();
 export async function consolidate(session) {
   const transcript = (session.conversation || []).
-    map((x) => `${x.role === "patient" ? "Patient" : "Doctor"}: ${x.message}`).
+    map((x) => {
+      if (x.role === "patient" && x.question) {
+        const choice = x.selected_option?.label ? " [Selected: " + x.selected_option.label + "]" : "";
+        return "Patient answer to question \"" + x.question + "\": " + x.message + choice;
+      }
+      return (x.role === "patient" ? "Patient" : "Doctor") + ": " + x.message;
+    }).
     join("\n");
   const startedAt = session.created_at || session.started_at || null;
   const input = `screening_id: ${session.screening_id}\nspecialty: ${session.patient?.specialty || "ent"}\npatient: ${JSON.stringify(session.patient)}\nconversation:\n${transcript}`;
