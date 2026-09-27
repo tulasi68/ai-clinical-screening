@@ -55,36 +55,91 @@ function renderWelcome(){
 }
 async function startChat(){
   clearError();document.getElementById('start').disabled=true;
-  try{const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:'{}'}); if(d.type==='review')renderReview(d.output);else renderChat(d.message);}
+  try{const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:'{}'}); if(d.type==='review')renderReview(d.output);else renderChat(d.message,d.options,d.selection_mode);}
   catch(e){document.getElementById('start').disabled=false;showError(e.message);}
 }
-function renderChat(first){
+function renderChat(first, options=[], selectionMode="single"){
   state.messages=state.messages||[];
+  state.questionOptions=Array.isArray(options)?options:[];
+  state.selectionMode=selectionMode||"single";
+  state.selectedKeys=[];
   if(first && !state.messages.length)state.messages.push({role:'assistant',message:first});
-  app.innerHTML='<div class="eyebrow">Consultation chat</div><h2>Your conversation</h2>'+
-  '<p class="muted">Answer in your own words — one reply at a time.</p><div id="chat" class="chat"></div>'+
-  '<form id="form" class="composer"><input id="input" autocomplete="off" placeholder="Type your answer…"><button class="primary" type="submit">Send</button></form><div id="error" class="error hidden"></div>';
+  app.innerHTML='<div class="eyebrow">Before your consultation</div><h2>Your conversation</h2>'+
+  '<p class="muted">Choose the answer that fits you. You do not need to type.</p><div id="chat" class="chat"></div>'+
+  '<div id="choices" style="display:flex;flex-direction:column;gap:10px;margin-top:12px"></div>'+
+  '<div id="error" class="error hidden"></div>';
   drawMessages();
-  document.getElementById('form').onsubmit=sendMessage;
-  document.getElementById('input').focus();
+  drawChoices();
 }
 function drawMessages(){
   const c=document.getElementById('chat');if(!c)return;
   c.innerHTML=(state.messages||[]).map(m=>'<div class="bubble '+(m.role==='patient'?'patient':'ai')+'">'+esc(m.message)+'</div>').join('');
   c.scrollTop=c.scrollHeight;
 }
-async function sendMessage(ev){
-  ev.preventDefault();const input=document.getElementById('input'),text=input.value.trim();if(!text)return;
-  input.disabled=true;ev.submitter.disabled=true;clearError();
-  state.messages.push({role:'patient',message:text});drawMessages();
-  try{
-    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/message',{method:'POST',body:JSON.stringify({message:text})});
-    if(d.type==='review'){renderReview(d.output);return;}
-    state.messages.push({role:'assistant',message:d.message});drawMessages();input.value='';
-  }catch(e){showError(e.message);}
-  finally{if(document.getElementById('input')){document.getElementById('input').disabled=false;document.querySelector('#form button').disabled=false;document.getElementById('input').focus();}}
+function drawChoices(){
+  const box=document.getElementById('choices');if(!box)return;
+  const opts=state.questionOptions||[];
+  if(!opts.length){
+    box.innerHTML='<p class="small">Please wait for the next question…</p>';
+    return;
+  }
+  box.innerHTML=opts.map((o,i)=>'<button type="button" data-choice="'+i+'" class="choice-btn">'+esc(o.label)+'</button>').join('');
+  box.querySelectorAll('.choice-btn').forEach((b)=>{
+    b.style.width='100%';b.style.textAlign='left';b.style.border='1px solid #d7dce0';b.style.background='#fff';b.style.borderRadius='14px';b.style.padding='14px 16px';
+    b.onclick=()=>chooseOption(Number(b.dataset.choice));
+  });
 }
-
+function setChoiceSelection(){
+  const box=document.getElementById('choices');if(!box)return;
+  box.querySelectorAll('.choice-btn').forEach((b,i)=>{
+    const selected=state.selectedKeys.includes((state.questionOptions||[])[i]?.key);
+    b.style.background=selected?'#e7f4ef':'#fff';
+    b.style.borderColor=selected?'#1d6f5b':'#d7dce0';
+  });
+}
+async function chooseOption(index){
+  const option=(state.questionOptions||[])[index];if(!option)return;
+  if(state.selectionMode==='multi'){
+    if(option.key==='none'){
+      state.selectedKeys=['none'];
+    }else{
+      state.selectedKeys=state.selectedKeys.filter(k=>k!=='none');
+      const pos=state.selectedKeys.indexOf(option.key);
+      if(pos>=0)state.selectedKeys.splice(pos,1);else state.selectedKeys.push(option.key);
+    }
+    setChoiceSelection();
+    let old=document.getElementById('continueChoices');
+    if(!old){
+      old=document.createElement('button');old.id='continueChoices';old.textContent='Continue';old.className='primary';old.style.marginTop='4px';old.style.width='100%';
+      document.getElementById('choices').appendChild(old);old.onclick=submitSelectedOptions;
+    }
+    return;
+  }
+  await submitAnswer([option]);
+}
+async function submitSelectedOptions(){
+  const opts=(state.questionOptions||[]).filter(o=>state.selectedKeys.includes(o.key));
+  if(opts.length) await submitAnswer(opts);
+}
+async function submitAnswer(options){
+  clearError();
+  const choices=Array.isArray(options)?options:[];
+  if(!choices.length)return;
+  const label=choices.map(o=>o.label).join(', ');
+  const value=choices.map(o=>o.value).join('; ');
+  const question=[...(state.messages||[])].reverse().find(m=>m.role==='assistant')?.message||'';
+  state.messages.push({role:'patient',message:label});drawMessages();
+  const box=document.getElementById('choices');if(box)box.innerHTML='<p class="small">Recording your answer…</p>';
+  try{
+    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/message',{method:'POST',body:JSON.stringify({
+      message:value, question, selected_option:{key:choices.map(o=>o.key).join(','),label,value}
+    })});
+    if(d.type==='review'){renderReview(d.output);return;}
+    state.messages.push({role:'assistant',message:d.message});
+    state.questionOptions=d.options||[];state.selectionMode=d.selection_mode||'single';state.selectedKeys=[];
+    drawMessages();drawChoices();
+  }catch(e){showError(e.message);drawChoices();}
+}
 function formatSummary(o){
   if(!o) return 'Summary is being prepared.';
   if(o.summary && String(o.summary).trim()) return String(o.summary).trim();
