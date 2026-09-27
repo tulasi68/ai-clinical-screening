@@ -255,6 +255,7 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
   try {
     const text = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
     const selectedOption = req.body?.selected_option && typeof req.body.selected_option === 'object' ? req.body.selected_option : null;
+    const selectedOption = req.body?.selected_option && typeof req.body.selected_option === 'object' ? req.body.selected_option : null;
     if (!text || text.length > 4000) return res.status(400).json({ error: 'Please enter an answer.' });
 
     const s = await getPatientContext(req.params.token, res);
