@@ -15,6 +15,8 @@ button{border:0;border-radius:999px;padding:13px 20px;font-weight:650;font-size:
 .composer{display:flex;gap:8px;position:sticky;bottom:0;background:#fafafa;padding:10px 0}.composer input{min-width:0;flex:1;border:1px solid #d7dce0;border-radius:999px;padding:13px 16px;font:inherit;outline:none}.composer input:focus{border-color:#1d6f5b}
 .summary-box{border:1px solid #e2e5e8;border-radius:16px;padding:16px 18px;line-height:1.55;font-size:15px;white-space:pre-wrap;background:#fafbfc}.summary-meta{margin:12px 0 0;font-size:13px;color:#68717d;line-height:1.5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.notice{margin:14px 0;padding:12px 14px;border-radius:14px;background:#fff7df;color:#5f4c15;font-size:14px;line-height:1.45}.error{color:#9b1c1c;background:#fff0f0;padding:11px 13px;border-radius:12px;font-size:14px;margin-top:14px}
 .small{font-size:12px;color:#7b8490}.hidden{display:none!important}
+.choice-btn{width:100%;text-align:left;border:1px solid #d7dce0;background:#fff;border-radius:14px;padding:14px 16px;font:inherit;font-weight:600;cursor:pointer}
+.choice-btn.selected{background:#e7f4ef;border-color:#1d6f5b}
 </style>
 </head>
 <body>
@@ -65,8 +67,9 @@ function renderChat(first, options=[], selectionMode="single"){
   state.selectedKeys=[];
   if(first && !state.messages.length)state.messages.push({role:'assistant',message:first});
   app.innerHTML='<div class="eyebrow">Before your consultation</div><h2>Your conversation</h2>'+
-  '<p class="muted">Choose the answer that fits you. You do not need to type.</p><div id="chat" class="chat"></div>'+
+  '<p class="muted">Choose an answer below, or type your own if none fit.</p><div id="chat" class="chat"></div>'+
   '<div id="choices" style="display:flex;flex-direction:column;gap:10px;margin-top:12px"></div>'+
+  '<div id="composer" class="composer hidden"></div>'+
   '<div id="error" class="error hidden"></div>';
   drawMessages();
   drawChoices();
@@ -76,16 +79,37 @@ function drawMessages(){
   c.innerHTML=(state.messages||[]).map(m=>'<div class="bubble '+(m.role==='patient'?'patient':'ai')+'">'+esc(m.message)+'</div>').join('');
   c.scrollTop=c.scrollHeight;
 }
+function drawComposer(){
+  const box=document.getElementById('composer');if(!box)return;
+  box.classList.remove('hidden');
+  box.innerHTML='<input id="answer" type="text" maxlength="4000" placeholder="Type your answer…" autocomplete="off">'+btn('Send','primary','send');
+  const input=document.getElementById('answer');
+  const send=document.getElementById('send');
+  const go=()=>{
+    const text=(input.value||'').trim();
+    if(!text)return;
+    submitTextAnswer(text);
+  };
+  send.onclick=go;
+  input.onkeydown=(e)=>{if(e.key==='Enter'){e.preventDefault();go();}};
+  input.focus();
+}
+function hideComposer(){
+  const box=document.getElementById('composer');if(!box)return;
+  box.classList.add('hidden');
+  box.innerHTML='';
+}
 function drawChoices(){
   const box=document.getElementById('choices');if(!box)return;
   const opts=state.questionOptions||[];
   if(!opts.length){
-    box.innerHTML='<p class="small">Please wait for the next question…</p>';
+    box.innerHTML='<p class="small">Type your answer below.</p>';
+    drawComposer();
     return;
   }
+  hideComposer();
   box.innerHTML=opts.map((o,i)=>'<button type="button" data-choice="'+i+'" class="choice-btn">'+esc(o.label)+'</button>').join('');
   box.querySelectorAll('.choice-btn').forEach((b)=>{
-    b.style.width='100%';b.style.textAlign='left';b.style.border='1px solid #d7dce0';b.style.background='#fff';b.style.borderRadius='14px';b.style.padding='14px 16px';
     b.onclick=()=>chooseOption(Number(b.dataset.choice));
   });
 }
@@ -93,8 +117,7 @@ function setChoiceSelection(){
   const box=document.getElementById('choices');if(!box)return;
   box.querySelectorAll('.choice-btn').forEach((b,i)=>{
     const selected=state.selectedKeys.includes((state.questionOptions||[])[i]?.key);
-    b.style.background=selected?'#e7f4ef':'#fff';
-    b.style.borderColor=selected?'#1d6f5b':'#d7dce0';
+    b.classList.toggle('selected', selected);
   });
 }
 async function chooseOption(index){
@@ -121,6 +144,22 @@ async function submitSelectedOptions(){
   const opts=(state.questionOptions||[]).filter(o=>state.selectedKeys.includes(o.key));
   if(opts.length) await submitAnswer(opts);
 }
+async function submitTextAnswer(text){
+  clearError();
+  const question=[...(state.messages||[])].reverse().find(m=>m.role==='assistant')?.message||'';
+  state.messages.push({role:'patient',message:text});drawMessages();
+  const box=document.getElementById('choices');if(box)box.innerHTML='<p class="small">Recording your answer…</p>';
+  hideComposer();
+  try{
+    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/message',{method:'POST',body:JSON.stringify({
+      message:text, question
+    })});
+    if(d.type==='review'){renderReview(d.output);return;}
+    state.messages.push({role:'assistant',message:d.message});
+    state.questionOptions=d.options||[];state.selectionMode=d.selection_mode||'single';state.selectedKeys=[];
+    drawMessages();drawChoices();
+  }catch(e){showError(e.message);drawChoices();}
+}
 async function submitAnswer(options){
   clearError();
   const choices=Array.isArray(options)?options:[];
@@ -130,6 +169,7 @@ async function submitAnswer(options){
   const question=[...(state.messages||[])].reverse().find(m=>m.role==='assistant')?.message||'';
   state.messages.push({role:'patient',message:label});drawMessages();
   const box=document.getElementById('choices');if(box)box.innerHTML='<p class="small">Recording your answer…</p>';
+  hideComposer();
   try{
     const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/message',{method:'POST',body:JSON.stringify({
       message:value, question, selected_option:{key:choices.map(o=>o.key).join(','),label,value}
