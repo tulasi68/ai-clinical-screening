@@ -12,6 +12,7 @@
 
 > **Important:** This is a separate application from `tulasi68/mediloop-ai`. MediLoop creates screening sessions through this service and retrieves the consolidated screening output through authenticated server-to-server API calls. The two applications should remain separate.
 
+
 ## 1. Purpose
 
 AI Clinical Screening is a **pre-consultation history-taking service**.
