@@ -69,3 +69,7 @@ MediLoop stores the complete structured object and deterministically renders the
 The doctor's actual prescription remains a separate editable field.
 
 The service must not change field names without incrementing the contract version or maintaining backward compatibility.
+
+## Guided patient answers
+
+The patient browser now presents selectable answer boxes below each question. Each selected option carries a stable key, label and semantic value. The server stores the selected option together with the question that was displayed, so consolidation receives explicit question→answer context instead of an unexplained answer sequence.
