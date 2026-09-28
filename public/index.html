@@ -13,7 +13,13 @@ button{border:0;border-radius:999px;padding:13px 20px;font-weight:650;font-size:
 .center{text-align:center;padding:46px 12px}.start-note{margin:18px auto 24px;max-width:430px}
 .chat{display:flex;flex-direction:column;gap:12px;margin:22px 0 16px;max-height:55vh;overflow:auto}.bubble{max-width:88%;padding:12px 15px;border-radius:18px;line-height:1.5;font-size:15px;white-space:pre-wrap}.ai{background:#f0f2f3;align-self:flex-start}.patient{background:#1d6f5b;color:#fff;align-self:flex-end}
 .composer{display:flex;gap:8px;position:sticky;bottom:0;background:#fafafa;padding:10px 0}.composer input{min-width:0;flex:1;border:1px solid #d7dce0;border-radius:999px;padding:13px 16px;font:inherit;outline:none}.composer input:focus{border-color:#1d6f5b}
-.summary-box{border:1px solid #e2e5e8;border-radius:16px;padding:16px 18px;line-height:1.55;font-size:15px;white-space:pre-wrap;background:#fafbfc}.summary-meta{margin:12px 0 0;font-size:13px;color:#68717d;line-height:1.5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.notice{margin:14px 0;padding:12px 14px;border-radius:14px;background:#fff7df;color:#5f4c15;font-size:14px;line-height:1.45}.error{color:#9b1c1c;background:#fff0f0;padding:11px 13px;border-radius:12px;font-size:14px;margin-top:14px}
+.summary-box{border:1px solid #e2e5e8;border-radius:16px;padding:8px 0;line-height:1.55;font-size:15px;background:#fafbfc}
+.summary-rows{display:flex;flex-direction:column}
+.summary-row{display:grid;grid-template-columns:minmax(110px,38%) 1fr;gap:10px;padding:12px 18px;border-bottom:1px solid #eef1f3}
+.summary-row:last-child{border-bottom:0}
+.summary-topic{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280;padding-top:2px}
+.summary-answer{font-size:15px;color:#18202a;font-weight:600}
+.summary-meta{margin:12px 0 0;font-size:13px;color:#68717d;line-height:1.5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.notice{margin:14px 0;padding:12px 14px;border-radius:14px;background:#fff7df;color:#5f4c15;font-size:14px;line-height:1.45}.error{color:#9b1c1c;background:#fff0f0;padding:11px 13px;border-radius:12px;font-size:14px;margin-top:14px}
 .small{font-size:12px;color:#7b8490}.hidden{display:none!important}
 .choice-btn{width:100%;text-align:left;border:1px solid #d7dce0;background:#fff;border-radius:14px;padding:14px 16px;font:inherit;font-weight:600;cursor:pointer}
 .choice-btn.selected{background:#e7f4ef;border-color:#1d6f5b}
@@ -29,7 +35,7 @@ const app = document.getElementById('app');
 let state = null;
 let busy = false;
 
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[c]));}
 function showError(msg){let e=document.getElementById('error');if(e){e.textContent=msg;e.classList.remove('hidden');}}
 function clearError(){let e=document.getElementById('error');if(e)e.classList.add('hidden');}
 function btn(text,cls='primary',id=''){return '<button id="'+id+'" class="'+cls+'">'+esc(text)+'</button>';}
@@ -230,19 +236,78 @@ async function submitAnswer(options){
     drawChoices();
   }finally{busy=false;}
 }
-function formatSummary(o){
-  if(!o) return 'Summary is being prepared.';
-  if(o.summary && String(o.summary).trim()) return String(o.summary).trim();
-  const bits=[];
-  if(o.presenting_complaint) bits.push(o.presenting_complaint);
+function topicFromQuestion(q){
+  const s=String(q||'').toLowerCase();
+  if(/ear.*nose.*throat|problem with your ear|combination of these|mainly the ear/.test(s)) return 'Area of problem';
+  if(/left|right|both|which (ear|side)/.test(s)) return 'Side';
+  if(/how many days|how long|duration|getting (better|worse)|a bit longer/.test(s)) return 'Duration / course';
+  if(/mild|moderate|severe|how bad|severity/.test(s)) return 'Severity';
+  if(/describe.*discharge|watery|yellow|green.*discharge/.test(s)) return 'Discharge';
+  if(/muffled|hearing|underwater/.test(s)) return 'Hearing';
+  if(/fever|dizziness|swollen gland|associated/.test(s)) return 'Other symptoms';
+  if(/medicine|drops|painkiller|tried any|home remed/.test(s)) return 'Medicines tried';
+  if(/allerg/.test(s)) return 'Drug allergies';
+  if(/diabetes|blood pressure|ongoing illness/.test(s)) return 'Other illnesses';
+  if(/feeling in that ear|what.s been happening.*ear|what exactly.*ear/.test(s)) return 'Ear symptoms';
+  if(/throat|swallow/.test(s)) return 'Throat';
+  if(/nose|nasal/.test(s)) return 'Nose';
+  const short=String(q||'').replace(/\s+/g,' ').trim();
+  return short.length>48 ? short.slice(0,48)+'…' : (short || 'Answer');
+}
+
+function summaryRowsFromConversation(){
+  const conv = state.conversation || [];
+  const rows=[];
+  let lastQ=null;
+  for(const m of conv){
+    if(m.role==='assistant'){ lastQ=m.message; continue; }
+    if(m.role==='patient' && lastQ){
+      rows.push({ topic: topicFromQuestion(lastQ), answer: m.message });
+      lastQ=null;
+    }
+  }
+  if(!rows.length && state.messages){
+    lastQ=null;
+    for(const m of state.messages){
+      if(m.role==='assistant'){ lastQ=m.message; continue; }
+      if(m.role==='patient' && lastQ){
+        rows.push({ topic: topicFromQuestion(lastQ), answer: m.message });
+        lastQ=null;
+      }
+    }
+  }
+  return rows;
+}
+
+function summaryRowsFromOutput(o){
+  if(!o) return [];
+  const rows=[];
+  if(o.presenting_complaint) rows.push({ topic:'Main problem', answer:o.presenting_complaint });
   (o.symptoms||[]).forEach(s=>{
-    const line=[s.symptom,s.location,s.duration,s.severity,s.details].filter(Boolean).join(' · ');
-    if(line) bits.push(line);
+    if(s.symptom) rows.push({ topic:'Symptom', answer:s.symptom });
+    if(s.location) rows.push({ topic:'Location / side', answer:s.location });
+    if(s.duration) rows.push({ topic:'Duration', answer:s.duration });
+    if(s.severity) rows.push({ topic:'Severity', answer:s.severity });
+    if(s.details) rows.push({ topic:'Details', answer:s.details });
   });
-  if((o.associated_symptoms||[]).length) bits.push('Also: '+(o.associated_symptoms||[]).join(', '));
-  if((o.medications||[]).length) bits.push('Medicines tried: '+(o.medications||[]).join(', '));
-  if((o.allergies||[]).length) bits.push('Allergies: '+(o.allergies||[]).join(', '));
-  return bits.join('\n') || 'See conversation with the doctor.';
+  if((o.associated_symptoms||[]).length) rows.push({ topic:'Other symptoms', answer:(o.associated_symptoms||[]).join(', ') });
+  if((o.medications||[]).length) rows.push({ topic:'Medicines tried', answer:(o.medications||[]).join(', ') });
+  if((o.allergies||[]).length) rows.push({ topic:'Drug allergies', answer:(o.allergies||[]).join(', ') });
+  if((o.medical_history||[]).length) rows.push({ topic:'Other illnesses', answer:(o.medical_history||[]).join(', ') });
+  return rows;
+}
+
+function formatSummaryHtml(o){
+  let rows = summaryRowsFromConversation();
+  if(!rows.length) rows = summaryRowsFromOutput(o);
+  if(!rows.length && o && o.summary){
+    const lines=String(o.summary).split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    rows = lines.map((line,i)=>({ topic: 'Point '+(i+1), answer: line }));
+  }
+  if(!rows.length) return '<p class="muted">Summary is being prepared.</p>';
+  return '<div class="summary-rows">'+rows.map(r=>
+    '<div class="summary-row"><div class="summary-topic">'+esc(r.topic)+'</div><div class="summary-answer">'+esc(r.answer)+'</div></div>'
+  ).join('')+'</div>';
 }
 
 function renderReview(output){
@@ -250,8 +315,8 @@ function renderReview(output){
   const urgent=output?.screening_status==='urgent';
   app.innerHTML='<div class="eyebrow">Ready for your doctor</div><h2>Summary</h2>'+
   (urgent?'<div class="notice"><strong>Important:</strong> Please seek urgent medical care now. This chat does not replace emergency care.</div>':'')+
-  '<p class="muted">Based on your conversation. Send this to your doctor when you are ready.</p>'+
-  '<div class="summary-box">'+esc(formatSummary(output))+'</div>'+
+  '<p class="muted">Based on your conversation. Check each point, then send to your doctor when ready.</p>'+
+  '<div class="summary-box">'+formatSummaryHtml(output)+'</div>'+
   '<div class="actions">'+btn('Send to doctor','primary','submit')+'</div>'+
   '<div id="error" class="error hidden"></div><p class="small" style="margin-top:18px">Nothing is shared with the clinic until you send it.</p>';
   document.getElementById('submit').onclick=submitSummary;
