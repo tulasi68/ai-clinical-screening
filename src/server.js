@@ -6,7 +6,11 @@ import {
   createSession, getSession, saveSession, saveOutput, getOutput,
   getSessionByPatientToken
 } from './store.js';
-import { nextStep, consolidate } from './ai.js';
+import { nextStep, consolidate, nextFollowUp } from './ai.js';
+import {
+  SITE_QUESTION, FIXED_SETS, MAX_AI_QUESTIONS, siteOf, nextFixedQuestion,
+  questionDef, inputSpec, resolveAnswer
+} from './flow.js';
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -16,10 +20,9 @@ const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
 function normalizePhone(phone) {
-  let raw = String(phone || '').replace(/\D/g, '');
-  while (raw.startsWith('00')) raw = raw.slice(2);
-  if (raw.startsWith('0') && !raw.startsWith('91')) raw = raw.replace(/^0+/, '');
+  const raw = String(phone || '').replace(/\\D/g, '');
   if (raw.length === 10) return '91' + raw;
+  if (raw.length === 11 && raw.startsWith('0')) return '91' + raw.slice(1);
   return raw;
 }
 
@@ -29,32 +32,41 @@ async function sendComplaintLink(phone, patientUrl) {
   const apiVersion = String(process.env.WA_API_VERSION || 'v21.0').trim();
   const templateName = String(process.env.WA_COMPLAINT_TEMPLATE_NAME || 'mediloop_add_complaints').trim();
   const languageCode = String(process.env.WA_COMPLAINT_TEMPLATE_LANGUAGE || 'en').trim();
+
   if (!phoneNumberId || !accessToken) return { ok: false, error: 'WhatsApp not configured' };
+
   const to = normalizePhone(phone);
   if (!to) return { ok: false, error: 'Patient phone number is invalid' };
-  let buttonParam = patientUrl;
-  try {
-    const u = new URL(patientUrl);
-    const parts = u.pathname.split('/').filter(Boolean);
-    const sIdx = parts.indexOf('s');
-    if (sIdx >= 0 && parts[sIdx + 1]) buttonParam = decodeURIComponent(parts[sIdx + 1]);
-  } catch { /* keep full url */ }
+
   const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify({
-      messaging_product: 'whatsapp', to, type: 'template',
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
       template: {
-        name: templateName, language: { code: languageCode },
-        components: [{ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: buttonParam }] }]
+        name: templateName,
+        language: { code: languageCode },
+        components: [{
+          type: 'button',
+          sub_type: 'url',
+          index: '0',
+          parameters: [{ type: 'text', text: patientUrl }]
+        }]
       }
     })
   });
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error('WhatsApp complaint link send failed', { status: response.status, data });
     return { ok: false, error: data?.error?.message || `WhatsApp API returned HTTP ${response.status}` };
   }
+
   return { ok: true, message_id: data?.messages?.[0]?.id || null };
 }
 
@@ -67,29 +79,24 @@ function validInput(x) {
 
 function publicOutput(output) {
   if (!output) return null;
-  return { ...output, patient: output.patient ? { ...output.patient, phone: undefined } : output.patient };
+  return {
+    ...output,
+    patient: output.patient ? { ...output.patient, phone: undefined } : output.patient
+  };
 }
 
 function publicSession(s) {
   return {
-    screening_id: s.screening_id, status: s.status,
+    screening_id: s.screening_id,
+    status: s.status,
     patient: {
       patient_name: s.patient.patient_name,
       age: s.patient.age,
       gender: s.patient.gender,
-      complaint: s.patient.complaint,
-      specialty: s.patient.specialty || null,
-      clinic_id: s.patient.clinic_id || null,
-      queue_token: s.patient.queue_token || null
+      complaint: s.patient.complaint
     },
     question_count: s.question_count,
-    conversation: (s.conversation || []).map(x => ({
-      role: x.role,
-      message: x.message,
-      at: x.at,
-      question: x.question || undefined,
-      selected_option: x.selected_option || undefined
-    })),
+    conversation: (s.conversation || []).map(x => ({ role: x.role, message: x.message, at: x.at })),
     patient_token_expires_at: s.patient_token_expires_at
   };
 }
@@ -97,7 +104,7 @@ function publicSession(s) {
 async function finishForReview(s, reason) {
   const out = await consolidate(s);
   out.screening_id = s.screening_id;
-  out.screening_status = reason === 'urgent' ? 'urgent' : 'completed';
+  out.screening_status = (reason === 'urgent' || out.screening_status === 'urgent') ? 'urgent' : 'completed';
   out.patient_approved = false;
   out.submitted_at = null;
   await saveOutput(s.screening_id, out);
@@ -107,246 +114,77 @@ async function finishForReview(s, reason) {
   return out;
 }
 
-function focusQuestionText(question) {
-  const raw = String(question || "").trim();
-  if (!raw) return "";
-  const parts = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
-  const withQ = parts.filter((s) => s.includes("?"));
-  if (withQ.length) return withQ[0].toLowerCase();
-  return (parts[parts.length - 1] || raw).toLowerCase();
+function progressOf(s) {
+  const site = siteOf(s);
+  if (!site || !FIXED_SETS[site]) return null;
+  const asked = (s.conversation || []).filter(x => x.role === 'assistant' && x.qid && x.qid !== 'site').length;
+  return { current: asked, total: FIXED_SETS[site].length + MAX_AI_QUESTIONS, fixed: FIXED_SETS[site].length };
 }
 
-function questionChoices(question) {
-  const full = String(question || "").toLowerCase();
-  const q = focusQuestionText(question);
-  const make = (items, multi = false, { allowOther = true, allowUnsure = true } = {}) => {
-    const options = items.map(([key, label, value]) => ({ key, label, value }));
-    const keys = new Set(options.map((o) => o.key));
-    // Closed lists (yes/no, laterality, severity): no free-text "other"
-    const closedKeys = ["yes", "no", "left", "right", "bilateral", "mild", "moderate", "severe"];
-    const isClosed = items.length > 0 && items.every(([k]) => closedKeys.includes(String(k)));
-    if (allowUnsure && !keys.has("unsure") && !isClosed) {
-      options.push({ key: "unsure", label: "I'm not sure", value: "patient is not sure" });
-    }
-    if (allowOther && !isClosed && !keys.has("other") && !keys.has("none")) {
-      options.push({ key: "other", label: "Other / type my own", value: "__FREE_TEXT__" });
-    }
-    return { mode: multi ? "multi" : "single", options };
+function questionPayload(s, entry) {
+  const def = entry.qid ? questionDef(s, entry.qid) : null;
+  const base = def || { id: 'free', type: 'text', text: entry.message };
+  const spec = inputSpec(base);
+  return {
+    type: 'question',
+    message: entry.message,
+    question_count: s.question_count,
+    progress: progressOf(s),
+    question: { id: base.id, text: entry.message, kind: entry.kind || 'legacy', input: spec.type, options: spec.options }
   };
-
-  // Discharge character
-  if (/describe.*(discharge|fluid|pus)|discharge.*(watery|thick|yellow|green|bloody|colour|color)|what.*(look|colour|color).*discharge/.test(q)) {
-    return make([
-      ["watery", "Watery / clear", "watery clear discharge"],
-      ["thick", "Thick / sticky", "thick discharge"],
-      ["yellow", "Yellow", "yellow discharge"],
-      ["green", "Green", "green discharge"],
-      ["bloody", "Bloody / blood-stained", "bloody discharge"],
-      ["none", "No discharge", "no discharge"],
-    ]);
-  }
-
-  // Medicine tried OR did it help (must be before hearing)
-  if (/ear drops|painkiller|home remed|already taken|tried any|any medicine|used drops|taking anything|did they help|did that (help|ease)|ease the|helped at all|did it help/.test(q)) {
-    return make([
-      ["none", "Nothing tried yet", "not tried any medicine"],
-      ["paracetamol", "Painkiller (paracetamol etc.)", "took painkiller"],
-      ["drops", "Ear drops", "used ear drops"],
-      ["antibiotic", "Antibiotic", "took antibiotic"],
-      ["home", "Home remedy only", "tried home remedy"],
-      ["helped", "Yes, it helped", "medicine helped"],
-      ["no_help", "No, it did not help", "medicine did not help"],
-    ]);
-  }
-
-  // Dizziness type: spinning vs lightheaded (before associated multi-select)
-  if (/spinning|lightheaded|light-headed|unsteady|unsteadiness|vertigo|dizziness more|type of dizziness|kind of dizziness/.test(q)
-      && !/fever|swollen gland|voice change|associated symptoms/.test(q)) {
-    return make([
-      ["spinning", "Spinning sensation (vertigo)", "spinning dizziness"],
-      ["lightheaded", "Lightheaded / unsteady", "lightheaded unsteadiness"],
-      ["both", "Both spinning and lightheaded", "spinning and lightheaded"],
-      ["none", "No dizziness", "no dizziness"],
-    ]);
-  }
-
-  // Laterality — one ear vs both
-  if (/left.*right.*both|left ear.*right ear|which (ear|side)|one side|both (ears|sides)|left or right|on the left|is it in the left|just one ear|one ear|both ears|one ear, or both|affecting both/.test(q)
-      && !/muffled|discharge type|medicine|fever/.test(q)) {
-    return make([
-      ["left", "Left only", "left"],
-      ["right", "Right only", "right"],
-      ["bilateral", "Both sides", "bilateral"],
-    ]);
-  }
-
-  // Ear symptom checklist (before hearing)
-  if (/what.?s been happening.*ear|pain.*blockage.*discharge.*hearing|which of these.*ear|feeling in that ear|what exactly.*(feeling|going on).*ear|what.*feeling.*ear|do you mean you have pain|blocked or muffled|pain, or is it more/.test(q)) {
-    return make([
-      ["pain", "Pain", "ear pain"],
-      ["blockage", "Blockage", "ear blockage"],
-      ["discharge", "Discharge", "ear discharge"],
-      ["hearing_change", "Hearing trouble", "hearing trouble"],
-      ["ringing", "Ringing / tinnitus", "tinnitus"],
-    ], true);
-  }
-
-  // Hearing quality
-  if (/muffled|underwater|hearing trouble|can't hear|cannot hear|hearing change|what.*hearing/.test(q)
-      && !/fever|discharge from|did that|ease the|did they help|medicine|spinning|lightheaded|do you mean you have pain|blocked or muffled|or maybe some discharge/.test(q)) {
-    return make([
-      ["muffled", "Feels muffled / underwater", "hearing feels muffled"],
-      ["reduced", "Can't hear clearly", "reduced hearing"],
-      ["left_only", "Only on one side", "hearing trouble on one side"],
-      ["none", "Hearing is fine", "no hearing trouble"],
-    ]);
-  }
-
-  if (/allerg/.test(q)) {
-    return make([
-      ["none", "No known drug allergy", "no known drug allergy"],
-      ["yes", "Yes, I have a drug allergy", "drug allergy reported"],
-    ]);
-  }
-
-  if (/how many days|how long|getting worse|staying the same|better or worse|since when|same .*days|a bit longer/.test(q)) {
-    return make([
-      ["1_2d", "1–2 days", "for 1 to 2 days"],
-      ["3_7d", "3–7 days", "for 3 to 7 days"],
-      ["1_2w", "1–2 weeks", "for 1 to 2 weeks"],
-      ["longer", "More than 2 weeks", "for more than 2 weeks"],
-      ["worse", "Getting worse", "getting worse"],
-      ["same", "About the same", "staying the same"],
-      ["better", "Getting better", "getting better"],
-    ]);
-  }
-
-  if (/how severe|mild.*moderate.*severe|how bad|severity|scale of/.test(q)) {
-    return make([
-      ["mild", "Mild", "mild"],
-      ["moderate", "Moderate", "moderate"],
-      ["severe", "Severe", "severe"],
-    ]);
-  }
-
-  if (/throat pain.*swallow|swallowing|raw.*sore|sore feeling|when you swallow/.test(q) && /throat/.test(q + full)) {
-    return make([
-      ["swallow", "Pain mainly when swallowing", "throat pain mainly when swallowing"],
-      ["sore", "Constant sore / raw feeling", "constant sore throat"],
-      ["both", "Both when swallowing and constant", "throat pain on swallowing and constant soreness"],
-      ["none", "No throat pain", "no throat pain"],
-    ]);
-  }
-
-  // Associated symptoms multi — only when listing several
-  if (/fever|swollen gland|change in your voice|associated|any of these|none of these/.test(q)
-      || (/dizziness|vertigo/.test(q) && /fever|gland|voice|cold|sinus/.test(q))) {
-    return make([
-      ["fever", "Fever", "fever"],
-      ["dizzy", "Dizziness / spinning", "dizziness"],
-      ["glands", "Swollen neck glands", "swollen neck glands"],
-      ["voice", "Voice change", "voice change"],
-      ["cold", "Recent cold / sinus issue", "recent cold"],
-      ["none", "None of these", "none reported"],
-    ], true);
-  }
-
-  // Site: ear / nose / throat
-  if (
-    /ear.*nose.*throat|nose.*throat|problem with your ear|problem with.*ear|which.*(ear|nose|throat)|mainly the ear|combination of these|ear, nose|main area/.test(q)
-    && !/discharge|describe|medicine|days|fever|feeling in that/.test(q)
-  ) {
-    return make([
-      ["ear", "Ear", "ear"],
-      ["nose", "Nose", "nose"],
-      ["throat", "Throat", "throat"],
-      ["combo", "More than one (combination)", "combination of ear nose throat"],
-    ]);
-  }
-
-  if (/pain actually in the ear|more in the throat|mainly in the ear or|ear or the throat|throat or the ear/.test(q) && !/discharge|describe|medicine|days|fever/.test(q)) {
-    return make([
-      ["ear", "Mainly in the ear", "pain mainly in the ear"],
-      ["throat", "Mainly in the throat when swallowing", "pain mainly in the throat when swallowing"],
-      ["both", "Both ear and throat", "pain in both ear and throat"],
-    ]);
-  }
-
-  if (/what.?s been happening.*nose/.test(q)) {
-    return make([
-      ["blockage", "Nasal blockage", "nasal blockage"],
-      ["runny", "Runny nose", "runny nose"],
-      ["discharge", "Nasal discharge", "nasal discharge"],
-      ["sneezing", "Sneezing", "sneezing"],
-    ], true);
-  }
-
-  if (/ongoing illness|diabetes|blood pressure|regular medicines/.test(q)) {
-    return make([
-      ["bp", "High blood pressure", "high blood pressure"],
-      ["diabetes", "Diabetes", "diabetes"],
-      ["asthma", "Asthma", "asthma"],
-      ["other", "Another ongoing illness", "other ongoing illness"],
-      ["none", "No ongoing illness", "none reported"],
-    ], true);
-  }
-
-  if (
-    /\?/.test(q)
-    && /\b(do you|have you|is there|are you|did you)\b/.test(q)
-    && (q.match(/\?/g) || []).length <= 1
-    && !/ear|nose|throat|feeling|pain|discharge|hearing|medicine|days|allergy|fever|left|right|dizzy|spinning/.test(q)
-  ) {
-    return make([
-      ["yes", "Yes", "yes"],
-      ["no", "No", "no"],
-    ]);
-  }
-
-  // Open-ended fallback
-  return make([]);
 }
 
-function questionResponse(message) {
-  const choices = questionChoices(message);
-  return choices
-    ? { options: choices.options, selection_mode: choices.mode }
-    : { options: [], selection_mode: "single" };
-}
-
-function simplifyDoctorMessage(message) {
-  const raw = String(message || "").trim();
-  if (!raw) return raw;
-  const sentences = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
-  const questions = sentences.filter((s) => s.includes("?"));
-  if (questions.length <= 1) return raw;
-  const ack = sentences.find((s) => !s.includes("?"));
-  const primary = questions[0];
-  if (ack && ack.length < 120) return `${ack} ${primary}`.trim();
-  return primary;
+async function askQuestion(s, q, kind) {
+  const entry = { role: 'assistant', message: q.text, at: new Date().toISOString(), qid: q.id, kind };
+  if (kind === 'followup') entry.question_def = { id: q.id, type: q.type, text: q.text };
+  s.conversation.push(entry);
+  s.question_count++;
+  await saveSession(s);
+  return questionPayload(s, entry);
 }
 
 async function continueBrowserSession(s) {
+  const site = siteOf(s);
+
+  // 1. Always start with the fixed site question.
+  if (!site && !s.conversation.some(x => x.role === 'assistant')) {
+    return askQuestion(s, SITE_QUESTION, 'fixed');
+  }
+
+  // 2. Fixed questionnaire (server-defined questions AND choices), then <= MAX_AI_QUESTIONS AI follow-ups.
+  if (site && FIXED_SETS[site]) {
+    const q = nextFixedQuestion(s, site);
+    if (q) return askQuestion(s, q, 'fixed');
+
+    const f = await nextFollowUp(s, site);
+    if (f) return askQuestion(s, { id: f.qid, text: f.text, type: f.type }, 'followup');
+
+    return { type: 'review', output: publicOutput(await finishForReview(s, 'completed')) };
+  }
+
+  // 3. Sites without a fixed questionnaire yet (nose / throat) keep the previous AI chat.
   if (s.question_count >= maxQuestions()) {
     return { type: 'review', output: publicOutput(await finishForReview(s, 'question_limit')) };
   }
   const step = await nextStep(s);
   if (step.status === 'QUESTION') {
-    step.message = simplifyDoctorMessage(step.message);
-    s.conversation.push({ role: 'assistant', message: step.message, at: new Date().toISOString() });
+    const entry = { role: 'assistant', message: step.message, at: new Date().toISOString() };
+    s.conversation.push(entry);
     s.question_count++;
     await saveSession(s);
-    return { type: 'question', message: step.message, question_count: s.question_count, ...questionResponse(step.message) };
+    return questionPayload(s, entry);
   }
-  return { type: 'review', output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed')) };
+  return {
+    type: 'review',
+    output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed'))
+  };
 }
 
 function editableOutput(input, current) {
-  const allowed = ['presenting_complaint', 'symptoms', 'associated_symptoms', 'medical_history', 'medications', 'allergies', 'patient_concerns', 'summary'];
+  // The structured contract fields (complaints, allergies, ...) stay as captured;
+  // the patient can correct the human-readable summary.
   const out = { ...current };
-  for (const key of allowed) {
-    if (Object.prototype.hasOwnProperty.call(input || {}, key)) out[key] = input[key];
-  }
+  if (typeof input?.summary === 'string') out.summary = input.summary.slice(0, 4000);
   out.screening_id = current.screening_id;
   out.screening_status = current.screening_status;
   out.patient_approved = false;
@@ -355,7 +193,7 @@ function editableOutput(input, current) {
 }
 
 function validServerApiKey(req) {
-  const expected = String(process.env.SCREENING_API_KEY || process.env.CLINICAL_SCREENING_API_KEY || "").trim();
+  const expected = String(process.env.SCREENING_API_KEY || "").trim();
   if (!expected) return process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1";
   const suppliedKey = String(req.headers["x-api-key"] || "").trim();
   const authorization = String(req.headers.authorization || "").trim();
@@ -378,6 +216,8 @@ async function getPatientContext(token, res) {
 }
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+
+// Browser patient application.
 app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
 app.get('/api/patient/s/:token', async (req, res) => {
@@ -385,7 +225,10 @@ app.get('/api/patient/s/:token', async (req, res) => {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
     const output = await getOutput(s.screening_id);
-    res.json({ ...publicSession(s), output: publicOutput(output) });
+    res.json({
+      ...publicSession(s),
+      output: publicOutput(output)
+    });
   } catch (e) {
     console.error('patient session error', e);
     res.status(500).json({ error: 'Unable to load screening.' });
@@ -400,48 +243,51 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
       return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
     }
     if (s.status !== 'in_progress') return res.status(409).json({ error: 'Screening is not available.' });
-    if (s.conversation.some(x => x.role === 'assistant')) {
-      const last = [...s.conversation].reverse().find(x => x.role === 'assistant');
-      return res.json({ type: 'question', message: last.message, question_count: s.question_count, ...questionResponse(last.message) });
-    }
+
+    // Resume: if a question is already waiting for an answer, show it again.
+    const last = s.conversation[s.conversation.length - 1];
+    if (last && last.role === 'assistant') return res.json(questionPayload(s, last));
+
     const result = await continueBrowserSession(s);
     res.json(result);
   } catch (e) {
     console.error('patient start error', e);
-    res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again in a moment.', detail: String(e?.message || e).slice(0, 200) });
+    res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
   }
 });
 
 app.post('/api/patient/s/:token/message', async (req, res) => {
   try {
-    const text = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
-    const selectedOption = req.body?.selected_option && typeof req.body.selected_option === 'object' ? req.body.selected_option : null;
-    if (!text || text.length > 4000) return res.status(400).json({ error: 'Please enter an answer.' });
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
-    if (s.status !== 'in_progress') return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
-    s.conversation.push({
-      role: 'patient', message: text,
-      question: String(req.body?.question || [...s.conversation].reverse().find((x) => x.role === 'assistant')?.message || '').slice(0, 1000),
-      selected_option: selectedOption ? { key: String(selectedOption.key || '').slice(0, 80), label: String(selectedOption.label || text).slice(0, 200), value: String(selectedOption.value || text).slice(0, 300) } : null,
-      at: new Date().toISOString()
-    });
+    if (s.status !== 'in_progress') {
+      return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
+    }
+
+    const last = s.conversation[s.conversation.length - 1];
+    if (!last || last.role !== 'assistant') return res.status(409).json({ error: 'There is no question waiting for an answer.' });
+
+    if (last.qid) {
+      // Fixed / follow-up question: validate the answer against the question that was actually asked.
+      const q = questionDef(s, last.qid);
+      if (!q) return res.status(409).json({ error: 'Question not found. Please reload the page.' });
+      const r = resolveAnswer(q, req.body);
+      if (!r.ok) return res.status(400).json({ error: r.error });
+      s.conversation.push({
+        role: 'patient', message: r.message, at: new Date().toISOString(),
+        qid: last.qid, kind: last.kind, question: last.message, selected: r.selected
+      });
+    } else {
+      // Legacy free-text chat (nose / throat until their fixed sets exist).
+      const text = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+      if (!text || text.length > 4000) return res.status(400).json({ error: 'Please enter an answer.' });
+      s.conversation.push({ role: 'patient', message: text, at: new Date().toISOString() });
+    }
     await saveSession(s);
-    const result = await continueBrowserSession(s);
-    res.json(result);
+    res.json(await continueBrowserSession(s));
   } catch (e) {
     console.error('patient message error', e);
-    try {
-      const s = await getSessionByPatientToken(req.params.token);
-      if (s && s.status === 'in_progress') {
-        const fallback = 'Thank you. How long have you had this problem (in days)?';
-        s.conversation.push({ role: 'assistant', message: fallback, at: new Date().toISOString() });
-        s.question_count = (s.question_count || 0) + 1;
-        await saveSession(s);
-        return res.json({ type: 'question', message: fallback, question_count: s.question_count, recovered: true, ...questionResponse(fallback) });
-      }
-    } catch (inner) { console.error('patient message recovery failed', inner); }
-    res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again in a moment.', detail: String(e?.message || e).slice(0, 200) });
+    res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
   }
 });
 
@@ -481,26 +327,48 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The screening is not ready to submit.' });
     const output = await getOutput(s.screening_id);
     if (!output) return res.status(404).json({ error: 'Summary not found.' });
-    const finalOutput = { ...output, patient_approved: true, submitted_at: new Date().toISOString(), screening_status: output.screening_status || 'completed' };
+
+    const finalOutput = {
+      ...output,
+      patient_approved: true,
+      submitted_at: new Date().toISOString(),
+      screening_status: output.screening_status || 'completed'
+    };
     await saveOutput(s.screening_id, finalOutput);
     s.status = 'submitted';
     s.submitted_at = finalOutput.submitted_at;
     await saveSession(s);
-    const complaintLink = patientUrl(req, req.params.token);
+
+    const complaintLink = String(req.params.token ? `${String(process.env.BASE_URL || '').replace(/\/$/, '')}/s/${encodeURIComponent(req.params.token)}` : '').trim();
     const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink) : { ok: false, error: 'Patient link unavailable' };
-    res.json({ status: 'submitted', screening_id: s.screening_id, output: finalOutput, whatsapp_sent: Boolean(whatsapp.ok), whatsapp_error: whatsapp.ok ? null : whatsapp.error });
+
+    res.json({
+      status: 'submitted',
+      screening_id: s.screening_id,
+      output: finalOutput,
+      whatsapp_sent: Boolean(whatsapp.ok),
+      whatsapp_error: whatsapp.ok ? null : whatsapp.error
+    });
   } catch (e) {
     console.error('patient submit error', e);
     res.status(500).json({ error: 'Unable to submit the screening.' });
   }
 });
 
+// Existing server-to-server creation endpoint. WhatsApp is no longer part of the
+// conversation. It now creates the session and returns the patient link.
 app.post('/api/screenings', async (req, res) => {
   try {
     if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
-    if (!validInput(req.body)) return res.status(400).json({ error: 'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.' });
+    if (!validInput(req.body)) {
+      return res.status(400).json({ error: 'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.' });
+    }
     const s = await createSession(req.body);
-    res.status(201).json({ screening_id: s.screening_id, status: s.status, patient_url: patientUrl(req, s.patient_token), specialty: s.patient?.specialty || null });
+    res.status(201).json({
+      screening_id: s.screening_id,
+      status: s.status,
+      patient_url: patientUrl(req, s.patient_token)
+    });
   } catch (e) {
     console.error('screening creation error', e);
     res.status(500).json({ error: e.message });
@@ -521,43 +389,13 @@ app.get('/api/screenings/:id', async (req, res) => {
   res.json({ ...publicSession(s), patient_token_hash: undefined });
 });
 
-
-app.get('/api/patient/s/:token/queue', async (req, res) => {
-  try {
-    const s = await getPatientContext(req.params.token, res);
-    if (!s) return;
-    const clinicId = s.patient?.clinic_id || '';
-    const queueToken = s.patient?.queue_token || '';
-    const mediloop = String(process.env.MEDILOOP_PUBLIC_URL || process.env.MEDILOOP_URL || '').replace(/\/$/, '');
-    if (!mediloop || !clinicId || !queueToken) {
-      return res.json({ ok: true, token: queueToken || null, clinic_id: clinicId || null, waiting_ahead: null, note: 'queue_not_configured' });
-    }
-    const url = mediloop + '/api/public/queue-status?clinicId=' + encodeURIComponent(clinicId) + '&token=' + encodeURIComponent(queueToken);
-    const r = await fetch(url, { cache: 'no-store' });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      return res.json({ ok: true, token: queueToken, clinic_id: clinicId, waiting_ahead: null, note: data?.error || 'clinic_unreachable' });
-    }
-    return res.json({
-      ok: true,
-      token: data.token || queueToken,
-      clinic_id: clinicId,
-      waiting_ahead: data.waiting_ahead,
-      status: data.status || null
-    });
-  } catch (e) {
-    console.error('patient queue error', e);
-    res.status(500).json({ error: 'Unable to load queue status.' });
-  }
-});
-
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'ai-clinical-screening',
   architecture: 'browser-screening',
-  link_delivery: 'consumer_application',
+  link_delivery: "consumer_application",
   inbound_whatsapp_conversation: false
 }));
 
 export default app;
-if (process.env.VERCEL !== '1') app.listen(port, () => console.log(`AI Clinical Screening on :${port}`));
+if (process.env.VERCEL !== '1') app.listen(port, () => console.log(`AI Clinical Screening listening on :${port}`));

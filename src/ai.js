@@ -1,7 +1,8 @@
-import { buildFallbackFromConversation } from "./fallbackConsolidate.js";
 //src/ai.js
 // Sarvam speaks as a specialty doctor taking a prescribe-ready history.
 // Patient never fills extra forms — chat ends → structured summary.
+
+import { siteOf, buildEarContract, fallbackFollowUp, followUpsAsked, MAX_AI_QUESTIONS } from "./flow.js";
 
 const SARVAM_API_URL = "https://api.sarvam.ai/v1/chat/completions";
 const SARVAM_MODEL = process.env.SARVAM_MODEL || "sarvam-105b";
@@ -694,6 +695,9 @@ export async function consolidate(session) {
     completion: { patient_details: true, vitals: false, complaints: false, allergies: false, medical_history: false, current_medications: false, screening_complete: true },
     summary: session.patient?.complaint || "See conversation transcript.", screening_status: "completed", patient_approved: false, submitted_at: null, data_quality_notes: []
   };
+  // Fixed-question flows are structured deterministically — no model call, no hallucinated fields.
+  if (siteOf(session) === "ear") return buildEarContract(session, base);
+
   try {
     const raw = await sarvamChat([
       { role: "system", content: consolidationInstructions },
@@ -746,4 +750,107 @@ function buildLegacySummary(contract) {
   if (contract.current_medications?.status === "none_reported") bits.push("Current medications: none reported");
   else if (contract.current_medications?.items?.length) bits.push("Current medications: " + contract.current_medications.items.join(", "));
   return bits.join("\n") || "See conversation transcript.";
+}
+
+
+// ---------------------------------------------------------------------------
+// Fixed-flow follow-ups: the AI may ask at most MAX_AI_QUESTIONS extra questions.
+// It only writes the QUESTION TEXT. The answer choices are ALWAYS supplied by code
+// (Yes / No / Not sure, or free text), so the model can never produce wrong options.
+// ---------------------------------------------------------------------------
+const followUpSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    status: { type: "string", enum: ["QUESTION", "COMPLETE"] },
+    question: { type: "string" },
+    answer_type: { type: "string", enum: ["yes_no", "text"] },
+  },
+  required: ["status", "question", "answer_type"],
+};
+
+const FOLLOWUP_PROMPT = `
+You help an ENT doctor prepare for a consultation. The patient has already answered a fixed
+questionnaire about an EAR problem. You may add ONE short follow-up question that would help
+the doctor most, or finish.
+
+RULES
+- Ask exactly ONE question, one sentence, under 140 characters, plain everyday English, ending with "?".
+- Prefer questions answerable with Yes or No (answer_type "yes_no"). Use "text" only if a Yes/No cannot work.
+- NEVER ask about anything already answered: which ear, symptoms, number of days, discharge, medication tried,
+  ear buds, recent fever/rain/water, allergy, medical conditions.
+- NEVER diagnose, name a disease, suggest a medicine, or give advice. Only collect history.
+- Good topics (pick the most useful not yet asked): hearing loss, pain on touching the ear, swelling or redness
+  around the ear, facial weakness, spinning dizziness, past ear infections or surgery, cold or blocked nose,
+  loud noise exposure, recent flight or diving, objects used to clean the ear.
+- If nothing more is needed, return status "COMPLETE" with an empty question.
+
+Output JSON only: {"status":"QUESTION"|"COMPLETE","question":"...","answer_type":"yes_no"|"text"}
+`.trim();
+
+const FOLLOWUP_BANNED = /\b(which ear|left or right|how many days|how long|discharge|allerg|medicine|medication|tablet|paracetamol|antibiotic|ear ?buds?|earphones?|diabet|blood pressure|fever)\b/i;
+const FOLLOWUP_ADVICE = /\b(you (probably|likely|may|might) have|i (suggest|recommend|advise)|you should (take|use)|diagnos)/i;
+
+function looksYesNo(q) {
+  return /^(do|does|did|is|are|was|were|have|has|had|can|could|would|will)\b/i.test(q.trim());
+}
+
+function validFollowUp(session, r) {
+  if (!r || r.status !== "QUESTION") return null;
+  let q = String(r.question || "").replace(/\s+/g, " ").trim();
+  if (!q || q.length > 160 || (q.match(/\?/g) || []).length !== 1 || !/\?$/.test(q)) return null;
+  if (FOLLOWUP_BANNED.test(q) || FOLLOWUP_ADVICE.test(q)) return null;
+  if (looksLikeRepeat(session, q)) return null;
+  const type = r.answer_type === "text" && !looksYesNo(q) ? "text" : "yes_no";
+  return { text: q, type };
+}
+
+// Returns { qid, text, type, redFlagIfYes? } or null when no more follow-ups are needed.
+export async function nextFollowUp(session, site) {
+  const asked = followUpsAsked(session);
+  if (asked >= MAX_AI_QUESTIONS) return null;
+
+  const fb = () => {
+    const f = fallbackFollowUp(session, site);
+    return f ? { qid: f.id, text: f.text, type: f.type, redFlagIfYes: !!f.redFlagIfYes } : null;
+  };
+
+  const qa = (session.conversation || [])
+    .filter((x) => x.role === "patient" && x.qid && x.qid !== "site")
+    .map((x) => `- ${x.question} → ${x.message}`)
+    .join("\n");
+  const already = (session.conversation || [])
+    .filter((x) => x.role === "assistant" && x.kind === "followup")
+    .map((x) => `- ${x.message}`)
+    .join("\n");
+
+  const input = `Patient: ${session.patient?.age ?? "unknown"} years, ${session.patient?.gender || "unknown"}.
+Registration note: ${session.patient?.complaint || "(none)"}
+
+Questionnaire answers:
+${qa}
+
+Follow-ups already asked (${asked} of ${MAX_AI_QUESTIONS}):
+${already || "(none)"}
+
+Your next follow-up question, or COMPLETE.`;
+
+  try {
+    const raw = await sarvamChat(
+      [{ role: "system", content: FOLLOWUP_PROMPT }, { role: "user", content: input }],
+      {
+        temperature: 0.2,
+        max_tokens: 160,
+        response_format: { type: "json_schema", json_schema: { name: "followup", strict: true, schema: followUpSchema } },
+      }
+    );
+    const parsed = extractJsonObject(raw);
+    if (parsed && String(parsed.status).toUpperCase() === "COMPLETE") return null;
+    const ok = validFollowUp(session, parsed);
+    if (ok) return { qid: `ai_${asked + 1}`, text: ok.text, type: ok.type };
+    console.warn("followUp rejected, using fallback", String(raw).slice(0, 200));
+  } catch (err) {
+    console.error("nextFollowUp error", err?.message || err);
+  }
+  return fb();
 }
