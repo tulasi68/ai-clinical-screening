@@ -75,9 +75,9 @@ export async function createSession(input) {
   const session = {
     screening_id, status: 'in_progress', created_at: now, updated_at: now,
     completed_at: null, submitted_at: null,
-    patient: {
-      patient_name: input.patient_name, age: input.age, gender: input.gender,
+    patient: {      patient_name: input.patient_name, age: input.age, gender: input.gender,
       complaint: input.complaint, phone: normalizePhone(input.phone),
+      clinic_id: input.clinic_id || null,
       queue_token: input.queue_token || null, waiting_ahead: input.waiting_ahead ?? null
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
