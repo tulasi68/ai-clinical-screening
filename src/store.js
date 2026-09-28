@@ -87,7 +87,9 @@ export async function createSession(input) {
       gender: input.gender,
       complaint: input.complaint,
       phone: normalizePhone(input.phone),
-      specialty: normalizeSpecialty(input.specialty || input.clinic_specialty || 'ent')
+      specialty: normalizeSpecialty(input.specialty || input.clinic_specialty || 'ent'),
+      clinic_id: input.clinic_id || input.clinicId || null,
+      queue_token: input.queue_token || input.queueToken || null
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
     patient_token_hash: hashPatientToken(token), patient_token_expires_at: expires
