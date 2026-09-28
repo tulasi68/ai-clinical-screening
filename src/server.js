@@ -113,6 +113,7 @@ function questionChoices(question) {
     return { mode: multi ? "multi" : "single", options };
   };
 
+  // Discharge character
   if (/describe.*(discharge|fluid|pus)|discharge.*(watery|thick|yellow|green|bloody|colour|color)|what.*(look|colour|color).*discharge/.test(q)) {
     return make([
       ["watery", "Watery / clear", "watery clear discharge"],
@@ -124,24 +125,59 @@ function questionChoices(question) {
     ]);
   }
 
-  if (/muffled|underwater|hearing trouble|can't hear|cannot hear|hearing change|what.*hearing/.test(q) && !/fever|discharge from/.test(q)) {
-    return make([
-      ["muffled", "Feels muffled / underwater", "hearing feels muffled"],
-      ["reduced", "Can't hear clearly", "reduced hearing"],
-      ["left_only", "Only on one side", "hearing trouble on one side"],
-      ["none", "Hearing is fine", "no hearing trouble"],
-    ]);
-  }
-
-  if (/ear drops|painkiller|home remed|already taken|tried any|any medicine|used drops|taking anything|did they help/.test(q)) {
+  // Medicine tried OR did it help (must be before hearing)
+  if (/ear drops|painkiller|home remed|already taken|tried any|any medicine|used drops|taking anything|did they help|did that (help|ease)|ease the|helped at all|did it help/.test(q)) {
     return make([
       ["none", "Nothing tried yet", "not tried any medicine"],
       ["paracetamol", "Painkiller (paracetamol etc.)", "took painkiller"],
       ["drops", "Ear drops", "used ear drops"],
       ["antibiotic", "Antibiotic", "took antibiotic"],
       ["home", "Home remedy only", "tried home remedy"],
-      ["helped", "Tried something and it helped", "medicine helped"],
-      ["no_help", "Tried something but no help", "medicine did not help"],
+      ["helped", "Yes, it helped", "medicine helped"],
+      ["no_help", "No, it did not help", "medicine did not help"],
+    ]);
+  }
+
+  // Dizziness type: spinning vs lightheaded (before associated multi-select)
+  if (/spinning|lightheaded|light-headed|unsteady|unsteadiness|vertigo|dizziness more|type of dizziness|kind of dizziness/.test(q)
+      && !/fever|swollen gland|voice change|associated symptoms/.test(q)) {
+    return make([
+      ["spinning", "Spinning sensation (vertigo)", "spinning dizziness"],
+      ["lightheaded", "Lightheaded / unsteady", "lightheaded unsteadiness"],
+      ["both", "Both spinning and lightheaded", "spinning and lightheaded"],
+      ["none", "No dizziness", "no dizziness"],
+    ]);
+  }
+
+  // Laterality — one ear vs both
+  if (/left.*right.*both|left ear.*right ear|which (ear|side)|one side|both (ears|sides)|left or right|on the left|is it in the left|just one ear|one ear|both ears|one ear, or both|affecting both/.test(q)
+      && !/muffled|discharge type|medicine|fever/.test(q)) {
+    return make([
+      ["left", "Left only", "left"],
+      ["right", "Right only", "right"],
+      ["bilateral", "Both sides", "bilateral"],
+    ]);
+  }
+
+  // Ear symptom checklist (before hearing)
+  if (/what.?s been happening.*ear|pain.*blockage.*discharge.*hearing|which of these.*ear|feeling in that ear|what exactly.*(feeling|going on).*ear|what.*feeling.*ear|do you mean you have pain|blocked or muffled|pain, or is it more/.test(q)) {
+    return make([
+      ["pain", "Pain", "ear pain"],
+      ["blockage", "Blockage", "ear blockage"],
+      ["discharge", "Discharge", "ear discharge"],
+      ["hearing_change", "Hearing trouble", "hearing trouble"],
+      ["ringing", "Ringing / tinnitus", "tinnitus"],
+    ], true);
+  }
+
+  // Hearing quality
+  if (/muffled|underwater|hearing trouble|can't hear|cannot hear|hearing change|what.*hearing/.test(q)
+      && !/fever|discharge from|did that|ease the|did they help|medicine|spinning|lightheaded|do you mean you have pain|blocked or muffled|or maybe some discharge/.test(q)) {
+    return make([
+      ["muffled", "Feels muffled / underwater", "hearing feels muffled"],
+      ["reduced", "Can't hear clearly", "reduced hearing"],
+      ["left_only", "Only on one side", "hearing trouble on one side"],
+      ["none", "Hearing is fine", "no hearing trouble"],
     ]);
   }
 
@@ -172,14 +208,6 @@ function questionChoices(question) {
     ]);
   }
 
-  if (/left.*right.*both|left ear.*right ear|which (ear|side)|one side|both (ears|sides)|left or right|on the left|is it in the left/.test(q)) {
-    return make([
-      ["left", "Left only", "left"],
-      ["right", "Right only", "right"],
-      ["bilateral", "Both sides", "bilateral"],
-    ]);
-  }
-
   if (/throat pain.*swallow|swallowing|raw.*sore|sore feeling|when you swallow/.test(q) && /throat/.test(q + full)) {
     return make([
       ["swallow", "Pain mainly when swallowing", "throat pain mainly when swallowing"],
@@ -189,7 +217,9 @@ function questionChoices(question) {
     ]);
   }
 
-  if (/fever|dizziness|vertigo|swollen gland|change in your voice|associated/.test(q)) {
+  // Associated symptoms multi — only when listing several
+  if (/fever|swollen gland|change in your voice|associated|any of these|none of these/.test(q)
+      || (/dizziness|vertigo/.test(q) && /fever|gland|voice|cold|sinus/.test(q))) {
     return make([
       ["fever", "Fever", "fever"],
       ["dizzy", "Dizziness / spinning", "dizziness"],
@@ -200,18 +230,9 @@ function questionChoices(question) {
     ], true);
   }
 
-  if (/what.?s been happening.*ear|pain.*blockage.*discharge.*hearing|which of these.*ear|feeling in that ear|what exactly.*(feeling|going on).*ear|what.*feeling.*ear/.test(q)) {
-    return make([
-      ["pain", "Pain", "ear pain"],
-      ["blockage", "Blockage", "ear blockage"],
-      ["discharge", "Discharge", "ear discharge"],
-      ["hearing_change", "Hearing trouble", "hearing trouble"],
-      ["ringing", "Ringing / tinnitus", "tinnitus"],
-    ], true);
-  }
-
+  // Site: ear / nose / throat
   if (
-    /ear.*nose.*throat|nose.*throat|problem with your ear|problem with.*ear|which.*(ear|nose|throat)|mainly the ear|combination of these|ear, nose/.test(q)
+    /ear.*nose.*throat|nose.*throat|problem with your ear|problem with.*ear|which.*(ear|nose|throat)|mainly the ear|combination of these|ear, nose|main area/.test(q)
     && !/discharge|describe|medicine|days|fever|feeling in that/.test(q)
   ) {
     return make([
@@ -253,7 +274,7 @@ function questionChoices(question) {
     /\?/.test(q)
     && /\b(do you|have you|is there|are you|did you)\b/.test(q)
     && (q.match(/\?/g) || []).length <= 1
-    && !/ear|nose|throat|feeling|pain|discharge|hearing|medicine|days|allergy|fever|left|right/.test(q)
+    && !/ear|nose|throat|feeling|pain|discharge|hearing|medicine|days|allergy|fever|left|right|dizzy|spinning/.test(q)
   ) {
     return make([
       ["yes", "Yes", "yes"],
@@ -261,9 +282,8 @@ function questionChoices(question) {
     ]);
   }
 
-  return make([
-    ["partial", "Somewhat / partly", "somewhat"],
-  ]);
+  // Open-ended fallback
+  return make([]);
 }
 
 function questionResponse(message) {
