@@ -94,15 +94,11 @@ async function finishForReview(s, reason) {
 }
 
 function focusQuestionText(question) {
-  // Use only the actual question part — ignore acknowledgements that poison regex matching
   const raw = String(question || "").trim();
   if (!raw) return "";
   const parts = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
   const withQ = parts.filter((s) => s.includes("?"));
-  if (withQ.length) {
-    // If multiple questions stacked, use the FIRST question (primary ask)
-    return withQ[0].toLowerCase();
-  }
+  if (withQ.length) return withQ[0].toLowerCase();
   return (parts[parts.length - 1] || raw).toLowerCase();
 }
 
@@ -117,7 +113,6 @@ function questionChoices(question) {
     return { mode: multi ? "multi" : "single", options };
   };
 
-  // Discharge character
   if (/describe.*(discharge|fluid|pus)|discharge.*(watery|thick|yellow|green|bloody|colour|color)|what.*(look|colour|color).*discharge/.test(q)) {
     return make([
       ["watery", "Watery / clear", "watery clear discharge"],
@@ -129,7 +124,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Hearing quality
   if (/muffled|underwater|hearing trouble|can't hear|cannot hear|hearing change|what.*hearing/.test(q) && !/fever|discharge from/.test(q)) {
     return make([
       ["muffled", "Feels muffled / underwater", "hearing feels muffled"],
@@ -139,7 +133,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Medicines / drops tried
   if (/ear drops|painkiller|home remed|already taken|tried any|any medicine|used drops|taking anything|did they help/.test(q)) {
     return make([
       ["none", "Nothing tried yet", "not tried any medicine"],
@@ -152,7 +145,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Allergy
   if (/allerg/.test(q)) {
     return make([
       ["none", "No known drug allergy", "no known drug allergy"],
@@ -160,7 +152,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Duration / course
   if (/how many days|how long|getting worse|staying the same|better or worse|since when|same .*days|a bit longer/.test(q)) {
     return make([
       ["1_2d", "1–2 days", "for 1 to 2 days"],
@@ -173,7 +164,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Severity
   if (/how severe|mild.*moderate.*severe|how bad|severity|scale of/.test(q)) {
     return make([
       ["mild", "Mild", "mild"],
@@ -182,7 +172,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Laterality
   if (/left.*right.*both|left ear.*right ear|which (ear|side)|one side|both (ears|sides)|left or right|on the left|is it in the left/.test(q)) {
     return make([
       ["left", "Left only", "left"],
@@ -191,7 +180,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Throat quality (swallow vs sore)
   if (/throat pain.*swallow|swallowing|raw.*sore|sore feeling|when you swallow/.test(q) && /throat/.test(q + full)) {
     return make([
       ["swallow", "Pain mainly when swallowing", "throat pain mainly when swallowing"],
@@ -201,7 +189,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Associated features
   if (/fever|dizziness|vertigo|swollen gland|change in your voice|associated/.test(q)) {
     return make([
       ["fever", "Fever", "fever"],
@@ -213,7 +200,6 @@ function questionChoices(question) {
     ], true);
   }
 
-  // Ear symptoms list
   if (/what.?s been happening.*ear|pain.*blockage.*discharge.*hearing|which of these.*ear/.test(q)) {
     return make([
       ["pain", "Pain", "ear pain"],
@@ -224,7 +210,6 @@ function questionChoices(question) {
     ], true);
   }
 
-  // Site: ear / nose / throat — only when that is the main question
   if (/is it mainly the ear|mainly the ear, the nose|ear, the nose, or the throat|which.*(ear|nose|throat)/.test(q) && !/discharge|fever|medicine|days/.test(q)) {
     return make([
       ["ear", "Ear", "ear"],
@@ -233,7 +218,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Ear vs throat — only explicit clarification
   if (/pain actually in the ear|more in the throat|mainly in the ear or|ear or the throat|throat or the ear/.test(q) && !/discharge|describe|medicine|days|fever/.test(q)) {
     return make([
       ["ear", "Mainly in the ear", "pain mainly in the ear"],
@@ -268,7 +252,6 @@ function questionChoices(question) {
     ]);
   }
 
-  // Safe default — never show unrelated site options
   return make([
     ["yes", "Yes", "yes"],
     ["no", "No", "no"],
@@ -284,7 +267,6 @@ function questionResponse(message) {
 }
 
 function simplifyDoctorMessage(message) {
-  // Collapse multi-question doctor turns into one primary question so options stay in sync
   const raw = String(message || "").trim();
   if (!raw) return raw;
   const sentences = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
@@ -295,18 +277,18 @@ function simplifyDoctorMessage(message) {
   if (ack && ack.length < 120) return `${ack} ${primary}`.trim();
   return primary;
 }
+
 async function continueBrowserSession(s) {
   if (s.question_count >= maxQuestions()) {
     return { type: 'review', output: publicOutput(await finishForReview(s, 'question_limit')) };
   }
   const step = await nextStep(s);
- if (step.status === 'QUESTION') {
+  if (step.status === 'QUESTION') {
     step.message = simplifyDoctorMessage(step.message);
     s.conversation.push({ role: 'assistant', message: step.message, at: new Date().toISOString() });
     s.question_count++;
     await saveSession(s);
     return { type: 'question', message: step.message, question_count: s.question_count, ...questionResponse(step.message) };
-  }
   }
   return { type: 'review', output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed')) };
 }
@@ -491,7 +473,13 @@ app.get('/api/screenings/:id', async (req, res) => {
   res.json({ ...publicSession(s), patient_token_hash: undefined });
 });
 
-app.get('/health', (req, res) => res.json({ ok: true, service: 'ai-clinical-screening', architecture: 'browser-screening', link_delivery: 'consumer_application', inbound_whatsapp_conversation: false }));
+app.get('/health', (req, res) => res.json({
+  ok: true,
+  service: 'ai-clinical-screening',
+  architecture: 'browser-screening',
+  link_delivery: 'consumer_application',
+  inbound_whatsapp_conversation: false
+}));
 
 export default app;
 if (process.env.VERCEL !== '1') app.listen(port, () => console.log(`AI Clinical Screening on :${port}`));
