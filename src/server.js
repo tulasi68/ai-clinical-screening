@@ -93,8 +93,22 @@ async function finishForReview(s, reason) {
   return out;
 }
 
+function focusQuestionText(question) {
+  // Use only the actual question part — ignore acknowledgements that poison regex matching
+  const raw = String(question || "").trim();
+  if (!raw) return "";
+  const parts = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+  const withQ = parts.filter((s) => s.includes("?"));
+  if (withQ.length) {
+    // If multiple questions stacked, use the FIRST question (primary ask)
+    return withQ[0].toLowerCase();
+  }
+  return (parts[parts.length - 1] || raw).toLowerCase();
+}
+
 function questionChoices(question) {
-  const q = String(question || "").toLowerCase();
+  const full = String(question || "").toLowerCase();
+  const q = focusQuestionText(question);
   const make = (items, multi = false) => {
     const options = items.map(([key, label, value]) => ({ key, label, value }));
     const keys = new Set(options.map((o) => o.key));
@@ -102,66 +116,197 @@ function questionChoices(question) {
     if (!keys.has("other") && !keys.has("none")) options.push({ key: "other", label: "Other / type my own", value: "__FREE_TEXT__" });
     return { mode: multi ? "multi" : "single", options };
   };
-  if (/pain actually in the ear|more in the throat|ear.*or.*throat|throat.*or.*ear/.test(q)) {
-    return make([["ear", "Mainly in the ear", "pain mainly in the ear"],["throat", "Mainly in the throat when swallowing", "pain mainly in the throat when swallowing"],["both", "Both ear and throat", "pain in both ear and throat"]]);
+
+  // Discharge character
+  if (/describe.*(discharge|fluid|pus)|discharge.*(watery|thick|yellow|green|bloody|colour|color)|what.*(look|colour|color).*discharge/.test(q)) {
+    return make([
+      ["watery", "Watery / clear", "watery clear discharge"],
+      ["thick", "Thick / sticky", "thick discharge"],
+      ["yellow", "Yellow", "yellow discharge"],
+      ["green", "Green", "green discharge"],
+      ["bloody", "Bloody / blood-stained", "bloody discharge"],
+      ["none", "No discharge", "no discharge"],
+    ]);
   }
-  if (/mainly.*ear.*nose.*throat|ear.*nose.*throat|is it mainly the ear|which.*(ear|nose|throat)/.test(q)) {
-    return make([["ear","Ear","ear"],["nose","Nose","nose"],["throat","Throat","throat"]]);
+
+  // Hearing quality
+  if (/muffled|underwater|hearing trouble|can't hear|cannot hear|hearing change|what.*hearing/.test(q) && !/fever|discharge from/.test(q)) {
+    return make([
+      ["muffled", "Feels muffled / underwater", "hearing feels muffled"],
+      ["reduced", "Can't hear clearly", "reduced hearing"],
+      ["left_only", "Only on one side", "hearing trouble on one side"],
+      ["none", "Hearing is fine", "no hearing trouble"],
+    ]);
   }
-  if (/what.?s been happening.*ear|pain.*blockage.*discharge.*hearing|ear.*(pain|ache|block|discharge|hearing)/.test(q)) {
-    return make([["pain","Pain","ear pain"],["blockage","Blockage","ear blockage"],["discharge","Discharge","ear discharge"],["hearing_change","Hearing trouble","hearing trouble"],["ringing","Ringing / tinnitus","tinnitus"],["other","Other symptom","other ear symptom"]], true);
+
+  // Medicines / drops tried
+  if (/ear drops|painkiller|home remed|already taken|tried any|any medicine|used drops|taking anything|did they help/.test(q)) {
+    return make([
+      ["none", "Nothing tried yet", "not tried any medicine"],
+      ["paracetamol", "Painkiller (paracetamol etc.)", "took painkiller"],
+      ["drops", "Ear drops", "used ear drops"],
+      ["antibiotic", "Antibiotic", "took antibiotic"],
+      ["home", "Home remedy only", "tried home remedy"],
+      ["helped", "Tried something and it helped", "medicine helped"],
+      ["no_help", "Tried something but no help", "medicine did not help"],
+    ]);
   }
-  if (/what.?s been happening.*nose|nose.*(block|runny|discharge|sneeze)/.test(q)) {
-    return make([["blockage","Nasal blockage","nasal blockage"],["runny","Runny nose","runny nose"],["discharge","Nasal discharge","nasal discharge"],["sneezing","Sneezing","sneezing"],["other","Other symptom","other nasal symptom"]], true);
+
+  // Allergy
+  if (/allerg/.test(q)) {
+    return make([
+      ["none", "No known drug allergy", "no known drug allergy"],
+      ["yes", "Yes, I have a drug allergy", "drug allergy reported"],
+    ]);
   }
-  if (/what.?s been happening.*throat|what exactly.*feeling|throat.*(pain|sore|swallow)/.test(q)) {
-    return make([["pain","Pain","throat pain"],["swallowing","Pain swallowing","pain when swallowing"],["voice","Voice change","voice change"],["other","Other symptom","other throat symptom"]], true);
+
+  // Duration / course
+  if (/how many days|how long|getting worse|staying the same|better or worse|since when|same .*days|a bit longer/.test(q)) {
+    return make([
+      ["1_2d", "1–2 days", "for 1 to 2 days"],
+      ["3_7d", "3–7 days", "for 3 to 7 days"],
+      ["1_2w", "1–2 weeks", "for 1 to 2 weeks"],
+      ["longer", "More than 2 weeks", "for more than 2 weeks"],
+      ["worse", "Getting worse", "getting worse"],
+      ["same", "About the same", "staying the same"],
+      ["better", "Getting better", "getting better"],
+    ]);
   }
-  if (/left.*right.*both|left ear.*right ear|right ear.*left ear|left,? the right|on the left|which (ear|side)|one side|both (ears|sides)|left or right/.test(q)) {
-    return make([["left", "Left only", "left"],["right", "Right only", "right"],["bilateral", "Both sides", "bilateral"]]);
-  }
-  if (/how many days|how long|getting worse|staying the same|better or worse|course|duration|since when/.test(q)) {
-    return make([["1_2d", "1–2 days", "for 1 to 2 days"],["3_7d", "3–7 days", "for 3 to 7 days"],["1_2w", "1–2 weeks", "for 1 to 2 weeks"],["longer", "More than 2 weeks", "for more than 2 weeks"],["worse", "Getting worse", "getting worse"],["same", "About the same", "staying the same"],["better", "Getting better", "getting better"]]);
-  }
+
+  // Severity
   if (/how severe|mild.*moderate.*severe|how bad|severity|scale of/.test(q)) {
-    return make([["mild","Mild","mild"],["moderate","Moderate","moderate"],["severe","Severe","severe"]]);
+    return make([
+      ["mild", "Mild", "mild"],
+      ["moderate", "Moderate", "moderate"],
+      ["severe", "Severe", "severe"],
+    ]);
   }
-  if (/fever|discharge|hearing|dizziness|vertigo|associated|any other symptom|noticed any/.test(q) && /ear|nose|throat|this/.test(q)) {
-    if (/ear/.test(q)) return make([["discharge","Ear discharge","ear discharge"],["dizziness","Dizziness / spinning","dizziness"],["hearing","Hearing change","hearing change"],["fever","Fever","fever"],["none","None of these","none reported"]], true);
-    if (/nose/.test(q)) return make([["fever","Fever","fever"],["pressure","Facial pressure","facial pressure"],["smell","Change in smell","change in smell"],["none","None of these","none reported"]], true);
-    if (/throat/.test(q)) return make([["fever","Fever","fever"],["swallowing","Pain swallowing","pain when swallowing"],["none","None of these","none reported"]], true);
-    return make([["fever","Fever","fever"],["none","None of these","none reported"]], true);
+
+  // Laterality
+  if (/left.*right.*both|left ear.*right ear|which (ear|side)|one side|both (ears|sides)|left or right|on the left|is it in the left/.test(q)) {
+    return make([
+      ["left", "Left only", "left"],
+      ["right", "Right only", "right"],
+      ["bilateral", "Both sides", "bilateral"],
+    ]);
   }
-  if (/medicine.*drops|already taken.*medicine|used drops|any medicine|tried any|taking anything/.test(q)) {
-    return make([["none","Nothing tried","not tried any medicine"],["paracetamol","Paracetamol / painkiller","took paracetamol or painkiller"],["drops","Ear / nose drops","used drops"],["antibiotic","Antibiotic","took antibiotic"],["yes","Yes, something else","patient tried medicine or drops"]]);
+
+  // Throat quality (swallow vs sore)
+  if (/throat pain.*swallow|swallowing|raw.*sore|sore feeling|when you swallow/.test(q) && /throat/.test(q + full)) {
+    return make([
+      ["swallow", "Pain mainly when swallowing", "throat pain mainly when swallowing"],
+      ["sore", "Constant sore / raw feeling", "constant sore throat"],
+      ["both", "Both when swallowing and constant", "throat pain on swallowing and constant soreness"],
+      ["none", "No throat pain", "no throat pain"],
+    ]);
   }
-  if (/allergy to medicines|allerg.*medicine|drug allerg/.test(q)) {
-    return make([["none","No known drug allergy","no known drug allergy"],["yes","Yes, I have a drug allergy","drug allergy reported"]]);
+
+  // Associated features
+  if (/fever|dizziness|vertigo|swollen gland|change in your voice|associated/.test(q)) {
+    return make([
+      ["fever", "Fever", "fever"],
+      ["dizzy", "Dizziness / spinning", "dizziness"],
+      ["glands", "Swollen neck glands", "swollen neck glands"],
+      ["voice", "Voice change", "voice change"],
+      ["cold", "Recent cold / sinus issue", "recent cold"],
+      ["none", "None of these", "none reported"],
+    ], true);
   }
-  if (/ongoing illness|diabetes.*blood pressure|regular medicines|any other (illness|condition)/.test(q)) {
-    return make([["bp","High blood pressure","high blood pressure"],["diabetes","Diabetes","diabetes"],["asthma","Asthma","asthma"],["other","Another ongoing illness","other ongoing illness"],["none","No ongoing illness","none reported"]], true);
+
+  // Ear symptoms list
+  if (/what.?s been happening.*ear|pain.*blockage.*discharge.*hearing|which of these.*ear/.test(q)) {
+    return make([
+      ["pain", "Pain", "ear pain"],
+      ["blockage", "Blockage", "ear blockage"],
+      ["discharge", "Discharge", "ear discharge"],
+      ["hearing_change", "Hearing trouble", "hearing trouble"],
+      ["ringing", "Ringing / tinnitus", "tinnitus"],
+    ], true);
   }
-  if (/\?\s*$/.test(q) && /\b(do you|have you|is there|are you|any|did you)\b/.test(q)) {
-    return make([["yes","Yes","yes"],["no","No","no"]]);
+
+  // Site: ear / nose / throat — only when that is the main question
+  if (/is it mainly the ear|mainly the ear, the nose|ear, the nose, or the throat|which.*(ear|nose|throat)/.test(q) && !/discharge|fever|medicine|days/.test(q)) {
+    return make([
+      ["ear", "Ear", "ear"],
+      ["nose", "Nose", "nose"],
+      ["throat", "Throat", "throat"],
+    ]);
   }
-  return make([["yes", "Yes", "yes"],["no", "No", "no"],["partial", "Somewhat / partly", "somewhat"]]);
+
+  // Ear vs throat — only explicit clarification
+  if (/pain actually in the ear|more in the throat|mainly in the ear or|ear or the throat|throat or the ear/.test(q) && !/discharge|describe|medicine|days|fever/.test(q)) {
+    return make([
+      ["ear", "Mainly in the ear", "pain mainly in the ear"],
+      ["throat", "Mainly in the throat when swallowing", "pain mainly in the throat when swallowing"],
+      ["both", "Both ear and throat", "pain in both ear and throat"],
+    ]);
+  }
+
+  if (/what.?s been happening.*nose/.test(q)) {
+    return make([
+      ["blockage", "Nasal blockage", "nasal blockage"],
+      ["runny", "Runny nose", "runny nose"],
+      ["discharge", "Nasal discharge", "nasal discharge"],
+      ["sneezing", "Sneezing", "sneezing"],
+    ], true);
+  }
+
+  if (/ongoing illness|diabetes|blood pressure|regular medicines/.test(q)) {
+    return make([
+      ["bp", "High blood pressure", "high blood pressure"],
+      ["diabetes", "Diabetes", "diabetes"],
+      ["asthma", "Asthma", "asthma"],
+      ["other", "Another ongoing illness", "other ongoing illness"],
+      ["none", "No ongoing illness", "none reported"],
+    ], true);
+  }
+
+  if (/\?/.test(q) && /\b(do you|have you|is there|are you|did you|any fever)\b/.test(q) && (q.match(/\?/g) || []).length <= 1) {
+    return make([
+      ["yes", "Yes", "yes"],
+      ["no", "No", "no"],
+    ]);
+  }
+
+  // Safe default — never show unrelated site options
+  return make([
+    ["yes", "Yes", "yes"],
+    ["no", "No", "no"],
+    ["partial", "Somewhat / partly", "somewhat"],
+  ]);
 }
 
 function questionResponse(message) {
   const choices = questionChoices(message);
-  return choices ? { options: choices.options, selection_mode: choices.mode } : { options: [], selection_mode: "single" };
+  return choices
+    ? { options: choices.options, selection_mode: choices.mode }
+    : { options: [], selection_mode: "single" };
 }
 
+function simplifyDoctorMessage(message) {
+  // Collapse multi-question doctor turns into one primary question so options stay in sync
+  const raw = String(message || "").trim();
+  if (!raw) return raw;
+  const sentences = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+  const questions = sentences.filter((s) => s.includes("?"));
+  if (questions.length <= 1) return raw;
+  const ack = sentences.find((s) => !s.includes("?"));
+  const primary = questions[0];
+  if (ack && ack.length < 120) return `${ack} ${primary}`.trim();
+  return primary;
+}
 async function continueBrowserSession(s) {
   if (s.question_count >= maxQuestions()) {
     return { type: 'review', output: publicOutput(await finishForReview(s, 'question_limit')) };
   }
   const step = await nextStep(s);
-  if (step.status === 'QUESTION') {
+ if (step.status === 'QUESTION') {
+    step.message = simplifyDoctorMessage(step.message);
     s.conversation.push({ role: 'assistant', message: step.message, at: new Date().toISOString() });
     s.question_count++;
     await saveSession(s);
     return { type: 'question', message: step.message, question_count: s.question_count, ...questionResponse(step.message) };
+  }
   }
   return { type: 'review', output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed')) };
 }
