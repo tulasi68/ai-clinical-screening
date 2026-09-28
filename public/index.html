@@ -21,6 +21,7 @@ button{border:0;border-radius:999px;padding:13px 20px;font-weight:650;font-size:
 .opt:hover{border-color:#1d6f5b}.opt.sel{border-color:#1d6f5b;background:#e8f4f0;box-shadow:inset 0 0 0 1px #1d6f5b}
 .radios{display:flex;flex-direction:column;gap:8px;margin:6px 0 14px}.radio{display:flex;align-items:center;gap:12px;border:1.5px solid #d7dce0;border-radius:12px;padding:14px;font-weight:600;cursor:pointer}.radio input{accent-color:#1d6f5b;width:18px;height:18px;margin:0}.radio.sel{border-color:#1d6f5b;background:#e8f4f0}
 .typed{width:100%;border:1.5px solid #d7dce0;border-radius:12px;padding:13px 14px;font:inherit;outline:none;margin:0 0 14px}.typed:focus{border-color:#1d6f5b}
+.tokenbox{margin:6px auto 22px;max-width:300px;border:1.5px solid #1d6f5b;background:#e8f4f0;border-radius:16px;padding:16px}.tokenno{font-size:40px;font-weight:800;color:#1d6f5b;line-height:1.1;margin:4px 0}.ahead{font-size:16px;margin-top:6px}
 .small{font-size:12px;color:#7b8490}.hidden{display:none!important}
 </style>
 </head>
@@ -132,9 +133,8 @@ function renderReview(output){
   (urgent?'<div class="notice"><strong>Important:</strong> Your answers indicate a concern that may need urgent medical attention. Please seek urgent medical care now. This screening does not provide a diagnosis or treatment.</div>':'')+
   '<p class="muted">Please check the information below. You can correct anything that is inaccurate before sending it to your doctor.</p>'+
   '<div id="summary" class="summary-grid">'+summaryFields(output)+'</div>'+
-  '<div class="actions">'+btn('Save Changes','secondary','save')+btn('End & Send to Doctor','primary','submit')+'</div>'+
+  '<div class="actions">'+btn('End & Send to Doctor','primary','submit')+'</div>'+
   '<div id="error" class="error hidden"></div><p class="small" style="margin-top:18px">Your information is sent only after you press “End & Send to Doctor”.</p>';
-  document.getElementById('save').onclick=saveSummary;
   document.getElementById('submit').onclick=submitSummary;
 }
 function summaryFields(o){
@@ -144,24 +144,25 @@ function collectSummary(){
   const el=document.querySelector('[data-key="summary"]');
   return {summary:el?el.value.trim():''};
 }
-async function saveSummary(){
-  clearError();const b=document.getElementById('save');b.disabled=true;
-  try{const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/summary',{method:'PUT',body:JSON.stringify(collectSummary())});state.output=d.output;renderReview(d.output);}
-  catch(e){showError(e.message);b.disabled=false;}
-}
 async function submitSummary(){
   clearError();
-  if(!confirm('Send this screening to your doctor? You will not be able to edit it after submission.'))return;
   const b=document.getElementById('submit');b.disabled=true;
   try{
     const edited=collectSummary();
     await api('/api/patient/s/'+encodeURIComponent(token)+'/summary',{method:'PUT',body:JSON.stringify(edited)});
     const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/submit',{method:'POST',body:'{}'});
-    state.output=d.output;renderSubmitted();
+    state.output=d.output;renderSubmitted(d.queue);
   }catch(e){showError(e.message);b.disabled=false;}
 }
-function renderSubmitted(){
-  app.innerHTML='<div class="center"><div class="eyebrow">Submitted</div><h1>Thank you</h1><p class="muted start-note">Your screening information has been sent to your doctor for your consultation.</p><p class="small">You can close this page now.</p></div>';
+function renderSubmitted(queue){
+  const q=queue||{token:(state&&state.patient&&state.patient.queue_token)||null,waiting_ahead:(state&&state.patient&&state.patient.waiting_ahead)};
+  let box='';
+  if(q&&q.token){
+    const w=q.waiting_ahead;
+    box='<div class="tokenbox"><div class="small">Your token number</div><div class="tokenno">'+esc(q.token)+'</div>'+
+    (w===null||w===undefined?'':'<div class="ahead">'+(w===0?'You are next in line':'<b>'+esc(w)+'</b> patient'+(w===1?'':'s')+' ahead of you')+'</div><div class="small">as of when you registered</div>')+'</div>';
+  }
+  app.innerHTML='<div class="center"><div class="eyebrow">Submitted</div><h1>Thank you</h1><p class="muted start-note">Your screening information has been sent to your doctor for your consultation.</p>'+box+'<p class="small">You can close this page now.</p></div>';
 }
 load();
 </script>
