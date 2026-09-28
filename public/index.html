@@ -31,6 +31,8 @@ button{border:0;border-radius:999px;padding:13px 20px;font-weight:650;font-size:
 const token = decodeURIComponent(location.pathname.split('/s/')[1] || '');
 const app = document.getElementById('app');
 let state = null;
+let queueTimer = null;
+let latestQueue = null;
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function showError(msg){let e=document.getElementById('error');if(e){e.textContent=msg;e.classList.remove('hidden');}}
@@ -155,14 +157,39 @@ async function submitSummary(){
   }catch(e){showError(e.message);b.disabled=false;}
 }
 function renderSubmitted(queue){
-  const q=queue||{token:(state&&state.patient&&state.patient.queue_token)||null,waiting_ahead:(state&&state.patient&&state.patient.waiting_ahead)};
-  let box='';
-  if(q&&q.token){
-    const w=q.waiting_ahead;
-    box='<div class="tokenbox"><div class="small">Your token number</div><div class="tokenno">'+esc(q.token)+'</div>'+
-    (w===null||w===undefined?'':'<div class="ahead">'+(w===0?'You are next in line':'<b>'+esc(w)+'</b> patient'+(w===1?'':'s')+' ahead of you')+'</div><div class="small">as of when you registered</div>')+'</div>';
-  }
-  app.innerHTML='<div class="center"><div class="eyebrow">Submitted</div><h1>Thank you</h1><p class="muted start-note">Your screening information has been sent to your doctor for your consultation.</p>'+box+'<p class="small">You can close this page now.</p></div>';
+  if(queueTimer){clearInterval(queueTimer);queueTimer=null;}
+  latestQueue=queue||null;
+  const initialToken=(state&&state.patient&&state.patient.queue_token)||null;
+  const initialWaiting=state&&state.patient?state.patient.waiting_ahead:null;
+  const q=latestQueue||{token:initialToken,waiting_ahead:initialWaiting,status:null};
+  const draw=()=>{
+    const current=latestQueue||q;
+    const tokenNo=current&&current.token?current.token:initialToken;
+    const w=current&&current.waiting_ahead!==undefined?current.waiting_ahead:initialWaiting;
+    let box='';
+    if(tokenNo){
+      const status=String(current&&current.status||'').toLowerCase();
+      const completed=status==='completed';
+      box='<div class="tokenbox"><div class="small">Your token number</div><div class="tokenno">'+esc(tokenNo)+'</div>'+
+      (completed?'<div class="ahead"><b>Consultation completed</b></div><div class="small">Thank you for visiting the clinic.</div>':
+        (w===null||w===undefined?'':'<div class="ahead">'+(w===0?'You are next in line':'<b>'+esc(w)+'</b> patient'+(w===1?'':'s')+' ahead of you')+'</div><div id="queueUpdated" class="small">Updating automatically</div>'))+
+      '</div>';
+    }
+    app.innerHTML='<div class="center"><div class="eyebrow">Submitted</div><h1>Thank you</h1><p class="muted start-note">Your screening information has been sent to your doctor for your consultation.</p>'+box+'<p class="small">You can close this page now.</p></div>';
+  };
+  draw();
+  const poll=async()=>{
+    const base=state&&state.queue_status_url;
+    const clinicId=state&&state.patient&&state.patient.clinic_id;
+    if(!base||!clinicId||!initialToken)return;
+    try{
+      const sep=base.includes('?')?'&':'?';
+      const d=await fetch(base+sep+'clinicId='+encodeURIComponent(clinicId)+'&token='+encodeURIComponent(initialToken),{cache:'no-store'}).then(r=>r.ok?r.json():null);
+      if(d&&d.ok){latestQueue=d;draw();}
+    }catch{}
+  };
+  poll();
+  queueTimer=setInterval(poll,5000);
 }
 load();
 </script>
