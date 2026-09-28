@@ -92,8 +92,8 @@ function publicSession(s) {
     patient: {
       patient_name: s.patient.patient_name,
       age: s.patient.age,
-      gender: s.patient.gender,
-      complaint: s.patient.complaint,
+      gender: s.patient.gender,      complaint: s.patient.complaint,
+      clinic_id: s.patient.clinic_id || null,
       queue_token: s.patient.queue_token || null,
       waiting_ahead: s.patient.waiting_ahead ?? null
     },
@@ -204,8 +204,13 @@ function validServerApiKey(req) {
 }
 
 function patientUrl(req, token) {
-  const base = String(process.env.PATIENT_APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-  return `${base}/s/${encodeURIComponent(token)}`;
+  const base = String(process.env.PATIENT_APP_URL || (req.protocol + '://' + req.get('host'))).replace(/\/$/, '');
+  return base + '/s/' + encodeURIComponent(token);
+}
+
+function queueStatusUrl() {
+  const configured = String(process.env.MEDILOOP_QUEUE_STATUS_URL || '').trim();
+  return configured || 'https://mediloop-ai.vercel.app/api/public/queue-status';
 }
 
 async function getPatientContext(token, res) {
@@ -366,13 +371,16 @@ app.post('/api/screenings', async (req, res) => {
     if (!validInput(req.body)) {
       return res.status(400).json({ error: 'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.' });
     }
+    const clinic_id = String(req.body.clinic_id || '').trim().slice(0, 120) || null;
     const qt = String(req.body.queue_token || '').trim().slice(0, 20);
     const wa = Number.isInteger(req.body.waiting_ahead) && req.body.waiting_ahead >= 0 && req.body.waiting_ahead < 1000 ? req.body.waiting_ahead : null;
-    const s = await createSession({ ...req.body, queue_token: qt || null, waiting_ahead: wa });
+    const s = await createSession({ ...req.body, clinic_id, queue_token: qt || null, waiting_ahead: wa });
     res.status(201).json({
       screening_id: s.screening_id,
       status: s.status,
-      patient_url: patientUrl(req, s.patient_token)
+      patient_url: patientUrl(req, s.patient_token),
+      clinic_id: s.patient.clinic_id || null,
+      queue_status_url: queueStatusUrl()
     });
   } catch (e) {
     console.error('screening creation error', e);
