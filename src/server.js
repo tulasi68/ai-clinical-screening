@@ -73,9 +73,23 @@ function publicOutput(output) {
 function publicSession(s) {
   return {
     screening_id: s.screening_id, status: s.status,
-    patient: { patient_name: s.patient.patient_name, age: s.patient.age, gender: s.patient.gender, complaint: s.patient.complaint, specialty: s.patient.specialty || null },
+    patient: {
+      patient_name: s.patient.patient_name,
+      age: s.patient.age,
+      gender: s.patient.gender,
+      complaint: s.patient.complaint,
+      specialty: s.patient.specialty || null,
+      clinic_id: s.patient.clinic_id || null,
+      queue_token: s.patient.queue_token || null
+    },
     question_count: s.question_count,
-    conversation: (s.conversation || []).map(x => ({ role: x.role, message: x.message, at: x.at })),
+    conversation: (s.conversation || []).map(x => ({
+      role: x.role,
+      message: x.message,
+      at: x.at,
+      question: x.question || undefined,
+      selected_option: x.selected_option || undefined
+    })),
     patient_token_expires_at: s.patient_token_expires_at
   };
 }
@@ -105,11 +119,18 @@ function focusQuestionText(question) {
 function questionChoices(question) {
   const full = String(question || "").toLowerCase();
   const q = focusQuestionText(question);
-  const make = (items, multi = false) => {
+  const make = (items, multi = false, { allowOther = true, allowUnsure = true } = {}) => {
     const options = items.map(([key, label, value]) => ({ key, label, value }));
     const keys = new Set(options.map((o) => o.key));
-    if (!keys.has("unsure")) options.push({ key: "unsure", label: "I'm not sure", value: "patient is not sure" });
-    if (!keys.has("other") && !keys.has("none")) options.push({ key: "other", label: "Other / type my own", value: "__FREE_TEXT__" });
+    // Closed lists (yes/no, laterality, severity): no free-text "other"
+    const closedKeys = ["yes", "no", "left", "right", "bilateral", "mild", "moderate", "severe"];
+    const isClosed = items.length > 0 && items.every(([k]) => closedKeys.includes(String(k)));
+    if (allowUnsure && !keys.has("unsure") && !isClosed) {
+      options.push({ key: "unsure", label: "I'm not sure", value: "patient is not sure" });
+    }
+    if (allowOther && !isClosed && !keys.has("other") && !keys.has("none")) {
+      options.push({ key: "other", label: "Other / type my own", value: "__FREE_TEXT__" });
+    }
     return { mode: multi ? "multi" : "single", options };
   };
 
@@ -498,6 +519,36 @@ app.get('/api/screenings/:id', async (req, res) => {
   const s = await getSession(req.params.id);
   if (!s) return res.status(404).json({ error: 'Not found' });
   res.json({ ...publicSession(s), patient_token_hash: undefined });
+});
+
+
+app.get('/api/patient/s/:token/queue', async (req, res) => {
+  try {
+    const s = await getPatientContext(req.params.token, res);
+    if (!s) return;
+    const clinicId = s.patient?.clinic_id || '';
+    const queueToken = s.patient?.queue_token || '';
+    const mediloop = String(process.env.MEDILOOP_PUBLIC_URL || process.env.MEDILOOP_URL || '').replace(/\/$/, '');
+    if (!mediloop || !clinicId || !queueToken) {
+      return res.json({ ok: true, token: queueToken || null, clinic_id: clinicId || null, waiting_ahead: null, note: 'queue_not_configured' });
+    }
+    const url = mediloop + '/api/public/queue-status?clinicId=' + encodeURIComponent(clinicId) + '&token=' + encodeURIComponent(queueToken);
+    const r = await fetch(url, { cache: 'no-store' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return res.json({ ok: true, token: queueToken, clinic_id: clinicId, waiting_ahead: null, note: data?.error || 'clinic_unreachable' });
+    }
+    return res.json({
+      ok: true,
+      token: data.token || queueToken,
+      clinic_id: clinicId,
+      waiting_ahead: data.waiting_ahead,
+      status: data.status || null
+    });
+  } catch (e) {
+    console.error('patient queue error', e);
+    res.status(500).json({ error: 'Unable to load queue status.' });
+  }
 });
 
 app.get('/health', (req, res) => res.json({
