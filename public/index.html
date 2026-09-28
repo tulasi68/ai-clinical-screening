@@ -123,6 +123,17 @@ function hideComposer(){
   box.classList.add('hidden');
   box.innerHTML='';
 }
+function shouldAllowTypeOwn(){
+  const opts=(state.questionOptions||[]).filter(o=>o && o.key!=='other' && o.key!=='unsure');
+  if(!opts.length) return true;
+  if(state.selectionMode==='multi') return true;
+  if(opts.length<=3){
+    const keys=opts.map(o=>String(o.key||'').toLowerCase());
+    const closed=['yes','no','left','right','bilateral','both','mild','moderate','severe','none'];
+    if(keys.every(k=>closed.includes(k))) return false;
+  }
+  return true;
+}
 function drawChoices(){
   const box=document.getElementById('choices');if(!box)return;
   const opts=(state.questionOptions||[]).filter(o=>o && o.key !== 'other');
@@ -131,11 +142,12 @@ function drawChoices(){
     drawComposer(true);
     return;
   }
+  const allowOwn=shouldAllowTypeOwn();
   box.innerHTML=opts.map((o,i)=>{
     const muted = o.key==='unsure' ? ' muted-choice' : '';
     return '<button type="button" data-choice="'+i+'" class="choice-btn'+muted+'">'+esc(o.label)+'</button>';
   }).join('')+
-  '<button type="button" id="typeOwn" class="choice-btn muted-choice">Type my own answer</button>';
+  (allowOwn?'<button type="button" id="typeOwn" class="choice-btn muted-choice">Type my own answer</button>':'');
   const filtered = opts;
   box.querySelectorAll('.choice-btn[data-choice]').forEach((b)=>{
     b.onclick=()=>chooseOptionByKey(filtered[Number(b.dataset.choice)]);
@@ -236,47 +248,68 @@ async function submitAnswer(options){
     drawChoices();
   }finally{busy=false;}
 }
-function topicFromQuestion(q){
-  const s=String(q||'').toLowerCase();
-  if(/ear.*nose.*throat|problem with your ear|combination of these|mainly the ear|main area/.test(s)) return 'Area of problem';
-  if(/how many days|how long|duration|getting (better|worse)|a bit longer|same .*days/.test(s)) return 'Duration / course';
-  if(/mild|moderate|severe|how bad|severity|scale of/.test(s)) return 'Severity';
-  if(/describe.*discharge|watery|yellow|green.*discharge|what.*(look|colour|color).*discharge/.test(s)) return 'Discharge';
-  if(/muffled|hearing trouble|underwater|can't hear|cannot hear/.test(s)) return 'Hearing';
-  if(/fever|dizziness|swollen gland|associated|none of these|voice change/.test(s)) return 'Other symptoms';
-  if(/medicine|drops|painkiller|tried any|home remed|did they help|did that (help|ease)/.test(s)) return 'Medicines tried';
-  if(/allerg/.test(s)) return 'Drug allergies';
-  if(/diabetes|blood pressure|ongoing illness|regular medicines/.test(s)) return 'Other illnesses';
-  if(/feeling in that ear|what.?s been happening.*ear|what exactly.*ear|pain.*blockage.*discharge/.test(s)) return 'Ear symptoms';
-  if(/throat|swallow/.test(s)) return 'Throat';
-  if(/nose|nasal/.test(s)) return 'Nose';
-  if(/\bleft\b|\bright\b|both ears|one ear|which (ear|side)|left or right|just one ear/.test(s)) return 'Side';
-  const short=String(q||'').replace(/\s+/g,' ').trim();
+function topicFromQA(question, answer){
+  const q=String(question||'').toLowerCase();
+  const a=String(answer||'').toLowerCase();
+  if(/no known drug allergy|drug allergy/.test(a) || /allerg/.test(q)) return 'Drug allergies';
+  if(/nothing tried|painkiller|ear drops|home remed|antibiotic|medicine helped|did not help/.test(a) || /medicine|drops|painkiller|tried any|home remed|did they help/.test(q)) return 'Medicines tried';
+  if(/^\s*(yes|no)\s*\.?$/i.test(a.trim())){
+    if(/fever/.test(q)) return 'Fever';
+    if(/dizz/.test(q)) return 'Dizziness';
+    if(/discharge/.test(q)) return 'Discharge present';
+    if(/hearing/.test(q)) return 'Hearing change';
+    if(/allerg/.test(q)) return 'Drug allergies';
+    if(/medicine|tried|drops/.test(q)) return 'Medicines tried';
+    return 'Confirmation';
+  }
+  if(/watery|thick|yellow|green|bloody|clear discharge/.test(a) || /describe.*discharge|what.*(look|colour|color).*discharge/.test(q)) return 'Discharge';
+  if(/left only|right only|both sides|^left$|^right$|bilateral/.test(a) || (/\bleft\b|\bright\b|both ears|one ear|which (ear|side)/.test(q) && !/day|severe|mild|moderate|medicine|fever|discharge type/.test(q))) return 'Side';
+  if(/1–2 days|3–7 days|1–2 weeks|more than 2 weeks|getting worse|getting better|staying the same/.test(a) || /how many days|how long|duration|getting (better|worse)/.test(q)) return 'Duration / course';
+  if(/^(mild|moderate|severe)$/i.test(a.trim()) || /mild|moderate|severe|how bad|severity/.test(q)) return 'Severity';
+  if(/muffled|underwater|can't hear|reduced hearing|hearing is fine/.test(a) || /muffled|hearing trouble|underwater/.test(q)) return 'Hearing';
+  if(/fever|dizziness|swollen|voice change|recent cold/.test(a) || /fever|dizziness|swollen gland|associated|none of these|voice change/.test(q)) return 'Other symptoms';
+  if(/diabetes|blood pressure|asthma|ongoing/.test(a) || /diabetes|blood pressure|ongoing illness|regular medicines/.test(q)) return 'Other illnesses';
+  if(/pain|blockage|discharge|tinnitus|ringing|hearing trouble/.test(a) && /ear|feeling|happening/.test(q)) return 'Ear symptoms';
+  if(/ear.*nose.*throat|problem with your ear|combination of these|mainly the ear|main area/.test(q) || /^(ear|nose|throat)$/i.test(a.trim())) return 'Area of problem';
+  if(/throat|swallow/.test(q)) return 'Throat';
+  if(/nose|nasal/.test(q)) return 'Nose';
+  const short=String(question||'').replace(/\s+/g,' ').trim();
   return short.length>48 ? short.slice(0,48)+'…' : (short || 'Answer');
 }
 
 function summaryRowsFromConversation(){
   const conv = state.conversation || [];
   const rows=[];
-  let lastQ=null;
   for(const m of conv){
+    if(m.role!=='patient') continue;
+    const q = m.question || '';
+    const ans = (m.selected_option && m.selected_option.label) || m.message || '';
+    if(!ans) continue;
+    if(/^\s*(yes|no)\s*\.?$/i.test(String(ans).trim()) && !/fever|dizz|allerg|discharge|hearing|medicine|pain/.test(String(q).toLowerCase())) continue;
+    rows.push({ topic: topicFromQA(q, ans), answer: ans });
+  }
+  if(rows.length) return dedupeRows(rows);
+  let lastQ=null;
+  for(const m of (state.messages||[])){
     if(m.role==='assistant'){ lastQ=m.message; continue; }
     if(m.role==='patient' && lastQ){
-      rows.push({ topic: topicFromQuestion(lastQ), answer: m.message });
+      const ans=m.message;
+      if(/^\s*(yes|no)\s*\.?$/i.test(String(ans).trim()) && !/fever|dizz|allerg|discharge|hearing|medicine|pain/.test(String(lastQ).toLowerCase())){ lastQ=null; continue; }
+      rows.push({ topic: topicFromQA(lastQ, ans), answer: ans });
       lastQ=null;
     }
   }
-  if(!rows.length && state.messages){
-    lastQ=null;
-    for(const m of state.messages){
-      if(m.role==='assistant'){ lastQ=m.message; continue; }
-      if(m.role==='patient' && lastQ){
-        rows.push({ topic: topicFromQuestion(lastQ), answer: m.message });
-        lastQ=null;
-      }
-    }
+  return dedupeRows(rows);
+}
+function dedupeRows(rows){
+  const out=[];
+  for(const r of rows){
+    if(out.length && out[out.length-1].topic===r.topic){
+      const prev=out[out.length-1];
+      if(!String(prev.answer).toLowerCase().includes(String(r.answer).toLowerCase())) prev.answer = prev.answer + ', ' + r.answer;
+    } else out.push({topic:r.topic, answer:r.answer});
   }
-  return rows;
+  return out;
 }
 
 function summaryRowsFromOutput(o){
@@ -324,15 +357,42 @@ function renderReview(output){
 
 async function submitSummary(){
   clearError();
-  if(!confirm('Send this to your doctor? You will not be able to change it after sending.'))return;
-  const b=document.getElementById('submit');b.disabled=true;
+  const b=document.getElementById('submit');if(b){b.disabled=true;b.textContent='Sending…';}
   try{
     const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/submit',{method:'POST',body:'{}'});
-    state.output=d.output;renderSubmitted();
+    state.output=d.output;state.status='submitted';try{state=await api('/api/patient/s/'+encodeURIComponent(token));}catch(_){ }renderSubmitted();
   }catch(e){showError(e.message);b.disabled=false;}
 }
 function renderSubmitted(){
-  app.innerHTML='<div class="center"><div class="eyebrow">Sent</div><h1>Thank you</h1><p class="muted start-note">Your conversation summary has been sent for your consultation.</p><p class="small">You can close this page.</p></div>';
+  if(window.__queueTimer){ clearInterval(window.__queueTimer); window.__queueTimer=null; }
+  const tok = (state && state.patient && state.patient.queue_token) || '—';
+  app.innerHTML='<div class="center"><div class="eyebrow">Sent</div><h1>Thank you</h1>'+
+    '<p class="muted start-note">Your answers have been sent to the clinic.</p>'+
+    '<div id="queueCard" style="margin:18px auto;max-width:360px;padding:18px;border-radius:16px;background:#eef8f4;border:1px solid #cfe8de">'+
+    '<div class="eyebrow">Clinic queue</div>'+
+    '<div>Your token number</div>'+
+    '<div style="font-size:32px;font-weight:800;color:#1d6f5b;margin:8px 0" id="queueToken">'+esc(tok)+'</div>'+
+    '<p id="queueAhead" class="muted">Checking queue…</p>'+
+    '<p class="small" style="margin-top:12px">Keep this page open. It updates automatically.</p>'+
+    '</div></div>';
+  async function refreshQueue(){
+    try{
+      const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/queue');
+      const el=document.getElementById('queueAhead');
+      const tEl=document.getElementById('queueToken');
+      if(tEl && d.token) tEl.textContent=d.token;
+      if(!el) return;
+      const n = d.waiting_ahead;
+      if(n==null || n===undefined){ el.textContent='Queue position will appear when the clinic is online.'; return; }
+      if(Number(n)<=1){ el.innerHTML='<strong style="color:#0f5c4a">You are next — get ready to meet the doctor.</strong>'; }
+      else { el.innerHTML='Patients before you: <strong>'+esc(String(n))+'</strong>'; }
+    }catch(e){
+      const el=document.getElementById('queueAhead');
+      if(el) el.textContent='Queue position will appear when the clinic is online.';
+    }
+  }
+  refreshQueue();
+  window.__queueTimer=setInterval(refreshQueue, 5000);
 }
 load();
 </script>
