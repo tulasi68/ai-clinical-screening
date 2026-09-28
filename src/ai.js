@@ -715,7 +715,13 @@ export async function consolidate(session) {
       };
     }
   } catch (err) { console.error("consolidate error", err?.message || err); }
-  return buildFallbackFromConversation(session, base);
+  const sites = detectSite(session);
+  const pt = patientText(session);
+  base.complaints = sites.map((s, i) => ({ id: `c${i + 1}`, text: s === "ear" ? "Ear symptoms" : s === "nose" ? "Nasal symptoms" : "Throat symptoms", laterality: "unknown", duration: { value: null, unit: "unknown" }, course: "unknown", severity: "unknown", associated_symptoms: [], qualifiers: [], impact: "", treatment_tried: { status: "unknown", items: [] }, priority: i === 0 ? "chief" : "secondary", source: "patient_reported", confidence: "low" }));
+  base.completion.complaints = base.complaints.length > 0;
+  base.summary = pt.slice(0, 1200) || base.summary;
+  base.data_quality_notes = ["fallback_summary"];
+  return base;
 }
 
 function buildLegacySummary(contract) {
