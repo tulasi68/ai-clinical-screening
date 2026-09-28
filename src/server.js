@@ -93,7 +93,9 @@ function publicSession(s) {
       patient_name: s.patient.patient_name,
       age: s.patient.age,
       gender: s.patient.gender,
-      complaint: s.patient.complaint
+      complaint: s.patient.complaint,
+      queue_token: s.patient.queue_token || null,
+      waiting_ahead: s.patient.waiting_ahead ?? null
     },
     question_count: s.question_count,
     conversation: (s.conversation || []).map(x => ({ role: x.role, message: x.message, at: x.at })),
@@ -345,6 +347,7 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     res.json({
       status: 'submitted',
       screening_id: s.screening_id,
+      queue: { token: s.patient.queue_token || null, waiting_ahead: s.patient.waiting_ahead ?? null },
       output: finalOutput,
       whatsapp_sent: Boolean(whatsapp.ok),
       whatsapp_error: whatsapp.ok ? null : whatsapp.error
@@ -363,7 +366,9 @@ app.post('/api/screenings', async (req, res) => {
     if (!validInput(req.body)) {
       return res.status(400).json({ error: 'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.' });
     }
-    const s = await createSession(req.body);
+    const qt = String(req.body.queue_token || '').trim().slice(0, 20);
+    const wa = Number.isInteger(req.body.waiting_ahead) && req.body.waiting_ahead >= 0 && req.body.waiting_ahead < 1000 ? req.body.waiting_ahead : null;
+    const s = await createSession({ ...req.body, queue_token: qt || null, waiting_ahead: wa });
     res.status(201).json({
       screening_id: s.screening_id,
       status: s.status,
