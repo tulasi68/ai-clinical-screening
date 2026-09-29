@@ -1,89 +1,158 @@
 // src/flow.js
 // Fixed (non-AI) screening questions. The server owns the questions AND the choices,
 // so the AI can never invent or corrupt an option list.
+// Labels: English (label) + Kannada (label_kn) for bilingual patient UI.
 
 export const MAX_AI_QUESTIONS = 3;
 
-const OTHER = { id: "other", label: "Type your answer", text: "required" };
+const OTHER = { id: "other", label: "Type your answer", label_kn: "ನಿಮ್ಮ ಉತ್ತರ ಬರೆಯಿರಿ", text: "required" };
 
 export const SITE_QUESTION = {
   id: "site",
   kind: "fixed",
   type: "radio",
   text: "I have a problem with my…",
+  text_kn: "ನನಗೆ ಸಮಸ್ಯೆ ಇರುವುದು…",
   options: [
-    { id: "ear", label: "Ear" },
-    { id: "nose", label: "Nose" },
-    { id: "throat", label: "Throat" },
+    { id: "ear", label: "Ear", label_kn: "ಕಿವಿ" },
+    { id: "nose", label: "Nose", label_kn: "ಮೂಗು" },
+    { id: "throat", label: "Throat", label_kn: "ಗಂಟಲು" },
   ],
 };
 
 const YES_NO_NOTSURE = [
-  { id: "yes", label: "Yes" },
-  { id: "no", label: "No" },
-  { id: "unsure", label: "Not sure" },
+  { id: "yes", label: "Yes", label_kn: "ಹೌದು" },
+  { id: "no", label: "No", label_kn: "ಇಲ್ಲ" },
+  { id: "unsure", label: "Not sure", label_kn: "ಖಚಿತವಿಲ್ಲ" },
 ];
 
-// type: "single" | "multi" | "yes_no" | "text" | "radio"
-// option.text: "required" (must type when chosen) | "optional"; option.exclusive: clears other picks
 export const EAR_QUESTIONS = [
-  { id: "ear_side", kind: "fixed", type: "single", text: "Which ear is affected?",
-    options: [{ id: "left", label: "Left" }, { id: "right", label: "Right" }, { id: "both", label: "Both" }] },
-  { id: "ear_feel", kind: "fixed", type: "multi", text: "What are you feeling? (choose all that apply)",
+  {
+    id: "ear_side", kind: "fixed", type: "single",
+    text: "Which ear is affected?",
+    text_kn: "ಯಾವ ಕಿವಿಗೆ ಸಮಸ್ಯೆ ಇದೆ?",
     options: [
-      { id: "itching", label: "Itching" }, { id: "pain", label: "Pain" }, { id: "blocked", label: "Blocked" },
-      { id: "dizziness", label: "Dizziness" }, { id: "ringing", label: "Ringing" }, { id: "tinnitus", label: "Tinnitus" },
-      { id: "swallowing", label: "Difficulty in swallowing" },
-      { id: "nothing", label: "Nothing", exclusive: true }, OTHER,
-    ] },
-  { id: "ear_days", kind: "fixed", type: "single", text: "Since how many days?",
+      { id: "left", label: "Left", label_kn: "ಎಡ" },
+      { id: "right", label: "Right", label_kn: "ಬಲ" },
+      { id: "both", label: "Both", label_kn: "ಎರಡೂ" },
+    ],
+  },
+  {
+    id: "ear_feel", kind: "fixed", type: "multi",
+    text: "What are you feeling? (choose all that apply)",
+    text_kn: "ನೀವು ಏನು ಅನುಭವಿಸುತ್ತಿದ್ದೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
     options: [
-      { id: "d1_2", label: "1-2 days" }, { id: "d3_5", label: "3-5 days" }, { id: "d5_7", label: "5-7 days" }, OTHER,
-    ] },
-  { id: "ear_discharge", kind: "fixed", type: "single", text: "Is there any discharge from the ear?",
+      { id: "itching", label: "Itching", label_kn: "ಕೆರೆತ" },
+      { id: "pain", label: "Pain", label_kn: "ನೋವು" },
+      { id: "blocked", label: "Blocked", label_kn: "ಮುಚ್ಚಿಕೊಂಡಿದೆ" },
+      { id: "dizziness", label: "Dizziness", label_kn: "ತಲೆಸುತ್ತು" },
+      { id: "ringing", label: "Ringing", label_kn: "ಘಂಟೆಸದ್ದು" },
+      { id: "tinnitus", label: "Tinnitus", label_kn: "ಕಿವಿಯಲ್ಲಿ ಸದ್ದು" },
+      { id: "swallowing", label: "Difficulty in swallowing", label_kn: "ನುಂಗಲು ಕಷ್ಟ" },
+      { id: "nothing", label: "Nothing", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+  {
+    id: "ear_days", kind: "fixed", type: "single",
+    text: "Since how many days?",
+    text_kn: "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
     options: [
-      { id: "yellow", label: "Yes - Yellow color" }, { id: "pus", label: "Yes - Pus" },
-      { id: "watery", label: "Yes - Watery" }, { id: "none", label: "No discharge" },
-    ] },
-  { id: "ear_medication", kind: "fixed", type: "single", text: "Have you tried any medication?",
+      { id: "d1_2", label: "1-2 days", label_kn: "೧-೨ ದಿನ" },
+      { id: "d3_5", label: "3-5 days", label_kn: "೩-೫ ದಿನ" },
+      { id: "d5_7", label: "5-7 days", label_kn: "೫-೭ ದಿನ" },
+      OTHER,
+    ],
+  },
+  {
+    id: "ear_discharge", kind: "fixed", type: "single",
+    text: "Is there any discharge from the ear?",
+    text_kn: "ಕಿವಿಯಿಂದ ಯಾವುದೇ ಸ್ರಾವ ಬರುತ್ತಿದೆಯೇ?",
     options: [
-      { id: "paracetamol", label: "Yes - Paracetamol" }, { id: "antibiotic", label: "Yes - Antibiotic" },
-      { id: "none", label: "Not tried" },
-    ] },
-  { id: "ear_buds", kind: "fixed", type: "single", text: "Do you use ear buds?",
+      { id: "yellow", label: "Yes - Yellow color", label_kn: "ಹೌದು - ಹಳದಿ ಬಣ್ಣ" },
+      { id: "pus", label: "Yes - Pus", label_kn: "ಹೌದು - ಪೀವು" },
+      { id: "watery", label: "Yes - Watery", label_kn: "ಹೌದು - ನೀರಿನಂತೆ" },
+      { id: "none", label: "No discharge", label_kn: "ಸ್ರಾವ ಇಲ್ಲ" },
+    ],
+  },
+  {
+    id: "ear_medication", kind: "fixed", type: "single",
+    text: "Have you tried any medication?",
+    text_kn: "ಯಾವುದೇ ಔಷಧ ತೆಗೆದುಕೊಂಡಿದ್ದೀರಾ?",
     options: [
-      { id: "often", label: "Yes - often" }, { id: "sometimes", label: "Yes - sometimes" }, { id: "no", label: "Not at all" },
-    ] },
-  { id: "ear_recent", kind: "fixed", type: "multi", text: "In the last few days, did you have any of these? (choose all that apply)",
+      { id: "paracetamol", label: "Yes - Paracetamol", label_kn: "ಹೌದು - ಪ್ಯಾರಸಿಟಮಾಲ್" },
+      { id: "antibiotic", label: "Yes - Antibiotic", label_kn: "ಹೌದು - ಆಂಟಿಬಯಾಟಿಕ್" },
+      { id: "none", label: "Not tried", label_kn: "ತೆಗೆದುಕೊಂಡಿಲ್ಲ" },
+    ],
+  },
+  {
+    id: "ear_buds", kind: "fixed", type: "single",
+    text: "Do you use ear buds?",
+    text_kn: "ನೀವು ಇಯರ್ ಬಡ್‌ಗಳನ್ನು ಬಳಸುತ್ತೀರಾ?",
     options: [
-      { id: "fever", label: "Had fever" }, { id: "rain", label: "Got wet in rain" },
-      { id: "water", label: "Water went into the ear" },
-      { id: "nothing", label: "Nothing", exclusive: true }, OTHER,
-    ] },
-  { id: "ear_allergy", kind: "fixed", type: "single", text: "Do you have any allergy?",
-    options: [{ id: "yes", label: "Yes", text: "optional" }, { id: "no", label: "No" }] },
-  { id: "ear_condition", kind: "fixed", type: "multi", text: "Do you have any medical condition? (choose all that apply)",
+      { id: "often", label: "Yes - often", label_kn: "ಹೌದು - ಆಗಾಗ" },
+      { id: "sometimes", label: "Yes - sometimes", label_kn: "ಹೌದು - ಕೆಲವೊಮ್ಮೆ" },
+      { id: "no", label: "Not at all", label_kn: "ಇಲ್ಲವೇ ಇಲ್ಲ" },
+    ],
+  },
+  {
+    id: "ear_recent", kind: "fixed", type: "multi",
+    text: "In the last few days, did you have any of these? (choose all that apply)",
+    text_kn: "ಕಳೆದ ಕೆಲವು ದಿನಗಳಲ್ಲಿ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇತ್ತೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
     options: [
-      { id: "bp", label: "Blood pressure" }, { id: "diabetes", label: "Diabetic" },
-      { id: "none", label: "None", exclusive: true }, OTHER,
-    ] },
+      { id: "fever", label: "Had fever", label_kn: "ಜ್ವರ ಬಂದಿತ್ತು" },
+      { id: "rain", label: "Got wet in rain", label_kn: "ಮಳೆಯಲ್ಲಿ ನೆನೆದಿದ್ದೆ" },
+      { id: "water", label: "Water went into the ear", label_kn: "ಕಿವಿಗೆ ನೀರು ಹೋಗಿತ್ತು" },
+      { id: "nothing", label: "Nothing", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+  {
+    id: "ear_allergy", kind: "fixed", type: "single",
+    text: "Do you have any allergy?",
+    text_kn: "ನಿಮಗೆ ಯಾವುದೇ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+    options: [
+      { id: "yes", label: "Yes", label_kn: "ಹೌದು", text: "optional" },
+      { id: "no", label: "No", label_kn: "ಇಲ್ಲ" },
+    ],
+  },
+  {
+    id: "ear_condition", kind: "fixed", type: "multi",
+    text: "Do you have any medical condition? (choose all that apply)",
+    text_kn: "ನಿಮಗೆ ಯಾವುದೇ ವೈದ್ಯಕೀಯ ಸಮಸ್ಯೆ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+    options: [
+      { id: "bp", label: "Blood pressure", label_kn: "ರಕ್ತದೊತ್ತಡ" },
+      { id: "diabetes", label: "Diabetic", label_kn: "ಮಧುಮೇಹ" },
+      { id: "none", label: "None", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
 ];
 
 export const FIXED_SETS = { ear: EAR_QUESTIONS };
 
-// Deterministic follow-ups, used when the AI is unavailable or returns something unusable.
-// Ordered by clinical priority. `when(a)` receives the answer helper.
 const EAR_FALLBACKS = [
-  { id: "fb_facial", text: "Have you noticed any weakness or drooping on one side of your face?", type: "yes_no", redFlagIfYes: true },
-  { id: "fb_hearing", text: "Have you noticed any drop in your hearing in this ear?", type: "yes_no" },
-  { id: "fb_touch", text: "Is the ear painful when you touch or pull it?", type: "yes_no", when: (a) => a.has("ear_feel", "pain") },
-  { id: "fb_spin", text: "When you feel dizzy, does the room feel like it is spinning?", type: "yes_no", when: (a) => a.has("ear_feel", "dizziness") },
-  { id: "fb_swelling", text: "Is there any swelling or redness in or around the ear?", type: "yes_no" },
-  { id: "fb_past", text: "Have you had ear infections or ear surgery in the past?", type: "yes_no" },
-  { id: "fb_cold", text: "Do you have a cold, blocked nose or sore throat at the moment?", type: "yes_no" },
+  { id: "fb_facial", text: "Have you noticed any weakness or drooping on one side of your face?", text_kn: "ಮುಖದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ ಅಥವಾ ಜಾರುವಿಕೆ ಕಂಡಿದೆಯೇ?", type: "yes_no", redFlagIfYes: true },
+  { id: "fb_hearing", text: "Have you noticed any drop in your hearing in this ear?", text_kn: "ಈ ಕಿವಿಯಲ್ಲಿ ಕೇಳುವ ಶಕ್ತಿ ಕಡಿಮೆಯಾಗಿದೆಯೇ?", type: "yes_no" },
+  { id: "fb_touch", text: "Is the ear painful when you touch or pull it?", text_kn: "ಕಿವಿಯನ್ನು ಮುಟ್ಟಿದಾಗ ಅಥವಾ ಎಳೆದಾಗ ನೋವಾಗುತ್ತದೆಯೇ?", type: "yes_no", when: (a) => a.has("ear_feel", "pain") },
+  { id: "fb_spin", text: "When you feel dizzy, does the room feel like it is spinning?", text_kn: "ತಲೆಸುತ್ತಾದಾಗ ಕೋಣೆ ಸುತ್ತುವಂತೆ ಅನಿಸುತ್ತದೆಯೇ?", type: "yes_no", when: (a) => a.has("ear_feel", "dizziness") },
+  { id: "fb_swelling", text: "Is there any swelling or redness in or around the ear?", text_kn: "ಕಿವಿಯಲ್ಲಿ ಅಥವಾ ಸುತ್ತಲೂ ಊತ ಅಥವಾ ಕೆಂಪುತನ ಇದೆಯೇ?", type: "yes_no" },
+  { id: "fb_past", text: "Have you had ear infections or ear surgery in the past?", text_kn: "ಹಿಂದೆ ಕಿವಿ ಸೋಂಕು ಅಥವಾ ಕಿವಿ ಶಸ್ತ್ರಚಿಕಿತ್ಸೆ ಆಗಿತ್ತೇ?", type: "yes_no" },
+  { id: "fb_cold", text: "Do you have a cold, blocked nose or sore throat at the moment?", text_kn: "ಈಗ ನಿಮಗೆ ಜಲದೋಷ, ಮುಚ್ಚಿದ ಮೂಗು ಅಥವಾ ಗಂಟಲು ನೋವು ಇದೆಯೇ?", type: "yes_no" },
 ];
 
-// ---------- helpers ----------
+/** Localize a question for the patient UI. Doctor/contract stays English via option id + English labels in resolveAnswer. */
+export function localizeQuestion(q, lang) {
+  if (!q) return q;
+  const kn = String(lang || "").toLowerCase().startsWith("kn");
+  const text = kn && q.text_kn ? q.text_kn : q.text;
+  const options = (q.options || []).map((o) => ({
+    ...o,
+    label: kn && o.label_kn ? o.label_kn : o.label,
+  }));
+  return { ...q, text, options };
+}
+
 export function patientAnswer(session, qid) {
   return [...(session.conversation || [])].reverse().find((x) => x.role === "patient" && x.qid === qid) || null;
 }
@@ -106,7 +175,6 @@ export function questionDef(session, qid) {
   if (qid === "site") return SITE_QUESTION;
   const fixed = (FIXED_SETS[site] || []).find((q) => q.id === qid);
   if (fixed) return fixed;
-  // AI / fallback follow-ups store their own input spec on the assistant entry
   const entry = [...(session.conversation || [])].reverse().find((x) => x.role === "assistant" && x.qid === qid);
   return entry ? entry.question_def : null;
 }
@@ -129,13 +197,11 @@ export function fallbackFollowUp(session, site) {
 }
 
 export function inputSpec(q) {
-  // What the browser is allowed to see: never the AI's reasoning, only the input spec.
   if (q.type === "yes_no") return { type: "yes_no", options: YES_NO_NOTSURE };
   if (q.type === "text") return { type: "text", options: [] };
   return { type: q.type, options: q.options };
 }
 
-// Validate a browser answer against the question actually asked. Returns { ok, message, selected } or { ok:false, error }.
 export function resolveAnswer(q, body) {
   const spec = inputSpec(q);
   if (spec.type === "text") {
@@ -154,6 +220,7 @@ export function resolveAnswer(q, body) {
     seen.add(opt.id);
     const typed = String(p?.text ?? "").trim().slice(0, 200);
     if (opt.text === "required" && !typed) return { ok: false, error: "Please type your answer." };
+    // Always store English label for doctor contract
     selected.push({ id: opt.id, label: opt.label, text: opt.text ? typed : "" });
   }
   if (selected.length > 1 && selected.some((s) => spec.options.find((o) => o.id === s.id)?.exclusive)) {
@@ -163,7 +230,6 @@ export function resolveAnswer(q, body) {
   return { ok: true, message, selected };
 }
 
-// ---------- deterministic Contract 1.1 for the ear flow ----------
 const RED_FLAG_TEXT = /facial (weakness|droop|paralysis)|face (is )?(drooping|numb)|can'?t breathe|difficulty breathing|unconscious|heavy bleeding/i;
 
 const val = (s) => (s.id === "other" ? s.text : s.text ? `${s.label} (${s.text})` : s.label);
