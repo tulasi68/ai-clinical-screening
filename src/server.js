@@ -7,12 +7,10 @@ import {
   getSessionByPatientToken
 } from './store.js';
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
-
 import {
   SITE_QUESTION, FIXED_SETS, MAX_AI_QUESTIONS, siteOf, nextFixedQuestion,
   questionDef, inputSpec, resolveAnswer, localizeQuestion
 } from './flow.js';
-
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -22,7 +20,7 @@ const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
 function normalizePhone(phone) {
-  const raw = String(phone || '').replace(/\\D/g, '');
+  const raw = String(phone || '').replace(/\D/g, '');
   if (raw.length === 10) return '91' + raw;
   if (raw.length === 11 && raw.startsWith('0')) return '91' + raw.slice(1);
   return raw;
@@ -92,17 +90,19 @@ function publicSession(s) {
     screening_id: s.screening_id,
     status: s.status,
     patient: {
-      ui_language: s.patient.ui_language || 'en',
       patient_name: s.patient.patient_name,
       age: s.patient.age,
-      gender: s.patient.gender,      complaint: s.patient.complaint,
+      gender: s.patient.gender,
+      complaint: s.patient.complaint,
       clinic_id: s.patient.clinic_id || null,
       queue_token: s.patient.queue_token || null,
-      waiting_ahead: s.patient.waiting_ahead ?? null
+      waiting_ahead: s.patient.waiting_ahead ?? null,
+      ui_language: s.patient.ui_language || 'en',
     },
     question_count: s.question_count,
     conversation: (s.conversation || []).map(x => ({ role: x.role, message: x.message, at: x.at })),
-    patient_token_expires_at: s.patient_token_expires_at
+    patient_token_expires_at: s.patient_token_expires_at,
+    queue_status_url: queueStatusUrl(),
   };
 }
 
@@ -125,14 +125,15 @@ function progressOf(s) {
   const asked = (s.conversation || []).filter(x => x.role === 'assistant' && x.qid && x.qid !== 'site').length;
   return { current: asked, total: FIXED_SETS[site].length + MAX_AI_QUESTIONS, fixed: FIXED_SETS[site].length };
 }
+
 function questionPayload(s, entry) {
   const def = entry.qid ? questionDef(s, entry.qid) : null;
   const lang = String(s.patient?.ui_language || 'en').toLowerCase().startsWith('kn') ? 'kn' : 'en';
   const base = def ? localizeQuestion(def, lang) : { id: 'free', type: 'text', text: entry.message };
   const spec = inputSpec(def || base);
   const options = (spec.options || []).map((o) => {
-    const kn = lang === 'kn' && o.label_kn ? o.label_kn : o.label;
-    return { ...o, label: kn || o.label };
+    const label = lang === 'kn' && o.label_kn ? o.label_kn : o.label;
+    return { ...o, label: label || o.label };
   });
   const displayText = def
     ? (lang === 'kn' && def.text_kn ? def.text_kn : def.text)
@@ -154,8 +155,18 @@ function questionPayload(s, entry) {
 }
 
 async function askQuestion(s, q, kind) {
-  const entry = { role: 'assistant', message: q.text, at: new Date().toISOString(), qid: q.id, kind };
-  if (kind === 'followup') entry.question_def = { id: q.id, type: q.type, text: q.text };
+  const lang = String(s.patient?.ui_language || 'en').toLowerCase().startsWith('kn') ? 'kn' : 'en';
+  const displayText = (lang === 'kn' && q.text_kn) ? q.text_kn : q.text;
+  const entry = {
+    role: 'assistant',
+    message: displayText,
+    at: new Date().toISOString(),
+    qid: q.id,
+    kind,
+  };
+  if (kind === 'followup') {
+    entry.question_def = { id: q.id, type: q.type, text: q.text, text_kn: q.text_kn };
+  }
   s.conversation.push(entry);
   s.question_count++;
   await saveSession(s);
@@ -165,23 +176,20 @@ async function askQuestion(s, q, kind) {
 async function continueBrowserSession(s) {
   const site = siteOf(s);
 
-  // 1. Always start with the fixed site question.
   if (!site && !s.conversation.some(x => x.role === 'assistant')) {
     return askQuestion(s, SITE_QUESTION, 'fixed');
   }
 
-  // 2. Fixed questionnaire (server-defined questions AND choices), then <= MAX_AI_QUESTIONS AI follow-ups.
   if (site && FIXED_SETS[site]) {
     const q = nextFixedQuestion(s, site);
     if (q) return askQuestion(s, q, 'fixed');
 
     const f = await nextFollowUp(s, site);
-    if (f) return askQuestion(s, { id: f.qid, text: f.text, type: f.type }, 'followup');
+    if (f) return askQuestion(s, { id: f.qid, text: f.text, text_kn: f.text_kn, type: f.type }, 'followup');
 
     return { type: 'review', output: publicOutput(await finishForReview(s, 'completed')) };
   }
 
-  // 3. Sites without a fixed questionnaire yet (nose / throat) keep the previous AI chat.
   if (s.question_count >= maxQuestions()) {
     return { type: 'review', output: publicOutput(await finishForReview(s, 'question_limit')) };
   }
@@ -200,8 +208,6 @@ async function continueBrowserSession(s) {
 }
 
 function editableOutput(input, current) {
-  // The structured contract fields (complaints, allergies, ...) stay as captured;
-  // the patient can correct the human-readable summary.
   const out = { ...current };
   if (typeof input?.summary === 'string') out.summary = input.summary.slice(0, 4000);
   out.screening_id = current.screening_id;
@@ -239,9 +245,16 @@ async function getPatientContext(token, res) {
   return s;
 }
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+function applyLanguage(s, body) {
+  const bodyLang = String(body?.language || s.patient?.ui_language || 'en').toLowerCase();
+  const lang = bodyLang.startsWith('kn') ? 'kn' : 'en';
+  if (!s.patient) s.patient = {};
+  const changed = s.patient.ui_language !== lang;
+  s.patient.ui_language = lang;
+  return { lang, changed };
+}
 
-// Browser patient application.
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
 app.get('/api/patient/s/:token', async (req, res) => {
@@ -261,22 +274,17 @@ app.get('/api/patient/s/:token', async (req, res) => {
 
 app.post('/api/patient/s/:token/start', async (req, res) => {
   try {
-
-const bodyLang = String(req.body?.language || s.patient?.ui_language || 'en').toLowerCase();
-const lang = bodyLang.startsWith('kn') ? 'kn' : 'en';
-if (s.patient.ui_language !== lang) {
-  s.patient.ui_language = lang;
-  await saveSession(s);
-}
-    
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
+
+    const { changed } = applyLanguage(s, req.body);
+    if (changed) await saveSession(s);
+
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
       return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
     }
     if (s.status !== 'in_progress') return res.status(409).json({ error: 'Screening is not available.' });
 
-    // Resume: if a question is already waiting for an answer, show it again.
     const last = s.conversation[s.conversation.length - 1];
     if (last && last.role === 'assistant') return res.json(questionPayload(s, last));
 
@@ -296,11 +304,14 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
       return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
     }
 
+    applyLanguage(s, req.body);
+
     const last = s.conversation[s.conversation.length - 1];
-    if (!last || last.role !== 'assistant') return res.status(409).json({ error: 'There is no question waiting for an answer.' });
+    if (!last || last.role !== 'assistant') {
+      return res.status(409).json({ error: 'There is no question waiting for an answer.' });
+    }
 
     if (last.qid) {
-      // Fixed / follow-up question: validate the answer against the question that was actually asked.
       const q = questionDef(s, last.qid);
       if (!q) return res.status(409).json({ error: 'Question not found. Please reload the page.' });
       const r = resolveAnswer(q, req.body);
@@ -310,8 +321,9 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
         qid: last.qid, kind: last.kind, question: last.message, selected: r.selected
       });
     } else {
-      // Legacy free-text chat (nose / throat until their fixed sets exist).
-      const text = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+      const text = typeof req.body?.message === 'string'
+        ? req.body.message.trim()
+        : (typeof req.body?.text === 'string' ? req.body.text.trim() : '');
       if (!text || text.length > 4000) return res.status(400).json({ error: 'Please enter an answer.' });
       s.conversation.push({ role: 'patient', message: text, at: new Date().toISOString() });
     }
@@ -388,8 +400,6 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
   }
 });
 
-// Existing server-to-server creation endpoint. WhatsApp is no longer part of the
-// conversation. It now creates the session and returns the patient link.
 app.post('/api/screenings', async (req, res) => {
   try {
     if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
