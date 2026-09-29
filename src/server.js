@@ -7,10 +7,12 @@ import {
   getSessionByPatientToken
 } from './store.js';
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
+
 import {
   SITE_QUESTION, FIXED_SETS, MAX_AI_QUESTIONS, siteOf, nextFixedQuestion,
-  questionDef, inputSpec, resolveAnswer
+  questionDef, inputSpec, resolveAnswer, localizeQuestion
 } from './flow.js';
+
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -90,6 +92,7 @@ function publicSession(s) {
     screening_id: s.screening_id,
     status: s.status,
     patient: {
+      ui_language: s.patient.ui_language || 'en',
       patient_name: s.patient.patient_name,
       age: s.patient.age,
       gender: s.patient.gender,      complaint: s.patient.complaint,
@@ -122,17 +125,31 @@ function progressOf(s) {
   const asked = (s.conversation || []).filter(x => x.role === 'assistant' && x.qid && x.qid !== 'site').length;
   return { current: asked, total: FIXED_SETS[site].length + MAX_AI_QUESTIONS, fixed: FIXED_SETS[site].length };
 }
-
 function questionPayload(s, entry) {
   const def = entry.qid ? questionDef(s, entry.qid) : null;
-  const base = def || { id: 'free', type: 'text', text: entry.message };
-  const spec = inputSpec(base);
+  const lang = String(s.patient?.ui_language || 'en').toLowerCase().startsWith('kn') ? 'kn' : 'en';
+  const base = def ? localizeQuestion(def, lang) : { id: 'free', type: 'text', text: entry.message };
+  const spec = inputSpec(def || base);
+  const options = (spec.options || []).map((o) => {
+    const kn = lang === 'kn' && o.label_kn ? o.label_kn : o.label;
+    return { ...o, label: kn || o.label };
+  });
+  const displayText = def
+    ? (lang === 'kn' && def.text_kn ? def.text_kn : def.text)
+    : entry.message;
   return {
     type: 'question',
-    message: entry.message,
+    message: displayText,
     question_count: s.question_count,
     progress: progressOf(s),
-    question: { id: base.id, text: entry.message, kind: entry.kind || 'legacy', input: spec.type, options: spec.options }
+    question: {
+      id: (def || base).id,
+      text: displayText,
+      text_en: def?.text || entry.message,
+      kind: entry.kind || 'legacy',
+      input: spec.type,
+      options,
+    },
   };
 }
 
@@ -244,6 +261,14 @@ app.get('/api/patient/s/:token', async (req, res) => {
 
 app.post('/api/patient/s/:token/start', async (req, res) => {
   try {
+
+const bodyLang = String(req.body?.language || s.patient?.ui_language || 'en').toLowerCase();
+const lang = bodyLang.startsWith('kn') ? 'kn' : 'en';
+if (s.patient.ui_language !== lang) {
+  s.patient.ui_language = lang;
+  await saveSession(s);
+}
+    
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
