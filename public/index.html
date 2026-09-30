@@ -143,11 +143,17 @@ function setLang(next) {
   lang = normalizeLang(next);
   localStorage.setItem('screening_lang', lang);
   document.documentElement.lang = lang;
-  // re-render current view
   if (!state) return;
-  if (state.status === 'submitted') renderSubmitted(latestQueue);
-  else if (state.status === 'awaiting_review' || state.output) renderReview(state.output);
-  else if (q) drawQuestion();
+  if (state.status === 'submitted') { renderSubmitted(latestQueue); return; }
+  if (state.status === 'awaiting_review' || state.output) { renderReview(state.output); return; }
+  // During active screening, ask server to re-localize the current question
+  if (token && state.status === 'in_progress') {
+    api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang})})
+      .then((d)=>{ if(d.type==='review') renderReview(d.output); else if(d.question) renderQuestion(d); else renderWelcome(); })
+      .catch(()=>{ if (q) drawQuestion(); else renderWelcome(); });
+    return;
+  }
+  if (q) drawQuestion();
   else renderWelcome();
 }
 
