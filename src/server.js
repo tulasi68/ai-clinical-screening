@@ -33,10 +33,10 @@ function normalizeUiLang(value) {
 
 
 
-/** Localize fixed question using hard-coded strings in flow.js (no live translate API). */
-async function localizeForPatient(q, lang) {
-  const L = normalizeUiLang(lang);
-  const loc = localizeQuestion(q, L) || q;
+
+/** Hard-coded localization only (flow.js TX / text_kn). No live API. */
+function localizeForPatient(q, lang) {
+  const loc = localizeQuestion(q, lang) || q;
   return {
     text: loc.text || q.text,
     options: loc.options || q.options || [],
@@ -153,34 +153,47 @@ function progressOf(s) {
 function questionPayload(s, entry) {
   const def = entry.qid ? questionDef(s, entry.qid) : null;
   const lang = normalizeUiLang(s.patient?.ui_language);
-  const base = def ? localizeQuestion(def, lang) : { id: 'free', type: 'text', text: entry.message };
-  const spec = inputSpec(def || base);
-  let options = (spec.options || []).map((o) => {
-    const label = lang === 'kn' && o.label_kn ? o.label_kn : o.label;
-    return { ...o, label: label || o.label };
-  });
-  // Prefer labels translated at ask-time for non-en/kn
-  if (entry.localized_options && entry.localized_options.length) {
-    const byId = new Map(entry.localized_options.map((o) => [o.id, o]));
-    options = options.map((o) => {
-      const hit = byId.get(o.id);
-      return hit ? { ...o, label: hit.label || o.label } : o;
-    });
+
+  // Free-form AI question (no fixed def)
+  if (!def) {
+    return {
+      type: 'question',
+      message: entry.message,
+      question_count: s.question_count,
+      progress: progressOf(s),
+      question: {
+        id: entry.qid || 'free',
+        text: entry.message,
+        text_en: entry.message,
+        kind: entry.kind || 'legacy',
+        input: 'text',
+        options: [],
+      },
+    };
   }
-  // Use stored assistant message (already localized) when present
-  const displayText = entry.message || (def
-    ? (lang === 'kn' && def.text_kn ? def.text_kn : def.text)
-    : entry.message);
+
+  const loc = localizeQuestion(def, lang);
+  const spec = inputSpec(def);
+  // Prefer labels from localizeQuestion; keep option ids intact
+  let options = (loc.options && loc.options.length)
+    ? loc.options
+    : (spec.options || []).map((o) => ({
+        ...o,
+        label: (lang === 'kn' && o.label_kn) ? o.label_kn : o.label,
+      }));
+
+  const displayText = entry.message || loc.text || def.text;
+
   return {
     type: 'question',
     message: displayText,
     question_count: s.question_count,
     progress: progressOf(s),
     question: {
-      id: (def || base).id,
+      id: def.id,
       text: displayText,
-      text_en: def?.text || entry.message,
-      kind: entry.kind || 'legacy',
+      text_en: def.text,
+      kind: entry.kind || 'fixed',
       input: spec.type,
       options,
     },
@@ -189,18 +202,17 @@ function questionPayload(s, entry) {
 
 async function askQuestion(s, q, kind) {
   const lang = normalizeUiLang(s.patient?.ui_language);
-  const localized = await localizeForPatient(q, lang);
-  const displayText = localized.text;
+  const localized = localizeForPatient(q, lang);
   const entry = {
     role: 'assistant',
-    message: displayText,
+    message: localized.text,
     at: new Date().toISOString(),
     qid: q.id,
     kind,
     localized_options: localized.options,
   };
   if (kind === 'followup') {
-    entry.question_def = { id: q.id, type: q.type, text: q.text, text_kn: q.text_kn };
+    entry.question_def = { id: q.id, type: q.type || 'yes_no', text: q.text, text_kn: q.text_kn };
   }
   s.conversation.push(entry);
   s.question_count++;
@@ -211,20 +223,34 @@ async function askQuestion(s, q, kind) {
 async function continueBrowserSession(s) {
   const site = siteOf(s);
 
-  if (!site && !s.conversation.some(x => x.role === 'assistant')) {
+  // --- Fixed path: site question first ---
+  if (!site) {
+    const last = s.conversation[s.conversation.length - 1];
+    if (last && last.role === 'assistant' && last.qid === 'site') {
+      return questionPayload(s, last);
+    }
     return askQuestion(s, SITE_QUESTION, 'fixed');
   }
 
-  if (site && FIXED_SETS[site]) {
+  // --- Fixed path: ear has 9 structured questions with options ---
+  if (FIXED_SETS[site]) {
     const q = nextFixedQuestion(s, site);
     if (q) return askQuestion(s, q, 'fixed');
 
+    // After all fixed questions: up to 3 AI/yes-no follow-ups
     const f = await nextFollowUp(s, site);
-    if (f) return askQuestion(s, { id: f.qid, text: f.text, text_kn: f.text_kn, type: f.type }, 'followup');
+    if (f) {
+      return askQuestion(
+        s,
+        { id: f.qid, text: f.text, text_kn: f.text_kn, type: f.type || 'yes_no' },
+        'followup'
+      );
+    }
 
     return { type: 'review', output: publicOutput(await finishForReview(s, 'completed')) };
   }
 
+  // --- No fixed set for this site (e.g. nose/throat): AI questions ---
   if (s.question_count >= maxQuestions()) {
     return { type: 'review', output: publicOutput(await finishForReview(s, 'question_limit')) };
   }
@@ -238,7 +264,7 @@ async function continueBrowserSession(s) {
   }
   return {
     type: 'review',
-    output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed'))
+    output: publicOutput(await finishForReview(s, step.status === 'URGENT' ? 'urgent' : 'completed')),
   };
 }
 
