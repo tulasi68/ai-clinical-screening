@@ -30,6 +30,115 @@ function normalizeUiLang(value) {
 }
 
 
+
+
+const LANG_DISPLAY = {
+  en: 'English', kn: 'Kannada', hi: 'Hindi', ta: 'Tamil', te: 'Telugu', ml: 'Malayalam',
+  bn: 'Bengali', or: 'Odia', as: 'Assamese', mr: 'Marathi', ur: 'Urdu', bho: 'Bhojpuri',
+  mai: 'Maithili', ne: 'Nepali', mni: 'Manipuri', brx: 'Bodo',
+};
+
+const translateCache = new Map();
+
+async function translateWithSarvam(texts, targetLang) {
+  const lang = normalizeUiLang(targetLang);
+  if (!lang || lang === 'en') return texts.map((t) => String(t ?? ''));
+  const list = texts.map((t) => String(t ?? '').trim());
+  if (list.every((t) => !t)) return list;
+
+  const out = list.slice();
+  const needIdx = [];
+  const needTexts = [];
+  for (let i = 0; i < list.length; i++) {
+    const t = list[i];
+    if (!t) continue;
+    const key = lang + '|' + t;
+    if (translateCache.has(key)) {
+      out[i] = translateCache.get(key);
+    } else {
+      needIdx.push(i);
+      needTexts.push(t);
+    }
+  }
+  if (!needTexts.length) return out;
+
+  const apiKey = process.env.SARVAM_API_KEY;
+  if (!apiKey) {
+    console.warn('SARVAM_API_KEY missing; serving English text for', lang);
+    return list;
+  }
+
+  const langName = LANG_DISPLAY[lang] || lang;
+  const numbered = needTexts.map((t, i) => (i + 1) + '. ' + t).join('\n');
+  const prompt =
+    'Translate each numbered line into ' + langName + ' using the natural script for that language. ' +
+    'Keep meaning accurate for a medical patient screening UI. Keep numbers. Return ONLY the numbered translations, one per line, same count.\\n\\n' +
+    numbered;
+
+  try {
+    const response = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-subscription-key': apiKey,
+      },
+      body: JSON.stringify({
+        model: process.env.SARVAM_MODEL || 'sarvam-105b',
+        messages: [
+          { role: 'system', content: 'You are a precise medical UI translator. Output only numbered translations.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 1200,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('translate API error', response.status, data);
+      return list;
+    }
+    const content = String(data.choices?.[0]?.message?.content || '').trim();
+    const lines = content.split(/\n+/).map((x) => x.replace(/^\s*\d+[\).:\-]\s*/, '').trim()).filter(Boolean);
+    for (let j = 0; j < needIdx.length; j++) {
+      const translated = lines[j] || needTexts[j];
+      out[needIdx[j]] = translated;
+      translateCache.set(lang + '|' + needTexts[j], translated);
+    }
+    return out;
+  } catch (e) {
+    console.error('translate failed', e);
+    return list;
+  }
+}
+
+async function localizeForPatient(q, lang) {
+  const L = normalizeUiLang(lang);
+  if (L === 'kn' && q.text_kn) {
+    return {
+      text: q.text_kn,
+      options: (q.options || []).map((o) => ({
+        ...o,
+        label: o.label_kn || o.label,
+      })),
+    };
+  }
+  if (L === 'en' || L === 'kn') {
+    return {
+      text: q.text,
+      options: (q.options || []).map((o) => ({ ...o, label: o.label })),
+    };
+  }
+
+  const labels = (q.options || []).map((o) => o.label || '');
+  const translated = await translateWithSarvam([q.text, ...labels], L);
+  const text = translated[0] || q.text;
+  const options = (q.options || []).map((o, i) => ({
+    ...o,
+    label: translated[i + 1] || o.label,
+  }));
+  return { text, options };
+}
+
 function normalizePhone(phone) {
   const raw = String(phone || '').replace(/\D/g, '');
   if (raw.length === 10) return '91' + raw;
@@ -142,13 +251,22 @@ function questionPayload(s, entry) {
   const lang = normalizeUiLang(s.patient?.ui_language);
   const base = def ? localizeQuestion(def, lang) : { id: 'free', type: 'text', text: entry.message };
   const spec = inputSpec(def || base);
-  const options = (spec.options || []).map((o) => {
+  let options = (spec.options || []).map((o) => {
     const label = lang === 'kn' && o.label_kn ? o.label_kn : o.label;
     return { ...o, label: label || o.label };
   });
-  const displayText = def
+  // Prefer labels translated at ask-time for non-en/kn
+  if (entry.localized_options && entry.localized_options.length) {
+    const byId = new Map(entry.localized_options.map((o) => [o.id, o]));
+    options = options.map((o) => {
+      const hit = byId.get(o.id);
+      return hit ? { ...o, label: hit.label || o.label } : o;
+    });
+  }
+  // Use stored assistant message (already localized) when present
+  const displayText = entry.message || (def
     ? (lang === 'kn' && def.text_kn ? def.text_kn : def.text)
-    : entry.message;
+    : entry.message);
   return {
     type: 'question',
     message: displayText,
@@ -167,13 +285,15 @@ function questionPayload(s, entry) {
 
 async function askQuestion(s, q, kind) {
   const lang = normalizeUiLang(s.patient?.ui_language);
-  const displayText = (lang === 'kn' && q.text_kn) ? q.text_kn : q.text;
+  const localized = await localizeForPatient(q, lang);
+  const displayText = localized.text;
   const entry = {
     role: 'assistant',
     message: displayText,
     at: new Date().toISOString(),
     qid: q.id,
     kind,
+    localized_options: localized.options,
   };
   if (kind === 'followup') {
     entry.question_def = { id: q.id, type: q.type, text: q.text, text_kn: q.text_kn };
@@ -287,7 +407,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
 
-    const { changed } = applyLanguage(s, req.body);
+    const { changed, lang } = applyLanguage(s, req.body);
     if (changed) await saveSession(s);
 
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
@@ -296,7 +416,17 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     if (s.status !== 'in_progress') return res.status(409).json({ error: 'Screening is not available.' });
 
     const last = s.conversation[s.conversation.length - 1];
-    if (last && last.role === 'assistant') return res.json(questionPayload(s, last));
+    if (last && last.role === 'assistant') {
+      // If language just changed, re-localize the current fixed question for the patient
+      if (changed && last.qid) {
+        const q = questionDef(s, last.qid) || { id: last.qid, text: last.message, options: [] };
+        const localized = await localizeForPatient(q, lang);
+        last.message = localized.text;
+        last.localized_options = localized.options;
+        await saveSession(s);
+      }
+      return res.json(questionPayload(s, last));
+    }
 
     const result = await continueBrowserSession(s);
     res.json(result);
