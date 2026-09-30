@@ -321,7 +321,10 @@ function missingHints(session) {
 
 function fallbackDoctorQuestion(session) {
   const c = coverage(session);
-  const kn = patientUiLang(session) === "kn";
+  const ui = patientUiLang(session);
+  // Only hard-coded fallbacks for en/kn; other languages rely on the model
+  if (ui !== "en" && ui !== "kn") return null;
+  const kn = ui === "kn";
   if (!c.site)
     return kn
       ? "ನಮಸ್ಕಾರ. ಸಮಾಲೋಚನೆಗೂ ಮುನ್ನ, ಸಮಸ್ಯೆ ಮುಖ್ಯವಾಗಿ ಕಿವಿ, ಮೂಗು ಅಥವಾ ಗಂಟಲಿನಲ್ಲಿದೆಯೇ?"
