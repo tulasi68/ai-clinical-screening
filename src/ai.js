@@ -216,15 +216,16 @@ function prescribeReady(session) {
 }
 
 function doctorPersona(specialty, session) {
-  const uiLang = patientUiLang(session);
-  const langName = LANG_NAMES[uiLang] || 'English';
+  // Fixed questions are hard-coded in local languages; AI follow-ups stay English.
+  // Doctor-facing summary must remain English.
+  const uiLang = 'en';
+  const langName = 'English';
   const langBlock = `
-PATIENT LANGUAGE CODE: ${uiLang} (${langName})
-- Speak to the patient in simple ${langName}. Use the natural script for that language.
-- One short question only per turn.
-- If the patient replies in another language, still answer in ${langName} unless they clearly switch.
+PATIENT LANGUAGE CODE: en (English)
+- Speak to the patient in simple English. One short question only.
 - Never prescribe or diagnose.
 - Never say you are an AI, model, bot, or screening tool.
+- The clinical summary for the doctor must be written in English.
 `.trim();
 
   if (isEnt(specialty)) {
