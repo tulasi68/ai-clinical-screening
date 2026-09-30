@@ -29,6 +29,10 @@ function normalizeUiLang(value) {
   return 'en';
 }
 
+
+
+
+
 /** Localize fixed question using hard-coded strings in flow.js (no live translate API). */
 async function localizeForPatient(q, lang) {
   const L = normalizeUiLang(lang);
@@ -155,6 +159,7 @@ function questionPayload(s, entry) {
     const label = lang === 'kn' && o.label_kn ? o.label_kn : o.label;
     return { ...o, label: label || o.label };
   });
+  // Prefer labels translated at ask-time for non-en/kn
   if (entry.localized_options && entry.localized_options.length) {
     const byId = new Map(entry.localized_options.map((o) => [o.id, o]));
     options = options.map((o) => {
@@ -162,6 +167,7 @@ function questionPayload(s, entry) {
       return hit ? { ...o, label: hit.label || o.label } : o;
     });
   }
+  // Use stored assistant message (already localized) when present
   const displayText = entry.message || (def
     ? (lang === 'kn' && def.text_kn ? def.text_kn : def.text)
     : entry.message);
@@ -315,6 +321,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
 
     const last = s.conversation[s.conversation.length - 1];
     if (last && last.role === 'assistant') {
+      // If language just changed, re-localize the current fixed question for the patient
       if (changed && last.qid) {
         const q = questionDef(s, last.qid) || { id: last.qid, text: last.message, options: [] };
         const localized = await localizeForPatient(q, lang);
