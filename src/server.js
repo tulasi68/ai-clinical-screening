@@ -19,6 +19,17 @@ app.use(express.static(path.join(__dirname, '../public')));
 const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
+const SUPPORTED_UI_LANGS = new Set(['en','kn','hi','ta','te','ml','bn','or','as','mr','ur','bho','mai','ne','mni','brx']);
+function normalizeUiLang(value) {
+  const s = String(value || 'en').toLowerCase().trim();
+  if (SUPPORTED_UI_LANGS.has(s)) return s;
+  for (const c of SUPPORTED_UI_LANGS) {
+    if (s === c || s.startsWith(c + '-') || s.startsWith(c + '_')) return c;
+  }
+  return 'en';
+}
+
+
 function normalizePhone(phone) {
   const raw = String(phone || '').replace(/\D/g, '');
   if (raw.length === 10) return '91' + raw;
@@ -128,7 +139,7 @@ function progressOf(s) {
 
 function questionPayload(s, entry) {
   const def = entry.qid ? questionDef(s, entry.qid) : null;
-  const lang = String(s.patient?.ui_language || 'en').toLowerCase().startsWith('kn') ? 'kn' : 'en';
+  const lang = normalizeUiLang(s.patient?.ui_language);
   const base = def ? localizeQuestion(def, lang) : { id: 'free', type: 'text', text: entry.message };
   const spec = inputSpec(def || base);
   const options = (spec.options || []).map((o) => {
@@ -155,7 +166,7 @@ function questionPayload(s, entry) {
 }
 
 async function askQuestion(s, q, kind) {
-  const lang = String(s.patient?.ui_language || 'en').toLowerCase().startsWith('kn') ? 'kn' : 'en';
+  const lang = normalizeUiLang(s.patient?.ui_language);
   const displayText = (lang === 'kn' && q.text_kn) ? q.text_kn : q.text;
   const entry = {
     role: 'assistant',
@@ -246,8 +257,7 @@ async function getPatientContext(token, res) {
 }
 
 function applyLanguage(s, body) {
-  const bodyLang = String(body?.language || s.patient?.ui_language || 'en').toLowerCase();
-  const lang = bodyLang.startsWith('kn') ? 'kn' : 'en';
+  const lang = normalizeUiLang(body?.language || s.patient?.ui_language || 'en');
   if (!s.patient) s.patient = {};
   const changed = s.patient.ui_language !== lang;
   s.patient.ui_language = lang;
