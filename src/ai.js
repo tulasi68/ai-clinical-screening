@@ -17,8 +17,32 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+const LANG_NAMES = {
+  en: 'English',
+  kn: 'Kannada (Kannada script)',
+  hi: 'Hindi (Devanagari)',
+  ta: 'Tamil (Tamil script)',
+  te: 'Telugu (Telugu script)',
+  ml: 'Malayalam (Malayalam script)',
+  bn: 'Bengali (Bengali script)',
+  or: 'Odia (Odia script)',
+  as: 'Assamese (Assamese/Bengali script)',
+  mr: 'Marathi (Devanagari)',
+  ur: 'Urdu (Urdu script)',
+  bho: 'Bhojpuri (Devanagari)',
+  mai: 'Maithili (Devanagari)',
+  ne: 'Nepali (Devanagari)',
+  mni: 'Manipuri / Meitei (Meitei script or Bengali script as appropriate)',
+  brx: 'Bodo (Devanagari)',
+};
+const SUPPORTED_UI_LANGS = new Set(Object.keys(LANG_NAMES));
 function patientUiLang(session) {
-  return String(session?.patient?.ui_language || "en").toLowerCase().startsWith("kn") ? "kn" : "en";
+  const s = String(session?.patient?.ui_language || 'en').toLowerCase().trim();
+  if (SUPPORTED_UI_LANGS.has(s)) return s;
+  for (const c of SUPPORTED_UI_LANGS) {
+    if (s === c || s.startsWith(c + '-') || s.startsWith(c + '_')) return c;
+  }
+  return 'en';
 }
 
 function extractJsonObject(text) {
@@ -193,10 +217,12 @@ function prescribeReady(session) {
 
 function doctorPersona(specialty, session) {
   const uiLang = patientUiLang(session);
+  const langName = LANG_NAMES[uiLang] || 'English';
   const langBlock = `
-PATIENT LANGUAGE CODE: ${uiLang}
-- If "kn": speak to the patient in simple Kannada (Kannada script). One short question only.
-- If "en": speak in simple English. One short question only.
+PATIENT LANGUAGE CODE: ${uiLang} (${langName})
+- Speak to the patient in simple ${langName}. Use the natural script for that language.
+- One short question only per turn.
+- If the patient replies in another language, still answer in ${langName} unless they clearly switch.
 - Never prescribe or diagnose.
 - Never say you are an AI, model, bot, or screening tool.
 `.trim();
