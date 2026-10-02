@@ -3,8 +3,6 @@
 // Patient never fills extra forms — chat ends → structured summary.
 
 import { siteOf, buildEarContract, fallbackFollowUp, followUpsAsked, MAX_AI_QUESTIONS } from "./flow.js";
-// ── NEW ──
-import { getSpecialtyModule } from "./specialties/index.js";
 
 const SARVAM_API_URL = "https://api.sarvam.ai/v1/chat/completions";
 const SARVAM_MODEL = process.env.SARVAM_MODEL || "sarvam-105b";
@@ -143,12 +141,6 @@ function isEnt(specialty) {
   return !s || ["ent", "oto", "otolaryngology", "ear_nose_throat"].includes(s);
 }
 
-// ── NEW: check whether this is a general-medicine session ──
-function isGeneralMedicine(specialty) {
-  const s = normalizeSpecialty(specialty);
-  return ["general_medicine", "gm", "general", "internal_medicine", "family_medicine"].includes(s);
-}
-
 function patientText(session) {
   return (session.conversation || [])
     .filter((x) => x.role === "patient")
@@ -223,26 +215,7 @@ function prescribeReady(session) {
   );
 }
 
-// ── NEW: answerHelper over a session's conversation (used by GM fallbacks) ──
-function answerHelperFromConversation(session) {
-  const pa = (qid) =>
-    [...(session.conversation || [])].reverse()
-      .find((x) => x.role === "patient" && x.qid === qid) || null;
-  return {
-    has: (qid, optId) => !!pa(qid)?.selected?.some((s) => s.id === optId),
-    ids: (qid) => (pa(qid)?.selected || []).map((s) => s.id),
-  };
-}
-
 function doctorPersona(specialty, session) {
-  // ── NEW: module-provided persona for general_medicine ──
-  const spec = normalizeSpecialty(specialty);
-  if (isGeneralMedicine(spec)) {
-    const mod = getSpecialtyModule("general_medicine");
-    if (mod && mod.persona) return mod.persona;
-  }
-
-  // ── EXISTING: ENT + generic persona, unchanged ──
   // Fixed questions are hard-coded in local languages; AI follow-ups stay English.
   // Doctor-facing summary must remain English.
   const uiLang = 'en';
@@ -796,21 +769,11 @@ export async function consolidate(session) {
     summary: session.patient?.complaint || "See conversation transcript.", screening_status: "completed", patient_approved: false, submitted_at: null, data_quality_notes: []
   };
 
-  // ── NEW: for GM, skip the ENT-specific ear shortcut and use the module's own instructions if provided ──
-  const spec = normalizeSpecialty(session.patient?.specialty);
-  const isGm = isGeneralMedicine(spec);
-
-  if (!isGm && siteOf(session) === "ear") return buildEarContract(session, base);
-
-  const moduleInstructions = (() => {
-    if (!isGm) return null;
-    const mod = getSpecialtyModule("general_medicine");
-    return mod && mod.consolidateInstructions ? mod.consolidateInstructions : null;
-  })();
+  if (siteOf(session) === "ear") return buildEarContract(session, base);
 
   try {
     const raw = await sarvamChat([
-      { role: "system", content: moduleInstructions || consolidationInstructions },
+      { role: "system", content: consolidationInstructions },
       { role: "user", content: input },
     ], {
       temperature: 0.1, max_tokens: 2500,
@@ -894,30 +857,11 @@ function validFollowUp(session, r) {
   return { text: q, type };
 }
 
-// ── NEW: signature accepts either a site string (legacy ENT) or a module object (GM) ──
-export async function nextFollowUp(session, siteOrModule) {
-  const isModule = siteOrModule && typeof siteOrModule === "object";
-  const moduleFallbacks = isModule && Array.isArray(siteOrModule.fallbacks) ? siteOrModule.fallbacks : null;
-  const site = isModule ? siteOf(session) : siteOrModule;
-
+export async function nextFollowUp(session, site) {
   const asked = followUpsAsked(session);
   if (asked >= MAX_AI_QUESTIONS) return null;
 
   const fb = () => {
-    // ── NEW: prefer module fallbacks when available ──
-    if (moduleFallbacks) {
-      const a = answerHelperFromConversation(session);
-      const askedSet = new Set(
-        (session.conversation || [])
-          .filter((x) => x.role === "assistant" && x.kind === "followup")
-          .map((x) => x.qid)
-      );
-      const f = moduleFallbacks.find((q) => !askedSet.has(q.id) && (!q.when || q.when(a)));
-      if (!f) return null;
-      const text = patientUiLang(session) === "kn" && f.text_kn ? f.text_kn : f.text;
-      return { qid: f.id, text, text_kn: f.text_kn, type: f.type || "yes_no", redFlagIfYes: !!f.redFlagIfYes };
-    }
-    // ── EXISTING: ENT fallback path (unchanged) ──
     const f = fallbackFollowUp(session, site);
     if (!f) return null;
     const text = patientUiLang(session) === "kn" && f.text_kn ? f.text_kn : f.text;
