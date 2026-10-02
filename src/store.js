@@ -43,6 +43,12 @@ export function normalizePhone(phone) {
   return d;
 }
 
+/** Step 4: normalise specialty, defaulting to "ent" so ENT never breaks. */
+function normalizeSpecialty(value) {
+  const s = String(value || '').toLowerCase().trim().replace(/\s+/g, '_').slice(0, 40);
+  return s || 'ent';
+}
+
 function sessionRow(s) {
   return {
     screening_id: s.screening_id, status: s.status, created_at: s.created_at,
@@ -76,17 +82,12 @@ export async function createSession(input) {
     screening_id, status: 'in_progress', created_at: now, updated_at: now,
     completed_at: null, submitted_at: null,
     patient: {
-      patient_name: input.patient_name,
-      age: input.age,
-      gender: input.gender,
-      complaint: input.complaint,
-      phone: normalizePhone(input.phone),
+      patient_name: input.patient_name, age: input.age, gender: input.gender,
+      complaint: input.complaint, phone: normalizePhone(input.phone),
       clinic_id: input.clinic_id || null,
-      queue_token: input.queue_token || null,
-      waiting_ahead: input.waiting_ahead ?? null,
-      // ── NEW: persist for specialty routing ──
-      specialty: String(input.specialty || '').toLowerCase().trim() || null,
-      username:  String(input.username  || '').trim() || null,
+      queue_token: input.queue_token || null, waiting_ahead: input.waiting_ahead ?? null,
+      // Step 4: persist specialty. Default is "ent" so absent field is safe for ENT.
+      specialty: normalizeSpecialty(input.specialty)
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
     patient_token_hash: hashPatientToken(token), patient_token_expires_at: expires
