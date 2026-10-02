@@ -11,8 +11,6 @@ import {
   SITE_QUESTION, FIXED_SETS, MAX_AI_QUESTIONS, siteOf, nextFixedQuestion,
   questionDef, inputSpec, resolveAnswer, localizeQuestion
 } from './flow.js';
-// ── NEW ──
-import { resolveSpecialty, getSpecialtyModule, isRegistered } from './specialties/index.js';
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -30,6 +28,11 @@ function normalizeUiLang(value) {
   }
   return 'en';
 }
+
+
+
+
+
 
 /** Hard-coded localization only (flow.js TX / text_kn). No live API. */
 function localizeForPatient(q, lang) {
@@ -119,9 +122,6 @@ function publicSession(s) {
       queue_token: s.patient.queue_token || null,
       waiting_ahead: s.patient.waiting_ahead ?? null,
       ui_language: s.patient.ui_language || 'en',
-      // ── NEW ──
-      specialty: s.patient.specialty || null,
-      username: s.patient.username || null,
     },
     question_count: s.question_count,
     conversation: (s.conversation || []).map(x => ({ role: x.role, message: x.message, at: x.at })),
@@ -220,64 +220,7 @@ async function askQuestion(s, q, kind) {
   return questionPayload(s, entry);
 }
 
-// ── NEW: local helpers for the module-driven flow ──
-function answeredLocal(session, qid) {
-  return (session.conversation || []).some(
-    (x) => x.role === 'patient' && x.qid === qid
-  );
-}
-function answerHelperLocal(session) {
-  const pa = (qid) =>
-    [...(session.conversation || [])].reverse()
-      .find((x) => x.role === 'patient' && x.qid === qid) || null;
-  return {
-    has: (qid, optId) => !!pa(qid)?.selected?.some((s) => s.id === optId),
-    ids: (qid) => (pa(qid)?.selected || []).map((s) => s.id),
-  };
-}
-
-// ── NEW: module-driven flow (used for general_medicine and all future specialties) ──
-async function continueModuleSession(s) {
-  const module = getSpecialtyModule(s.patient?.specialty);
-  if (!module || !Array.isArray(module.questions)) {
-    // Nothing to do — behave like the original generic path
-    return {
-      type: 'review',
-      output: publicOutput(await finishForReview(s, 'completed')),
-    };
-  }
-
-  const ah = answerHelperLocal(s);
-  const next = module.questions.find(
-    (q) => !answeredLocal(s, q.id) && (!q.showIf || q.showIf(ah))
-  );
-  if (next) return askQuestion(s, next, 'fixed');
-
-  // All fixed questions answered → up to MAX_AI_QUESTIONS follow-ups
-  const f = await nextFollowUp(s, module);
-  if (f) {
-    return askQuestion(
-      s,
-      { id: f.qid, text: f.text, text_kn: f.text_kn, type: f.type || 'yes_no' },
-      'followup'
-    );
-  }
-
-  return {
-    type: 'review',
-    output: publicOutput(await finishForReview(s, 'completed')),
-  };
-}
-
 async function continueBrowserSession(s) {
-  // ── NEW: module-driven specialties (general_medicine today) ──
-  // ENT is intentionally excluded: it keeps the original site→ear/nose/throat flow.
-  const spec = String(s.patient?.specialty || '').toLowerCase().trim();
-  if (spec && spec !== 'ent' && isRegistered(spec)) {
-    return await continueModuleSession(s);
-  }
-
-  // ── EXISTING: original ENT-driven flow, unchanged ──
   const site = siteOf(s);
 
   // --- Fixed path: site question first ---
@@ -536,26 +479,12 @@ app.post('/api/screenings', async (req, res) => {
     const clinic_id = String(req.body.clinic_id || '').trim().slice(0, 120) || null;
     const qt = String(req.body.queue_token || '').trim().slice(0, 20);
     const wa = Number.isInteger(req.body.waiting_ahead) && req.body.waiting_ahead >= 0 && req.body.waiting_ahead < 1000 ? req.body.waiting_ahead : null;
-    // ── NEW: resolve specialty from explicit value, username prefix, or clinic default ──
-    const resolvedSpecialty = resolveSpecialty({
-      specialty: req.body.specialty,
-      username: req.body.username,
-      clinicDefault: req.body.clinic_default_specialty,
-    });
-    const s = await createSession({
-      ...req.body,
-      clinic_id,
-      queue_token: qt || null,
-      waiting_ahead: wa,
-      specialty: resolvedSpecialty,
-      username: req.body.username || null,
-    });
+    const s = await createSession({ ...req.body, clinic_id, queue_token: qt || null, waiting_ahead: wa });
     res.status(201).json({
       screening_id: s.screening_id,
       status: s.status,
       patient_url: patientUrl(req, s.patient_token),
       clinic_id: s.patient.clinic_id || null,
-      specialty: resolvedSpecialty,
       queue_status_url: queueStatusUrl()
     });
   } catch (e) {
