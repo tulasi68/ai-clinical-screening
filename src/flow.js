@@ -865,6 +865,17 @@ export function questionDef(session, qid) {
   if (qid === "site") return SITE_QUESTION;
   const fixed = (FIXED_SETS[site] || []).find((q) => q.id === qid);
   if (fixed) return fixed;
+
+  // ── NEW: module-provided questions (GM today) ──
+  const spec = String(session?.patient?.specialty || "").toLowerCase().trim();
+  if (spec && spec !== "ent") {
+    const mod = getSpecialtyModule(spec);
+    const modQ = mod && Array.isArray(mod.questions)
+      ? mod.questions.find((q) => q.id === qid)
+      : null;
+    if (modQ) return modQ;
+  }
+
   const entry = [...(session.conversation || [])].reverse().find((x) => x.role === "assistant" && x.qid === qid);
   return entry ? entry.question_def : null;
 }
