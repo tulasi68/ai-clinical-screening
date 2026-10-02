@@ -3,7 +3,7 @@
 // so the AI can never invent or corrupt an option list.
 // Labels: English + Kannada (text_kn/label_kn) + hard-coded TX for other languages.
 // AI follow-up questions (last 3) stay in English. Doctor-facing summary stays in English.
-
+import { getSpecialtyModule } from "./specialties/index.js";
 export const MAX_AI_QUESTIONS = 3;
 
 const OTHER = { id: "other", label: "Type your answer", label_kn: "ನಿಮ್ಮ ಉತ್ತರ ಬರೆಯಿರಿ", text: "required" };
