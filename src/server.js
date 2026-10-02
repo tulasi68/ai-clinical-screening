@@ -11,6 +11,9 @@ import {
   SITE_QUESTION, FIXED_SETS, MAX_AI_QUESTIONS, siteOf, nextFixedQuestion,
   questionDef, inputSpec, resolveAnswer, localizeQuestion
 } from './flow.js';
+// Step 5: specialty module registry. ENT is deliberately NOT registered —
+// the ENT flow stays inline in continueBrowserSession() and is protected.
+import { getSpecialtyModule } from './specialties/index.js';
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -29,10 +32,11 @@ function normalizeUiLang(value) {
   return 'en';
 }
 
-
-
-
-
+/** Step 4/5: specialty normaliser. Default is ALWAYS "ent". */
+function normalizeSpecialty(value) {
+  const s = String(value || '').toLowerCase().trim().replace(/\s+/g, '_').slice(0, 40);
+  return s || 'ent';
+}
 
 /** Hard-coded localization only (flow.js TX / text_kn). No live API. */
 function localizeForPatient(q, lang) {
@@ -220,7 +224,67 @@ async function askQuestion(s, q, kind) {
   return questionPayload(s, entry);
 }
 
+/* ============================================================
+ * Step 5: non-ENT specialty module driver.
+ *
+ * EXPECTED MODULE INTERFACE (from getSpecialtyModule(code)):
+ *   mod.questions           array of question defs { id, text, options, ... } (optional)
+ *   mod.nextQuestion(s)    → next question def, or null when done       (preferred)
+ *   mod.buildContract(s)   → full Contract v1.1 output                  (optional)
+ *
+ * If mod.nextQuestion is absent, we fall back to iterating mod.questions
+ * and skipping any qid already answered. If mod.buildContract is absent,
+ * we use the generic consolidate() from ai.js.
+ *
+ * Adaptation note: if your module exposes a different API (e.g. a
+ * combined `step(s)` or a `FIXED_SETS`-style map), change ONLY the two
+ * lines marked ADAPT below. Nothing else in this file depends on the
+ * module's shape.
+ * ============================================================ */
+function alreadyAnsweredQid(s, qid) {
+  return (s.conversation || []).some((x) => x.role === 'patient' && x.qid === qid);
+}
+
+async function continueModuleSession(s, mod) {
+  let next = null;
+  if (typeof mod.nextQuestion === 'function') {
+    next = mod.nextQuestion(s);                        // ADAPT #1
+  } else if (Array.isArray(mod.questions)) {
+    next = mod.questions.find((q) => !alreadyAnsweredQid(s, q.id)) || null;
+  }
+
+  if (next) {
+    return askQuestion(s, next, 'fixed');
+  }
+
+  // No more questions — build the contract via the module, or fall back.
+  const out = typeof mod.buildContract === 'function'
+    ? await mod.buildContract(s)                       // ADAPT #2
+    : await consolidate(s);
+
+  out.screening_id = s.screening_id;
+  out.screening_status = out.screening_status === 'urgent' ? 'urgent' : 'completed';
+  out.patient_approved = false;
+  out.submitted_at = null;
+  await saveOutput(s.screening_id, out);
+  s.status = 'awaiting_review';
+  s.completed_at = new Date().toISOString();
+  await saveSession(s);
+  return { type: 'review', output: publicOutput(out) };
+}
+
 async function continueBrowserSession(s) {
+  // ── Step 5: route non-ENT specialties to their module. ──
+  // ENT, and any unregistered specialty, fall through to the protected
+  // inline ENT flow below. This branch adds behaviour but never removes it.
+  const spec = normalizeSpecialty(s.patient?.specialty);
+  if (spec && spec !== 'ent') {
+    const mod = getSpecialtyModule(spec);
+    if (mod) return continueModuleSession(s, mod);
+    // Unknown specialty → continue with the ENT flow (safest default).
+  }
+  // ── end Step 5 branch ──
+
   const site = siteOf(s);
 
   // --- Fixed path: site question first ---
@@ -479,7 +543,9 @@ app.post('/api/screenings', async (req, res) => {
     const clinic_id = String(req.body.clinic_id || '').trim().slice(0, 120) || null;
     const qt = String(req.body.queue_token || '').trim().slice(0, 20);
     const wa = Number.isInteger(req.body.waiting_ahead) && req.body.waiting_ahead >= 0 && req.body.waiting_ahead < 1000 ? req.body.waiting_ahead : null;
-    const s = await createSession({ ...req.body, clinic_id, queue_token: qt || null, waiting_ahead: wa });
+    // Step 4: normalise specialty here too; store.js defaults to "ent" if absent.
+    const specialty = normalizeSpecialty(req.body.specialty);
+    const s = await createSession({ ...req.body, specialty, clinic_id, queue_token: qt || null, waiting_ahead: wa });
     res.status(201).json({
       screening_id: s.screening_id,
       status: s.status,
