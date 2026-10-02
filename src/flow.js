@@ -3,7 +3,6 @@
 // so the AI can never invent or corrupt an option list.
 // Labels: English + Kannada (text_kn/label_kn) + hard-coded TX for other languages.
 // AI follow-up questions (last 3) stay in English. Doctor-facing summary stays in English.
-import { getSpecialtyModule } from "./specialties/index.js";
 export const MAX_AI_QUESTIONS = 3;
 
 const OTHER = { id: "other", label: "Type your answer", label_kn: "ನಿಮ್ಮ ಉತ್ತರ ಬರೆಯಿರಿ", text: "required" };
@@ -865,17 +864,6 @@ export function questionDef(session, qid) {
   if (qid === "site") return SITE_QUESTION;
   const fixed = (FIXED_SETS[site] || []).find((q) => q.id === qid);
   if (fixed) return fixed;
-
-  // ── NEW: module-provided questions (GM today) ──
-  const spec = String(session?.patient?.specialty || "").toLowerCase().trim();
-  if (spec && spec !== "ent") {
-    const mod = getSpecialtyModule(spec);
-    const modQ = mod && Array.isArray(mod.questions)
-      ? mod.questions.find((q) => q.id === qid)
-      : null;
-    if (modQ) return modQ;
-  }
-
   const entry = [...(session.conversation || [])].reverse().find((x) => x.role === "assistant" && x.qid === qid);
   return entry ? entry.question_def : null;
 }
