@@ -9,7 +9,7 @@ import {
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
 import {
   SITE_QUESTION, FIXED_SETS, MAX_AI_QUESTIONS, siteOf, nextFixedQuestion,
-  questionDef, inputSpec, resolveAnswer, localizeQuestion
+  questionDef, inputSpec, resolveAnswer, localizeQuestion, answerHelper
 } from './flow.js';
 // Step 5: specialty module registry. ENT is deliberately NOT registered —
 // the ENT flow stays inline in continueBrowserSession() and is protected.
@@ -250,7 +250,15 @@ async function continueModuleSession(s, mod) {
   if (typeof mod.nextQuestion === 'function') {
     next = mod.nextQuestion(s);                        // ADAPT #1
   } else if (Array.isArray(mod.questions)) {
-    next = mod.questions.find((q) => !alreadyAnsweredQid(s, q.id)) || null;
+    // Walk in order; skip answered; respect optional showIf(answerHelper)
+    const helper = answerHelper(s);
+    next = mod.questions.find((q) => {
+      if (alreadyAnsweredQid(s, q.id)) return false;
+      if (typeof q.showIf === 'function') {
+        try { return Boolean(q.showIf(helper)); } catch { return true; }
+      }
+      return true;
+    }) || null;
   }
 
   if (next) {
