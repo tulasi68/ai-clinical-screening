@@ -8,6 +8,7 @@
 // NOTE: if specialties/index.js ever imports from this file AT TOP LEVEL, the
 // cycle will surface as partial-init. Function-declaration imports are safe.
 import { getSpecialtyModule } from "./specialties/index.js";
+import { TX_GM } from "./specialties/general_medicine/i18n.js";
 
 export const MAX_AI_QUESTIONS = 3;
 
@@ -800,6 +801,8 @@ const TX = {
   }
 };
 
+Object.assign(TX, TX_GM);
+
 const HI_FALLBACK = new Set(["bho", "mai", "mni", "brx"]);
 
 function normLang(lang) {
@@ -823,27 +826,31 @@ export function tr(en, lang) {
 export function localizeQuestion(q, lang) {
   if (!q) return q;
   const L = normLang(lang);
-  if (L === "kn") {
-    const text = q.text_kn || tr(q.text, "kn") || q.text;
-    const options = (q.options || []).map((o) => ({
-      ...o,
-      label: o.label_kn || tr(o.label, "kn") || o.label,
-    }));
-    return { ...q, text, options };
-  }
   if (L === "en") {
     return {
       ...q,
       text: q.text,
+      text_en: q.text,
       options: (q.options || []).map((o) => ({ ...o, label: o.label })),
     };
   }
-  const text = tr(q.text, L) || q.text;
+  const textKey = "text_" + L;
+  const labelKey = "label_" + L;
+  // Prefer explicit per-language fields, then Kannada aliases, then TX map, then English
+  const text =
+    q[textKey] ||
+    (L === "kn" ? q.text_kn : null) ||
+    tr(q.text, L) ||
+    q.text;
   const options = (q.options || []).map((o) => ({
     ...o,
-    label: tr(o.label, L) || o.label,
+    label:
+      o[labelKey] ||
+      (L === "kn" ? o.label_kn : null) ||
+      tr(o.label, L) ||
+      o.label,
   }));
-  return { ...q, text, options };
+  return { ...q, text, text_en: q.text, options };
 }
 
 export function patientAnswer(session, qid) {
