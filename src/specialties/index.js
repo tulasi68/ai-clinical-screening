@@ -1,35 +1,25 @@
-// Central registry. Adding a specialty:
-//   1. Create src/specialties/<code>/index.js following the module contract
-//   2. Import it here and add to SPECIALTY_MODULES
-//   3. Add username prefixes to USERNAME_PREFIXES
-// Nothing else in the codebase needs to change.
-//
-// NOTE: ENT is intentionally NOT registered here — it lives in flow.js/ai.js
-// and continues to use the original code path. Migration to a module is deferred.
+// Central registry.
+// ENT is NOT registered — handled by flow.js.
+// general_medicine → dedicated GM question pack
+// All other non-ENT specialties → generic 5-question pack
 
 import generalMedicine from './general_medicine/index.js';
-// import gynecology from './gynecology/index.js';
-// import cardiology from './cardiology/index.js';
-// import pediatrics from './pediatrics/index.js';
-// ... add remaining as you build them
+import generic from './generic/index.js';
 
-// ─────────────────────────────────────────────────────────────
-// Username prefix → specialty code
-// Handles: genmedstaff1, gynodoctor2, cardstaff1, entstaff10,
-//          staff_gm1, doctor_gm1 (role-first form)
-// ─────────────────────────────────────────────────────────────
 const USERNAME_PREFIXES = {
   genmed: 'general_medicine',
   gm:     'general_medicine',
-  // ent:    'ent',           // ← registered only if/when ENT migrates to a module
   gyno:   'gynecology',
   gyn:    'gynecology',
   obg:    'gynecology',
   card:   'cardiology',
+  cardio: 'cardiology',
   peds:   'pediatrics',
   paed:   'pediatrics',
+  pedia:  'pediatrics',
   ortho:  'orthopedics',
   derm:   'dermatology',
+  derma:  'dermatology',
   ophth:  'ophthalmology',
   eye:    'ophthalmology',
   dent:   'dentistry',
@@ -38,6 +28,7 @@ const USERNAME_PREFIXES = {
   gastro: 'gastroenterology',
   gi:     'gastroenterology',
   pulm:   'pulmonology',
+  pulmo:  'pulmonology',
   chest:  'pulmonology',
   neuro:  'neurology',
   endo:   'endocrinology',
@@ -46,82 +37,105 @@ const USERNAME_PREFIXES = {
   ayur:   'ayurveda',
 };
 
+/** Codes that use the generic 5-question pack (NOT general_medicine). */
+export const GENERIC_SPECIALTY_CODES = new Set([
+  'gynecology', 'cardiology', 'pediatrics', 'orthopedics', 'dermatology',
+  'ophthalmology', 'dentistry', 'psychiatry', 'urology', 'gastroenterology',
+  'pulmonology', 'neurology', 'endocrinology', 'nephrology', 'general_surgery',
+  'ayurveda', 'other', 'generic',
+]);
+
 const SPECIALTY_MODULES = [
   generalMedicine,
-  // gynecology,
-  // ...
+  generic,
 ];
 
 const REGISTRY = {};
 for (const mod of SPECIALTY_MODULES) {
   if (!mod || !mod.code) continue;
   REGISTRY[mod.code] = mod;
-  for (const alias of mod.aliases || []) REGISTRY[alias] = mod;
+  for (const alias of mod.aliases || []) {
+    // Never let generic aliases overwrite general_medicine
+    if (alias === 'general_medicine' || alias === 'gm') continue;
+    REGISTRY[alias] = mod;
+  }
 }
 
-/**
- * Extract a specialty code from a username.
- * Supports both prefix-first and role-first forms:
- *   gynostaff1, gynodoctor2, cardstaff10
- *   staff_gm1, doctor_gm1, staff-gyno2
- */
 export function specialtyFromUsername(username) {
   const raw = String(username || '').toLowerCase().trim();
   if (!raw) return null;
   const u = raw.replace(/[_-]/g, '');
 
-  // prefix-first: genmedstaff1, gynodoctor2, cardstaff10
   const m1 = u.match(/^([a-z]+?)(staff|doctor|admin)\d*$/);
   if (m1) {
     const code = USERNAME_PREFIXES[m1[1]];
-    if (code && REGISTRY[code]) return code;
+    if (code) return code;
   }
 
-  // role-first: staffgm1, doctorgyno2
   const m2 = u.match(/^(staff|doctor|admin)([a-z]+?)\d*$/);
   if (m2) {
     const code = USERNAME_PREFIXES[m2[2]];
-    if (code && REGISTRY[code]) return code;
+    if (code) return code;
   }
 
   return null;
 }
 
-/**
- * Resolve which specialty to use for a session.
- * Priority:
- *   1. explicit specialty (MediLoop always sends this)
- *   2. username prefix
- *   3. clinic default specialty
- *   4. general_medicine as last resort
- */
 export function resolveSpecialty({ specialty, username, clinicDefault } = {}) {
-  const s = String(specialty || '').toLowerCase().trim();
-  if (s && REGISTRY[s]) return s;
+  const s = String(specialty || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (s === 'ent') return 'ent';
+  if (s === 'general_medicine' || s === 'gm' || s === 'general' || s === 'internal_medicine' || s === 'family_medicine') {
+    return 'general_medicine';
+  }
+  if (s && (REGISTRY[s] || GENERIC_SPECIALTY_CODES.has(s))) return s;
 
   const fromUser = specialtyFromUsername(username);
   if (fromUser) return fromUser;
 
-  const cd = String(clinicDefault || '').toLowerCase().trim();
-  if (cd && REGISTRY[cd]) return cd;
+  const cd = String(clinicDefault || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (cd === 'ent') return 'ent';
+  if (cd === 'general_medicine' || cd === 'gm' || cd === 'general') return 'general_medicine';
+  if (cd && (REGISTRY[cd] || GENERIC_SPECIALTY_CODES.has(cd))) return cd;
 
-  return REGISTRY.general_medicine ? 'general_medicine' : Object.keys(REGISTRY)[0] || null;
+  return 'general_medicine';
 }
 
 /**
- * Get the module for a specialty code. Falls back to general_medicine.
- * Returns null if no module is registered at all.
+ * Get the module for a specialty code.
+ * - ent → null (flow.js ENT path)
+ * - general_medicine / gm / general → GM module (never generic)
+ * - known other specialties → generic pack
+ * - unknown → general_medicine (safer than generic for clinical content)
  */
 export function getSpecialtyModule(code) {
-  const c = String(code || '').toLowerCase().trim();
+  const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (!c || c === 'ent') return null;
+
+  if (
+    c === 'general_medicine' ||
+    c === 'gm' ||
+    c === 'general' ||
+    c === 'internal_medicine' ||
+    c === 'family_medicine'
+  ) {
+    return REGISTRY.general_medicine || null;
+  }
+
   if (REGISTRY[c]) return REGISTRY[c];
-  if (REGISTRY.general_medicine) return REGISTRY.general_medicine;
-  const first = Object.values(REGISTRY)[0];
-  return first || null;
+
+  if (GENERIC_SPECIALTY_CODES.has(c)) {
+    return REGISTRY.generic || null;
+  }
+
+  // Unknown non-ENT → prefer GM (full clinical questions), not generic
+  return REGISTRY.general_medicine || REGISTRY.generic || null;
 }
 
 export function isRegistered(code) {
-  return Boolean(REGISTRY[String(code || '').toLowerCase().trim()]);
+  const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (c === 'ent') return true;
+  if (c === 'general_medicine' || c === 'gm' || c === 'general') return true;
+  return Boolean(REGISTRY[c]) || GENERIC_SPECIALTY_CODES.has(c);
 }
 
 export function listSpecialties() {
