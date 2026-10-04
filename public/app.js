@@ -5,21 +5,21 @@ let queueTimer = null;
 let latestQueue = null;
 const LANGS = [
   { code: 'en', label: 'English' },
-  { code: 'kn', label: 'Kannada' },
-  { code: 'hi', label: 'Hindi' },
-  { code: 'ta', label: 'Tamil' },
-  { code: 'te', label: 'Telugu' },
-  { code: 'ml', label: 'Malayalam' },
-  { code: 'bn', label: 'Bengali' },
-  { code: 'or', label: 'Odia' },
-  { code: 'as', label: 'Assamese' },
-  { code: 'mr', label: 'Marathi' },
-  { code: 'ur', label: 'Urdu' },
-  { code: 'bho', label: 'Bhojpuri' },
-  { code: 'mai', label: 'Maithili' },
-  { code: 'ne', label: 'Nepali' },
-  { code: 'mni', label: 'Manipuri' },
-  { code: 'brx', label: 'Bodo' },
+  { code: 'kn', label: 'ಕನ್ನಡ · Kannada' },
+  { code: 'hi', label: 'हिन्दी · Hindi' },
+  { code: 'ta', label: 'தமிழ் · Tamil' },
+  { code: 'te', label: 'తెలుగు · Telugu' },
+  { code: 'ml', label: 'മലയാളം · Malayalam' },
+  { code: 'bn', label: 'বাংলা · Bengali' },
+  { code: 'or', label: 'ଓଡ଼ିଆ · Odia' },
+  { code: 'as', label: 'অসমীয়া · Assamese' },
+  { code: 'mr', label: 'मराठी · Marathi' },
+  { code: 'ur', label: 'اردو · Urdu' },
+  { code: 'bho', label: 'भोजपुरी · Bhojpuri' },
+  { code: 'mai', label: 'मैथिली · Maithili' },
+  { code: 'ne', label: 'नेपाली · Nepali' },
+  { code: 'mni', label: 'মৈতৈলোন্ · Manipuri (Meitei)' },
+  { code: 'brx', label: "बर' · Bodo" },
 ];
 const LANG_CODES = new Set(LANGS.map(x => x.code));
 function normalizeLang(v) {
@@ -29,31 +29,84 @@ function normalizeLang(v) {
   return 'en';
 }
 let lang = normalizeLang(localStorage.getItem('screening_lang') || 'en');
-const I18N = { en: {
-  title: 'AI Clinical Screening', private: 'Private patient screening',
-  hello: (name) => 'Hello, ' + name + '. I will ask you a few questions about your health concern before your consultation.',
-  notDx: 'This is not a diagnosis or prescription.', start: 'Start Chat',
-  incomplete: 'This link is incomplete.', invalid: 'This screening link is invalid or has expired.',
-  clinical: 'Clinical screening', questionOf: (c, t) => 'Question ' + c + ' of ' + t,
-  followUpOf: (c, t) => 'Follow-up ' + c + ' of ' + t, next: 'Next', wait: 'One moment…',
-  typeAnswer: 'Type your answer…', whichAllergy: 'Which allergy? (optional)', review: 'Please review',
-  summaryTitle: 'Screening Summary',
-  urgent: 'Important: Your answers indicate a concern that may need urgent medical attention. Please seek urgent medical care now.',
-  checkInfo: 'Please check the information below. You can correct anything that is inaccurate before sending it to your doctor.',
-  yourAnswers: 'Your answers (you can correct or add details)', send: 'End & Send to Doctor',
-  sendNote: 'Your information is sent only after you press End & Send to Doctor.',
-  submitted: 'Submitted', thanks: 'Thank you',
-  sent: 'Your screening information has been sent to your doctor for your consultation.',
-  close: 'You can close this page now.', token: 'Your token number', completed: 'Consultation completed',
-  visitThanks: 'Thank you for visiting the clinic.', nextInLine: 'You are next in line',
-  ahead: (n) => n + ' patient' + (n === 1 ? '' : 's') + ' ahead of you',
-  updating: 'Updating automatically', wentWrong: 'Something went wrong.'
-}};
+
+const I18N = {
+  en: {
+    title: 'AI Clinical Screening',
+    private: 'Private patient screening',
+    hello: (name) => 'Hello, ' + name + '. I’ll ask you a few questions about your health concern before your consultation.',
+    notDx: 'This is not a diagnosis or prescription.',
+    start: 'Start Chat',
+    incomplete: 'This link is incomplete.',
+    invalid: 'This screening link is invalid or has expired.',
+    clinical: 'Clinical screening',
+    questionOf: (c, t) => 'Question ' + c + ' of ' + t,
+    followUpOf: (c, t) => 'Follow-up ' + c + ' of ' + t,
+    next: 'Next',
+    wait: 'One moment…',
+    typeAnswer: 'Type your answer…',
+    whichAllergy: 'Which allergy? (optional)',
+    review: 'Please review',
+    summaryTitle: 'Screening Summary',
+    urgent: 'Important: Your answers indicate a concern that may need urgent medical attention. Please seek urgent medical care now. This screening does not provide a diagnosis or treatment.',
+    checkInfo: 'Please check the information below. You can correct anything that is inaccurate before sending it to your doctor.',
+    yourAnswers: 'Your answers (you can correct or add details)',
+    send: 'End & Send to Doctor',
+    sendNote: 'Your information is sent only after you press “End & Send to Doctor”.',
+    submitted: 'Submitted',
+    thanks: 'Thank you',
+    sent: 'Your screening information has been sent to your doctor for your consultation.',
+    close: 'You can close this page now.',
+    token: 'Your token number',
+    completed: 'Consultation completed',
+    visitThanks: 'Thank you for visiting the clinic.',
+    nextInLine: 'You are next in line',
+    ahead: (n) => n + ' patient' + (n === 1 ? '' : 's') + ' ahead of you',
+    updating: 'Updating automatically',
+    wentWrong: 'Something went wrong.',
+  },
+  kn: {
+    title: 'ಎಐ ಕ್ಲಿನಿಕಲ್ ಸ್ಕ್ರೀನಿಂಗ್',
+    private: 'ಖಾಸಗಿ ರೋಗಿ ಪೂರ್ವ ಪರೀಕ್ಷೆ',
+    hello: (name) => 'ನಮಸ್ಕಾರ, ' + name + '. ನಿಮ್ಮ ಸಮಾಲೋಚನೆಗೂ ಮುನ್ನ ಆರೋಗ್ಯ ಸಮಸ್ಯೆಯ ಬಗ್ಗೆ ಕೆಲವು ಪ್ರಶ್ನೆಗಳನ್ನು ಕೇಳುತ್ತೇನೆ.',
+    notDx: 'ಇದು ರೋಗ ನಿರ್ಣಯ ಅಥವಾ ಔಷಧ ನಿರ್ದೇಶನವಲ್ಲ.',
+    start: 'ಚಾಟ್ ಪ್ರಾರಂಭಿಸಿ',
+    incomplete: 'ಈ ಲಿಂಕ್ ಅಪೂರ್ಣವಾಗಿದೆ.',
+    invalid: 'ಈ ಸ್ಕ್ರೀನಿಂಗ್ ಲಿಂಕ್ ಅಮಾನ್ಯ ಅಥವಾ ಅವಧಿ ಮುಗಿದಿದೆ.',
+    clinical: 'ಕ್ಲಿನಿಕಲ್ ಸ್ಕ್ರೀನಿಂಗ್',
+    questionOf: (c, t) => 'ಪ್ರಶ್ನೆ ' + c + ' / ' + t,
+    followUpOf: (c, t) => 'ಹೆಚ್ಚುವರಿ ಪ್ರಶ್ನೆ ' + c + ' / ' + t,
+    next: 'ಮುಂದೆ',
+    wait: 'ಸ್ವಲ್ಪ ನಿರೀಕ್ಷಿಸಿ…',
+    typeAnswer: 'ನಿಮ್ಮ ಉತ್ತರ ಬರೆಯಿರಿ…',
+    whichAllergy: 'ಯಾವ ಅಲರ್ಜಿ? (ಐಚ್ಛಿಕ)',
+    review: 'ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ',
+    summaryTitle: 'ಸ್ಕ್ರೀನಿಂಗ್ ಸಾರಾಂಶ',
+    urgent: 'ಮುಖ್ಯ: ನಿಮ್ಮ ಉತ್ತರಗಳು ತುರ್ತು ವೈದ್ಯಕೀಯ ಗಮನ ಬೇಕಾಗಬಹುದಾದ ಸಮಸ್ಯೆಯನ್ನು ಸೂಚಿಸುತ್ತವೆ. ಈಗಲೇ ತುರ್ತು ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ. ಇದು ರೋಗ ನಿರ್ಣಯ ಅಥವಾ ಚಿಕಿತ್ಸೆಯಲ್ಲ.',
+    checkInfo: 'ಕೆಳಗಿನ ಮಾಹಿತಿಯನ್ನು ಪರಿಶೀಲಿಸಿ. ವೈದ್ಯರಿಗೆ ಕಳುಹಿಸುವ ಮುನ್ನ ತಪ್ಪುಗಳನ್ನು ಸರಿಪಡಿಸಬಹುದು.',
+    yourAnswers: 'ನಿಮ್ಮ ಉತ್ತರಗಳು (ಸರಿಪಡಿಸಬಹುದು ಅಥವಾ ಸೇರಿಸಬಹುದು)',
+    send: 'ಮುಗಿಸಿ ವೈದ್ಯರಿಗೆ ಕಳುಹಿಸಿ',
+    sendNote: '“ಮುಗಿಸಿ ವೈದ್ಯರಿಗೆ ಕಳುಹಿಸಿ” ಒತ್ತಿದ ನಂತರವೇ ಮಾಹಿತಿ ಕಳುಹಿಸಲಾಗುತ್ತದೆ.',
+    submitted: 'ಸಲ್ಲಿಸಲಾಗಿದೆ',
+    thanks: 'ಧನ್ಯವಾದಗಳು',
+    sent: 'ನಿಮ್ಮ ಸ್ಕ್ರೀನಿಂಗ್ ಮಾಹಿತಿಯನ್ನು ಸಮಾಲೋಚನೆಗಾಗಿ ವೈದ್ಯರಿಗೆ ಕಳುಹಿಸಲಾಗಿದೆ.',
+    close: 'ಈ ಪುಟವನ್ನು ಈಗ ಮುಚ್ಚಬಹುದು.',
+    token: 'ನಿಮ್ಮ ಟೋಕನ್ ಸಂಖ್ಯೆ',
+    completed: 'ಸಮಾಲೋಚನೆ ಪೂರ್ಣಗೊಂಡಿದೆ',
+    visitThanks: 'ಕ್ಲಿನಿಕ್‌ಗೆ ಭೇಟಿ ನೀಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು.',
+    nextInLine: 'ನೀವು ಮುಂದಿನವರು',
+    ahead: (n) => 'ನಿಮ್ಮ ಮುಂದೆ ' + n + ' ರೋಗಿ' + (n === 1 ? '' : 'ಗಳು'),
+    updating: 'ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನವೀಕರಿಸುತ್ತಿದೆ',
+    wentWrong: 'ಏನೋ ತಪ್ಪಾಗಿದೆ.',
+  }
+};
+
 function t(key, ...args) {
   const bag = I18N[lang] || I18N.en;
   const v = bag[key] !== undefined ? bag[key] : I18N.en[key];
-  return typeof v === 'function' ? v(...args) : (v || key);
+  return typeof v === 'function' ? v(...args) : v;
 }
+
 function setLang(next) {
   lang = normalizeLang(next);
   localStorage.setItem('screening_lang', lang);
@@ -61,53 +114,68 @@ function setLang(next) {
   if (!state) return;
   if (state.status === 'submitted') { renderSubmitted(latestQueue); return; }
   if (state.status === 'awaiting_review' || state.output) { renderReview(state.output); return; }
+  // During active screening, ask server to re-localize the current question
   if (token && state.status === 'in_progress') {
     api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang})})
       .then((d)=>{ if(d.type==='review') renderReview(d.output); else if(d.question) renderQuestion(d); else renderWelcome(); })
-      .catch(()=>{ if (typeof q !== 'undefined' && q) drawQuestion(); else renderWelcome(); });
+      .catch(()=>{ if (q) drawQuestion(); else renderWelcome(); });
     return;
   }
-  if (typeof q !== 'undefined' && q) drawQuestion(); else renderWelcome();
+  if (q) drawQuestion();
+  else renderWelcome();
 }
+
 function langSelectHtml() {
   return '<div class="lang-bar"><select id="langSel" aria-label="Language">' +
     LANGS.map(x => '<option value="' + x.code + '"' + (lang === x.code ? ' selected' : '') + '>' + x.label + '</option>').join('') +
     '</select></div>';
 }
-function bindLang() { const s = document.getElementById('langSel'); if (s) s.onchange = () => setLang(s.value); }
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[c]));}
+function bindLang() {
+  const s = document.getElementById('langSel');
+  if (s) s.onchange = () => setLang(s.value);
+}
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function showError(msg){let e=document.getElementById('error');if(e){e.textContent=msg;e.classList.remove('hidden');}}
 function clearError(){let e=document.getElementById('error');if(e)e.classList.add('hidden');}
 function btn(text,cls='primary',id=''){return '<button id="'+id+'" class="'+cls+'">'+esc(text)+'</button>';}
+
 async function api(path,opts={}){
   const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});
   const d=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(d.error||t('wentWrong'));
   return d;
 }
+
 async function load(){
   if(!token){app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(t('incomplete'))+'</p></div>';bindLang();return;}
   try{
     state=await api('/api/patient/s/'+encodeURIComponent(token));
-    if(state.patient && state.patient.ui_language){ lang = normalizeLang(state.patient.ui_language); localStorage.setItem('screening_lang', lang); }
+    if(state.patient && state.patient.ui_language){
+      lang = normalizeLang(state.patient.ui_language);
+      localStorage.setItem('screening_lang', lang);
+    }
     if(state.status==='submitted'){renderSubmitted();return;}
     if(state.status==='awaiting_review'||state.output){renderReview(state.output);return;}
     renderWelcome();
   }catch(e){app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(t('invalid'))+'</p></div>';bindLang();}
 }
+
 function renderWelcome(){
   const p=state.patient;
   app.innerHTML=langSelectHtml()+'<div class="center"><div class="eyebrow">'+esc(t('private'))+'</div><h1>'+esc(t('title'))+'</h1>'+
   '<p class="muted start-note">'+esc(t('hello', p.patient_name))+'</p>'+
   '<p class="small">'+esc(t('notDx'))+'</p><div style="margin-top:24px">'+btn(t('start'),'primary','start')+'</div><div id="error" class="error hidden"></div></div>';
-  bindLang(); document.getElementById('start').onclick=startChat;
+  bindLang();
+  document.getElementById('start').onclick=startChat;
 }
 async function startChat(){
   clearError();document.getElementById('start').disabled=true;
   try{
     const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang})});
     if(d.type==='review')renderReview(d.output);else renderQuestion(d);
-  } catch(e){document.getElementById('start').disabled=false;showError(e.message);}
+  }
+  catch(e){document.getElementById('start').disabled=false;showError(e.message);}
 }
 let q=null,picks={},prog=null,busy=false;
 function renderQuestion(d){q=d.question;prog=d.progress;picks={};busy=false;drawQuestion();}
@@ -137,6 +205,7 @@ function drawQuestion(){
     const withText=q.options.filter(o=>needsText(o)&&o.id in picks);
     body+=withText.map(o=>'<input class="typed" data-text="'+esc(o.id)+'" autocomplete="off" maxlength="200" value="'+esc(picks[o.id]||'')+'" placeholder="'+(o.text==='optional'?esc(t('whichAllergy')):esc(t('typeAnswer')))+'">').join('');
   }
+  // Show English subtitle under Kannada question when bilingual fixed question has both
   const sub = (lang!=='en' && q.text_en && q.text_en!==q.text) ? '<span class="q-sub">'+esc(q.text_en)+'</span>' : '';
   app.innerHTML=langSelectHtml()+head+'<h2>'+esc(q.text)+sub+'</h2>'+body+'<div class="actions"><button id="next" class="primary" disabled>'+esc(t('next'))+'</button></div><div id="error" class="error hidden"></div>';
   bindLang();
@@ -152,7 +221,11 @@ function pick(id){
   const o=q.options.find(x=>x.id===id);if(!o)return;
   if(q.input==='multi'){
     if(id in picks)delete picks[id];
-    else{ if(o.exclusive)picks={}; else Object.keys(picks).forEach(k=>{const p=q.options.find(x=>x.id===k);if(p&&p.exclusive)delete picks[k];}); picks[id]=''; }
+    else{
+      if(o.exclusive)picks={};
+      else Object.keys(picks).forEach(k=>{const p=q.options.find(x=>x.id===k);if(p&&p.exclusive)delete picks[k];});
+      picks[id]='';
+    }
   }else{picks={};picks[id]='';}
   drawQuestion();
 }
@@ -165,33 +238,29 @@ async function sendAnswer(){
     if(d.type==='review')renderReview(d.output);else renderQuestion(d);
   }catch(e){busy=false;const nn=document.getElementById('next');if(nn){nn.textContent=t('next');}showError(e.message);refreshNext();}
 }
-function summaryFields(output){
-  const o=output||{}; const rows=[];
-  const add=(label,val)=>{ if(val==null||val==='')return; rows.push('<div class="field"><label>'+esc(label)+'</label><textarea data-k="'+esc(label)+'">'+esc(String(val))+'</textarea></div>'); };
-  add('Chief complaint', o.chief_complaint||o.complaint||o.summary);
-  add('Duration', o.duration); add('Symptoms', Array.isArray(o.symptoms)?o.symptoms.join(', '):o.symptoms);
-  add('History', o.history||o.past_history); add('Medications', o.medications||o.current_medications);
-  add('Allergies', o.allergies); add('Notes', o.notes||o.additional_notes);
-  if(!rows.length) rows.push('<div class="field"><label>Summary</label><textarea data-k="Summary">'+esc(JSON.stringify(o,null,2))+'</textarea></div>');
-  return rows.join('');
-}
-function collectSummary(){
-  const edited={}; document.querySelectorAll('#summary [data-k]').forEach(el=>{ edited[el.getAttribute('data-k')]=el.value; });
-  return { ...state.output, edited_fields: edited };
-}
+
 function renderReview(output){
   state.output=output;
-  const urgent=output&&output.screening_status==='urgent';
+  const urgent=output?.screening_status==='urgent';
   app.innerHTML=langSelectHtml()+'<div class="eyebrow">'+esc(t('review'))+'</div><h2>'+esc(t('summaryTitle'))+'</h2>'+
   (urgent?'<div class="notice"><strong>'+esc(t('urgent'))+'</strong></div>':'')+
   '<p class="muted">'+esc(t('checkInfo'))+'</p>'+
   '<div id="summary" class="summary-grid">'+summaryFields(output)+'</div>'+
   '<div class="actions">'+btn(t('send'),'primary','submit')+'</div>'+
   '<div id="error" class="error hidden"></div><p class="small" style="margin-top:18px">'+esc(t('sendNote'))+'</p>';
-  bindLang(); document.getElementById('submit').onclick=submitReview;
+  bindLang();
+  document.getElementById('submit').onclick=submitSummary;
 }
-async function submitReview(){
-  clearError(); const b=document.getElementById('submit');b.disabled=true;
+function summaryFields(o){
+  return '<div class="field"><label>'+esc(t('yourAnswers'))+'</label><textarea data-key="summary" style="min-height:220px">'+esc(o.summary||'')+'</textarea></div>';
+}
+function collectSummary(){
+  const el=document.querySelector('[data-key="summary"]');
+  return {summary:el?el.value.trim():''};
+}
+async function submitSummary(){
+  clearError();
+  const b=document.getElementById('submit');b.disabled=true;
   try{
     const edited=collectSummary();
     await api('/api/patient/s/'+encodeURIComponent(token)+'/summary',{method:'PUT',body:JSON.stringify(edited)});
@@ -215,7 +284,7 @@ function renderSubmitted(queue){
       const completed=status==='completed';
       box='<div class="tokenbox"><div class="small">'+esc(t('token'))+'</div><div class="tokenno">'+esc(tokenNo)+'</div>'+
       (completed?'<div class="ahead"><b>'+esc(t('completed'))+'</b></div><div class="small">'+esc(t('visitThanks'))+'</div>':
-        (w===null||w===undefined?'':'<div class="ahead">'+(w===0?esc(t('nextInLine')):'<b>'+esc(w)+'</b> patients ahead')+'</div><div class="small">'+esc(t('updating'))+'</div>'))+
+        (w===null||w===undefined?'':'<div class="ahead">'+(w===0?esc(t('nextInLine')):'<b>'+esc(w)+'</b> '+esc(t('ahead', w).replace(String(w)+' ','')) )+'</div><div id="queueUpdated" class="small">'+esc(t('updating'))+'</div>'))+
       '</div>';
     }
     app.innerHTML=langSelectHtml()+'<div class="center"><div class="eyebrow">'+esc(t('submitted'))+'</div><h1>'+esc(t('thanks'))+'</h1><p class="muted start-note">'+esc(t('sent'))+'</p>'+box+'<p class="small">'+esc(t('close'))+'</p></div>';
@@ -232,6 +301,7 @@ function renderSubmitted(queue){
       if(d&&d.ok){latestQueue=d;draw();}
     }catch{}
   };
-  poll(); queueTimer=setInterval(poll,5000);
+  poll();
+  queueTimer=setInterval(poll,5000);
 }
 load();
