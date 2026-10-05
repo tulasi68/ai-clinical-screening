@@ -1,7 +1,7 @@
 // Central registry.
 // ENT is NOT registered — handled by flow.js.
 // general_medicine → dedicated GM question pack
-// All other non-ENT specialties → generic 5-question pack
+// All other non-ENT specialties → generic pack or their JSON question pack.
 
 import generalMedicine from './general_medicine/index.js';
 import generic from './generic/index.js';
@@ -37,7 +37,7 @@ const USERNAME_PREFIXES = {
   ayur:   'ayurveda',
 };
 
-/** Codes that use the generic 5-question pack (NOT general_medicine). */
+/** Codes that use the generic/JSON pack (NOT general_medicine or ENT). */
 export const GENERIC_SPECIALTY_CODES = new Set([
   'gynecology', 'cardiology', 'pediatrics', 'orthopedics', 'dermatology',
   'ophthalmology', 'dentistry', 'psychiatry', 'urology', 'gastroenterology',
@@ -100,11 +100,22 @@ export function resolveSpecialty({ specialty, username, clinicDefault } = {}) {
   return 'general_medicine';
 }
 
+function specialtyModuleFor(code) {
+  const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (GENERIC_SPECIALTY_CODES.has(c)) {
+    const questions = typeof generic.questionsForSpecialty === 'function'
+      ? generic.questionsForSpecialty(c)
+      : generic.questions;
+    return { ...generic, code: c, label: c, questions };
+  }
+  return REGISTRY[c] || null;
+}
+
 /**
  * Get the module for a specialty code.
  * - ent → null (flow.js ENT path)
  * - general_medicine / gm / general → GM module (never generic)
- * - known other specialties → generic pack
+ * - known other specialties → generic/JSON pack
  * - unknown → general_medicine (safer than generic for clinical content)
  */
 export function getSpecialtyModule(code) {
@@ -121,11 +132,8 @@ export function getSpecialtyModule(code) {
     return REGISTRY.general_medicine || null;
   }
 
+  if (GENERIC_SPECIALTY_CODES.has(c)) return specialtyModuleFor(c);
   if (REGISTRY[c]) return REGISTRY[c];
-
-  if (GENERIC_SPECIALTY_CODES.has(c)) {
-    return REGISTRY.generic || null;
-  }
 
   // Unknown non-ENT → prefer GM (full clinical questions), not generic
   return REGISTRY.general_medicine || REGISTRY.generic || null;
