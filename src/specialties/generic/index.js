@@ -7,6 +7,7 @@ import { cascadingQuestionDef, isCascadingPack, nextCascadingQuestion } from './
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const JSON_SPECIALTIES = [
+  'primary_care',
   'gynecology', 'cardiology', 'pediatrics', 'orthopedics', 'dermatology',
   'ophthalmology', 'dentistry', 'psychiatry', 'urology', 'gastroenterology',
   'pulmonology', 'neurology', 'endocrinology', 'nephrology', 'general_surgery',
@@ -20,8 +21,6 @@ function loadQuestionPack(code) {
   try {
     const raw = fs.readFileSync(file, 'utf8');
     const pack = JSON.parse(raw);
-    // Empty/draft packs deliberately fall back to the existing generic flow.
-    // A populated cascading pack is handled by nextQuestion/questionDef below.
     if (isCascadingPack(pack)) return { type: 'cascading', pack };
     return Array.isArray(pack?.questions) && pack.questions.length
       ? { type: 'questions', questions: pack.questions }
@@ -40,18 +39,17 @@ export function questionsForSpecialty(code) {
 export default {
   code: 'generic',
   label: 'General screening',
-  // Only non-GM specialties. Never include general_medicine / gm / general.
   aliases: JSON_SPECIALTIES,
   questions: GENERIC_QUESTIONS,
-questionsForSpecialty,
+  questionsForSpecialty,
   nextQuestion: (session) => {
-    const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\\s+/g, '_');
+    const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\s+/g, '_');
     const loaded = loadQuestionPack(code);
     if (loaded?.type === 'cascading') return nextCascadingQuestion(loaded.pack, session);
     return GENERIC_QUESTIONS.find((q) => !((session.conversation || []).some((x) => x.role === 'patient' && x.qid === q.id))) || null;
   },
   questionDef: (session, qid) => {
-    const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\\s+/g, '_');
+    const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\s+/g, '_');
     const loaded = loadQuestionPack(code);
     if (loaded?.type === 'cascading') return cascadingQuestionDef(loaded.pack, session, qid);
     return GENERIC_QUESTIONS.find((q) => q.id === qid) || null;
