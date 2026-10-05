@@ -154,8 +154,19 @@ function progressOf(s) {
   return { current: asked, total: FIXED_SETS[site].length + MAX_AI_QUESTIONS, fixed: FIXED_SETS[site].length };
 }
 
+function specialtyQuestionDef(s, qid) {
+  const spec = normalizeSpecialty(s.patient?.specialty);
+  if (spec && spec !== 'ent') {
+    const mod = getSpecialtyModule(spec);
+    if (mod && typeof mod.questionDef === 'function') {
+      return mod.questionDef(s, qid);
+    }
+  }
+  return questionDef(s, qid);
+}
+
 function questionPayload(s, entry) {
-  const def = entry.qid ? questionDef(s, entry.qid) : null;
+  const def = entry.qid ? specialtyQuestionDef(s, entry.qid) : null;
   const lang = normalizeUiLang(s.patient?.ui_language);
 
   // Free-form AI question (no fixed def)
@@ -421,7 +432,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     if (last && last.role === 'assistant') {
       // If language just changed, re-localize the current fixed question for the patient
       if (changed && last.qid) {
-        const q = questionDef(s, last.qid) || { id: last.qid, text: last.message, options: [] };
+        const q = specialtyQuestionDef(s, last.qid) || { id: last.qid, text: last.message, options: [] };
         const localized = await localizeForPatient(q, lang);
         last.message = localized.text;
         last.localized_options = localized.options;
@@ -454,7 +465,7 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
     }
 
     if (last.qid) {
-      const q = questionDef(s, last.qid);
+      const q = specialtyQuestionDef(s, last.qid);
       if (!q) return res.status(409).json({ error: 'Question not found. Please reload the page.' });
       const r = resolveAnswer(q, req.body);
       if (!r.ok) return res.status(400).json({ error: r.error });
