@@ -9,15 +9,7 @@ import { packCodeForSpecialty } from '../packCodes.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-const JSON_SPECIALTIES = [
-  'primary_care',
-  'gynecology', 'cardiology', 'pediatrics', 'orthopedics', 'dermatology',
-  'ophthalmology', 'dentistry', 'psychiatry', 'urology', 'gastroenterology',
-  'pulmonology', 'neurology', 'endocrinology', 'nephrology', 'general_surgery',
-  'ayurveda', 'other',
-];
-
-// Prefer static require for the populated cascading pack so Vercel always bundles it.
+// Static require so Vercel always bundles the populated cascading pack.
 let PRIMARY_CARE_PACK = null;
 try {
   PRIMARY_CARE_PACK = require('../question-packs/primary_care.json');
@@ -28,7 +20,19 @@ try {
 const packCache = new Map();
 
 function loadQuestionPack(code) {
-  const packCode = packCodeForSpecialty(code);
+  // All "other" specialties resolve to primary_care pack file.
+  const packCode = packCodeForSpecialty(code) || 'primary_care';
+  // Never load a JSON pack for GM / ENT via this path.
+  if (
+    packCode === 'general_medicine' ||
+    packCode === 'gm' ||
+    packCode === 'general' ||
+    packCode === 'ent' ||
+    !packCode
+  ) {
+    return null;
+  }
+
   if (packCache.has(packCode)) return packCache.get(packCode);
 
   let result = null;
@@ -39,28 +43,19 @@ function loadQuestionPack(code) {
     return result;
   }
 
-  if (!JSON_SPECIALTIES.includes(packCode)) {
-    packCache.set(packCode, null);
-    return null;
-  }
-
   const candidates = [
     path.join(__dirname, '..', 'question-packs', packCode + '.json'),
     path.join(process.cwd(), 'src', 'specialties', 'question-packs', packCode + '.json'),
-    path.join(process.cwd(), 'specialties', 'question-packs', packCode + '.json'),
   ];
 
   for (const file of candidates) {
     try {
       if (!fs.existsSync(file)) continue;
-      const raw = fs.readFileSync(file, 'utf8');
-      const pack = JSON.parse(raw);
+      const pack = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (isCascadingPack(pack)) {
         result = { type: 'cascading', pack };
       } else if (Array.isArray(pack?.questions) && pack.questions.length) {
         result = { type: 'questions', questions: pack.questions };
-      } else {
-        result = null;
       }
       if (result) {
         packCache.set(packCode, result);
@@ -71,24 +66,30 @@ function loadQuestionPack(code) {
     }
   }
 
-  try {
-    const pack = require('../question-packs/' + packCode + '.json');
-    if (isCascadingPack(pack)) result = { type: 'cascading', pack };
-    else if (Array.isArray(pack?.questions) && pack.questions.length) result = { type: 'questions', questions: pack.questions };
-  } catch {
-    /* pack not present or not cascading */
+  // Empty specialty-specific pack → fall back to primary_care cascading.
+  if (packCode !== 'primary_care' && PRIMARY_CARE_PACK && isCascadingPack(PRIMARY_CARE_PACK)) {
+    result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
+    packCache.set(packCode, result);
+    return result;
   }
 
-  if (!result) {
-    console.warn('Specialty JSON pack unavailable or empty; using generic questions:', packCode);
-  }
-  packCache.set(packCode, result);
-  return result;
+  console.warn('Specialty JSON pack unavailable; using linear generic questions:', packCode);
+  packCache.set(packCode, null);
+  return null;
 }
 
 function sessionSpecialtyCode(session) {
   const fromPatient = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\s+/g, '_');
-  return packCodeForSpecialty(fromPatient || 'primary_care');
+  // GM / ENT should never reach this module; if they do, do not rewrite to primary_care.
+  if (
+    fromPatient === 'general_medicine' ||
+    fromPatient === 'gm' ||
+    fromPatient === 'general' ||
+    fromPatient === 'ent'
+  ) {
+    return fromPatient;
+  }
+  return packCodeForSpecialty(fromPatient || 'primary_care') || 'primary_care';
 }
 
 export function questionsForSpecialty(code) {
@@ -98,8 +99,14 @@ export function questionsForSpecialty(code) {
 
 export default {
   code: 'generic',
-  label: 'General screening',
-  aliases: JSON_SPECIALTIES.concat(['general_medicine', 'gm', 'general']),
+  label: 'Primary care / other specialties',
+  // Do NOT list general_medicine aliases here — GM has its own module.
+  aliases: [
+    'primary_care', 'gynecology', 'cardiology', 'pediatrics', 'orthopedics',
+    'dermatology', 'ophthalmology', 'dentistry', 'psychiatry', 'urology',
+    'gastroenterology', 'pulmonology', 'neurology', 'endocrinology',
+    'nephrology', 'general_surgery', 'ayurveda', 'other',
+  ],
   questions: GENERIC_QUESTIONS,
   questionsForSpecialty,
   nextQuestion: (session) => {

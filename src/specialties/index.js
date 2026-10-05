@@ -1,8 +1,9 @@
 // Central registry.
-// ENT is NOT registered — handled by flow.js.
-// general_medicine / primary_care → cascading pack in question-packs/primary_care.json
-// Other non-ENT specialties → generic module + their JSON pack (when populated).
+// ENT is NOT registered — handled by flow.js (ear path).
+// general_medicine → dedicated GM question module (already complete).
+// All other non-ENT specialties → primary_care.json cascading pack.
 
+import generalMedicine from './general_medicine/index.js';
 import generic from './generic/index.js';
 import { packCodeForSpecialty } from './packCodes.js';
 
@@ -42,21 +43,35 @@ const USERNAME_PREFIXES = {
   ayur:   'ayurveda',
 };
 
-/** Codes that use the generic/JSON pack path (NOT ENT). */
-export const GENERIC_SPECIALTY_CODES = new Set([
+/** Non-ENT, non-GM codes that use the primary_care cascading JSON pack. */
+export const PRIMARY_CARE_PACK_CODES = new Set([
   'primary_care',
-  'general_medicine',
   'gynecology', 'cardiology', 'pediatrics', 'orthopedics', 'dermatology',
   'ophthalmology', 'dentistry', 'psychiatry', 'urology', 'gastroenterology',
   'pulmonology', 'neurology', 'endocrinology', 'nephrology', 'general_surgery',
   'ayurveda', 'other', 'generic',
 ]);
 
-const REGISTRY = {
-  generic,
-  primary_care: generic,
-  general_medicine: generic,
-};
+// Back-compat export name used elsewhere.
+export const GENERIC_SPECIALTY_CODES = PRIMARY_CARE_PACK_CODES;
+
+const REGISTRY = {};
+for (const mod of [generalMedicine, generic]) {
+  if (!mod || !mod.code) continue;
+  REGISTRY[mod.code] = mod;
+  for (const alias of mod.aliases || []) {
+    // Do not let generic aliases override the dedicated GM module.
+    if (alias === 'general_medicine' || alias === 'gm' || alias === 'general'
+      || alias === 'internal_medicine' || alias === 'family_medicine') continue;
+    REGISTRY[alias] = mod;
+  }
+}
+// Ensure GM is registered under its aliases.
+REGISTRY.general_medicine = generalMedicine;
+REGISTRY.gm = generalMedicine;
+REGISTRY.general = generalMedicine;
+REGISTRY.internal_medicine = generalMedicine;
+REGISTRY.family_medicine = generalMedicine;
 
 export function specialtyFromUsername(username) {
   const raw = String(username || '').toLowerCase().trim();
@@ -87,7 +102,7 @@ export function resolveSpecialty({ specialty, username, clinicDefault } = {}) {
   if (s === 'primary_care' || s === 'primarycare' || s === 'primary' || s === 'pc') {
     return 'primary_care';
   }
-  if (s && (REGISTRY[s] || GENERIC_SPECIALTY_CODES.has(s))) return s;
+  if (s && (PRIMARY_CARE_PACK_CODES.has(s) || REGISTRY[s])) return s;
 
   const fromUser = specialtyFromUsername(username);
   if (fromUser) return fromUser;
@@ -96,67 +111,59 @@ export function resolveSpecialty({ specialty, username, clinicDefault } = {}) {
   if (cd === 'ent') return 'ent';
   if (cd === 'general_medicine' || cd === 'gm' || cd === 'general') return 'general_medicine';
   if (cd === 'primary_care' || cd === 'primarycare') return 'primary_care';
-  if (cd && (REGISTRY[cd] || GENERIC_SPECIALTY_CODES.has(cd))) return cd;
+  if (cd && (PRIMARY_CARE_PACK_CODES.has(cd) || REGISTRY[cd])) return cd;
 
   return 'general_medicine';
 }
 
-function specialtyModuleFor(code) {
-  const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
-  const packCode = packCodeForSpecialty(c);
-  const questions = typeof generic.questionsForSpecialty === 'function'
-    ? generic.questionsForSpecialty(packCode)
-    : generic.questions;
+function primaryCareModule(code) {
+  const c = String(code || 'primary_care').toLowerCase().trim().replace(/\s+/g, '_');
   return {
     ...generic,
-    code: c || packCode,
-    label: c === 'general_medicine' ? 'General Medicine' : (c || packCode),
-    questions,
-    packCode,
+    code: c,
+    label: c === 'primary_care' ? 'Primary Care' : c,
+    packCode: 'primary_care',
   };
 }
 
 export function getSpecialtyModule(code) {
   const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
+
+  // ENT → null (server continues with protected inline ear flow).
   if (!c || c === 'ent') return null;
 
-  // General medicine and primary care both drive the primary_care cascading pack.
+  // General medicine → dedicated GM module (already complete).
   if (
     c === 'general_medicine' ||
     c === 'gm' ||
     c === 'general' ||
     c === 'internal_medicine' ||
-    c === 'family_medicine' ||
-    c === 'primary_care' ||
-    c === 'primarycare' ||
-    c === 'primary' ||
-    c === 'pc'
+    c === 'family_medicine'
   ) {
-    return specialtyModuleFor(
-      c === 'primary_care' || c === 'primarycare' || c === 'primary' || c === 'pc'
-        ? 'primary_care'
-        : 'general_medicine'
-    );
+    return REGISTRY.general_medicine || generalMedicine;
   }
 
-  if (GENERIC_SPECIALTY_CODES.has(c)) return specialtyModuleFor(c);
-  if (REGISTRY[c]) return specialtyModuleFor(c);
+  // Everyone else (primary_care, cardiology, gyno, other, unknown, …)
+  // → primary_care.json cascading questions.
+  if (PRIMARY_CARE_PACK_CODES.has(c) || REGISTRY[c]) {
+    return primaryCareModule(c);
+  }
 
-  // Unknown non-ENT specialty → primary_care cascading (safer than ENT ear flow).
-  return specialtyModuleFor('general_medicine');
+  return primaryCareModule(c || 'other');
 }
 
 export function isRegistered(code) {
   const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
   if (c === 'ent') return true;
-  if (c === 'general_medicine' || c === 'gm' || c === 'general' || c === 'primary_care') return true;
-  return Boolean(REGISTRY[c]) || GENERIC_SPECIALTY_CODES.has(c);
+  if (c === 'general_medicine' || c === 'gm' || c === 'general') return true;
+  if (c === 'primary_care') return true;
+  return PRIMARY_CARE_PACK_CODES.has(c) || Boolean(REGISTRY[c]);
 }
 
 export function listSpecialties() {
   return [
-    { code: 'general_medicine', label: 'General Medicine', aliases: ['gm', 'general', 'primary_care'] },
-    { code: 'primary_care', label: 'Primary Care', aliases: ['primarycare', 'primary', 'pc'] },
-    { code: 'generic', label: 'General screening', aliases: [...GENERIC_SPECIALTY_CODES].filter((x) => x !== 'generic' && x !== 'general_medicine' && x !== 'primary_care') },
+    { code: 'ent', label: 'ENT', aliases: [] },
+    { code: 'general_medicine', label: 'General Medicine', aliases: ['gm', 'general', 'internal_medicine', 'family_medicine'] },
+    { code: 'primary_care', label: 'Primary Care (shared pack for other specialties)', aliases: [...PRIMARY_CARE_PACK_CODES].filter((x) => x !== 'primary_care') },
   ];
 }
