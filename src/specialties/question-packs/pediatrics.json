@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "specialty": "pediatrics",
+  "status": "draft",
+  "description": "Specialization-specific cascading clinical screening questions for pediatrics. Questions will be added and expanded later.",
+  "level1": null,
+  "complaints": {},
+  "shared_tail": []
+}
