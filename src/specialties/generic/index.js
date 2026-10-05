@@ -47,12 +47,14 @@ questionsForSpecialty,
   nextQuestion: (session) => {
     const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\\s+/g, '_');
     const loaded = loadQuestionPack(code);
-    return loaded?.type === 'cascading' ? nextCascadingQuestion(loaded.pack, session) : null;
+    if (loaded?.type === 'cascading') return nextCascadingQuestion(loaded.pack, session);
+    return GENERIC_QUESTIONS.find((q) => !((session.conversation || []).some((x) => x.role === 'patient' && x.qid === q.id))) || null;
   },
   questionDef: (session, qid) => {
     const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\\s+/g, '_');
     const loaded = loadQuestionPack(code);
-    return loaded?.type === 'cascading' ? cascadingQuestionDef(loaded.pack, session, qid) : null;
+    if (loaded?.type === 'cascading') return cascadingQuestionDef(loaded.pack, session, qid);
+    return GENERIC_QUESTIONS.find((q) => q.id === qid) || null;
   },
   fallbacks: [],
   persona: null,
