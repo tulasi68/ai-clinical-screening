@@ -16,8 +16,7 @@ const JSON_SPECIALTIES = [
 
 function loadQuestionPack(code) {
   if (!JSON_SPECIALTIES.includes(code)) return null;
-
-  const file = path.join(__dirname, 'question-packs', code + '.json');
+  const file = path.join(__dirname, '..', 'question-packs', code + '.json');
   try {
     const raw = fs.readFileSync(file, 'utf8');
     const pack = JSON.parse(raw);
