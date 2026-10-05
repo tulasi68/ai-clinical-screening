@@ -13,7 +13,7 @@ import {
 } from './flow.js';
 // Step 5: specialty module registry. ENT is deliberately NOT registered —
 // the ENT flow stays inline in continueBrowserSession() and is protected.
-// Specialty modules are loaded lazily so screening creation remains independent of specialty routing.
+import { getSpecialtyModule } from './specialties/index.js';
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
@@ -298,7 +298,6 @@ async function continueBrowserSession(s) {
   // inline ENT flow below. This branch adds behaviour but never removes it.
   const spec = normalizeSpecialty(s.patient?.specialty);
   if (spec && spec !== 'ent') {
-    const { getSpecialtyModule } = await import('./specialties/index.js');
     const mod = getSpecialtyModule(spec);
     if (mod) return continueModuleSession(s, mod);
     // Unknown specialty → continue with the ENT flow (safest default).
