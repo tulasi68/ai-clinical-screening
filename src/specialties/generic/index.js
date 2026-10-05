@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GENERIC_QUESTIONS } from './questions.js';
+import { cascadingQuestionDef, isCascadingPack, nextCascadingQuestion } from './cascading.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,9 +21,10 @@ function loadQuestionPack(code) {
     const raw = fs.readFileSync(file, 'utf8');
     const pack = JSON.parse(raw);
     // Empty/draft packs deliberately fall back to the existing generic flow.
-    // This keeps today's behaviour unchanged until a specialty pack is populated.
+    // A populated cascading pack is handled by nextQuestion/questionDef below.
+    if (isCascadingPack(pack)) return { type: 'cascading', pack };
     return Array.isArray(pack?.questions) && pack.questions.length
-      ? pack.questions
+      ? { type: 'questions', questions: pack.questions }
       : null;
   } catch (err) {
     console.warn('Specialty JSON pack unavailable; using generic questions:', code, err?.message || err);
@@ -31,7 +33,8 @@ function loadQuestionPack(code) {
 }
 
 export function questionsForSpecialty(code) {
-  return loadQuestionPack(code) || GENERIC_QUESTIONS;
+  const loaded = loadQuestionPack(code);
+  return loaded?.type === 'questions' ? loaded.questions : GENERIC_QUESTIONS;
 }
 
 export default {
@@ -40,7 +43,17 @@ export default {
   // Only non-GM specialties. Never include general_medicine / gm / general.
   aliases: JSON_SPECIALTIES,
   questions: GENERIC_QUESTIONS,
-  questionsForSpecialty,
+questionsForSpecialty,
+  nextQuestion: (session) => {
+    const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\\s+/g, '_');
+    const loaded = loadQuestionPack(code);
+    return loaded?.type === 'cascading' ? nextCascadingQuestion(loaded.pack, session) : null;
+  },
+  questionDef: (session, qid) => {
+    const code = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\\s+/g, '_');
+    const loaded = loadQuestionPack(code);
+    return loaded?.type === 'cascading' ? cascadingQuestionDef(loaded.pack, session, qid) : null;
+  },
   fallbacks: [],
   persona: null,
   consolidateInstructions: null,
