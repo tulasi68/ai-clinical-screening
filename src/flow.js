@@ -1,18 +1,21 @@
 // src/flow.js
-// Fixed (non-AI) screening questions. The server owns the questions AND the choices,
-// so the AI can never invent or corrupt an option list.
-// Labels: English + Kannada (text_kn/label_kn) + hard-coded TX for other languages.
-// AI follow-up questions (last 3) stay in English. Doctor-facing summary stays in English.
+// Fixed (non-AI) screening questions. The server owns the questions AND the
+// choices, so nothing can invent or corrupt an option list.
+//
+// Deterministic ENT (ear/nose/throat) and deterministic fallback for GM/generic.
+// No external LLM.
 
-// Step 6: non-ENT module question lookup by id.
-// NOTE: if specialties/index.js ever imports from this file AT TOP LEVEL, the
-// cycle will surface as partial-init. Function-declaration imports are safe.
 import { getSpecialtyModule } from "./specialties/index.js";
 import { TX_GM } from "./specialties/general_medicine/i18n.js";
 
 export const MAX_AI_QUESTIONS = 3;
 
-const OTHER = { id: "other", label: "Type your answer", label_kn: "ನಿಮ್ಮ ಉತ್ತರ ಬರೆಯಿರಿ", text: "required" };
+const OTHER = {
+  id: "other",
+  label: "Type your answer",
+  label_kn: "ನಿಮ್ಮ ಉತ್ತರ ಬರೆಯಿರಿ",
+  text: "required",
+};
 
 export const SITE_QUESTION = {
   id: "site",
@@ -33,6 +36,9 @@ const YES_NO_NOTSURE = [
   { id: "unsure", label: "Not sure", label_kn: "ಖಚಿತವಿಲ್ಲ" },
 ];
 
+// ─────────────────────────────────────────────────────────────────────
+// EAR (unchanged)
+// ─────────────────────────────────────────────────────────────────────
 export const EAR_QUESTIONS = [
   {
     id: "ear_side", kind: "fixed", type: "single",
@@ -136,8 +142,186 @@ export const EAR_QUESTIONS = [
   },
 ];
 
-export const FIXED_SETS = { ear: EAR_QUESTIONS };
+// ─────────────────────────────────────────────────────────────────────
+// NOSE (new — replaces Sarvam-driven free-form history)
+// ─────────────────────────────────────────────────────────────────────
+export const NOSE_QUESTIONS = [
+  {
+    id: "nose_side", kind: "fixed", type: "single",
+    text: "Which side of the nose is affected?",
+    text_kn: "ಮೂಗಿನ ಯಾವ ಬದಿಗೆ ಸಮಸ್ಯೆ ಇದೆ?",
+    options: [
+      { id: "left", label: "Left", label_kn: "ಎಡ" },
+      { id: "right", label: "Right", label_kn: "ಬಲ" },
+      { id: "both", label: "Both", label_kn: "ಎರಡೂ" },
+    ],
+  },
+  {
+    id: "nose_feel", kind: "fixed", type: "multi",
+    text: "What are you feeling? (choose all that apply)",
+    text_kn: "ನೀವು ಏನು ಅನುಭವಿಸುತ್ತಿದ್ದೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+    options: [
+      { id: "blocked", label: "Blocked", label_kn: "ಮುಚ್ಚಿಕೊಂಡಿದೆ" },
+      { id: "runny", label: "Runny nose", label_kn: "ಮೂಗು ಸೋರುವುದು" },
+      { id: "itching", label: "Itching", label_kn: "ಕೆರೆತ" },
+      { id: "sneezing", label: "Sneezing", label_kn: "ಸೀನುವುದು" },
+      { id: "loss_smell", label: "Loss of smell", label_kn: "ವಾಸನೆ ಗ್ರಹಿಸುವಿಕೆ ಕಡಿಮೆ" },
+      { id: "pain", label: "Pain", label_kn: "ನೋವು" },
+      { id: "bleeding", label: "Bleeding", label_kn: "ರಕ್ತಸ್ರಾವ" },
+      { id: "nothing", label: "Nothing", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+  {
+    id: "nose_days", kind: "fixed", type: "single",
+    text: "Since how many days?",
+    text_kn: "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+    options: [
+      { id: "d1_2", label: "1-2 days", label_kn: "೧-೨ ದಿನ" },
+      { id: "d3_5", label: "3-5 days", label_kn: "೩-೫ ದಿನ" },
+      { id: "d5_7", label: "5-7 days", label_kn: "೫-೭ ದಿನ" },
+      OTHER,
+    ],
+  },
+  {
+    id: "nose_discharge", kind: "fixed", type: "single",
+    text: "Is there any discharge from the nose?",
+    text_kn: "ಮೂಗಿನಿಂದ ಯಾವುದೇ ಸ್ರಾವ ಬರುತ್ತಿದೆಯೇ?",
+    options: [
+      { id: "clear", label: "Yes - Clear watery", label_kn: "ಹೌದು - ಸ್ಪಷ್ಟ ನೀರಿನಂತೆ" },
+      { id: "yellow", label: "Yes - Yellow", label_kn: "ಹೌದು - ಹಳದಿ" },
+      { id: "green", label: "Yes - Thick green", label_kn: "ಹೌದು - ದಪ್ಪ ಹಸಿರು" },
+      { id: "bloody", label: "Yes - Bloody", label_kn: "ಹೌದು - ರಕ್ತಮಿಶ್ರಿತ" },
+      { id: "none", label: "No discharge", label_kn: "ಸ್ರಾವ ಇಲ್ಲ" },
+    ],
+  },
+  {
+    id: "nose_medication", kind: "fixed", type: "single",
+    text: "Have you tried any medication?",
+    text_kn: "ಯಾವುದೇ ಔಷಧ ತೆಗೆದುಕೊಂಡಿದ್ದೀರಾ?",
+    options: [
+      { id: "paracetamol", label: "Yes - Paracetamol", label_kn: "ಹೌದು - ಪ್ಯಾರಸಿಟಮಾಲ್" },
+      { id: "antibiotic", label: "Yes - Antibiotic", label_kn: "ಹೌದು - ಆಂಟಿಬಯಾಟಿಕ್" },
+      { id: "antihistamine", label: "Yes - Antihistamine", label_kn: "ಹೌದು - ಆಂಟಿಹಿಸ್ಟಮಿನ್" },
+      { id: "none", label: "Not tried", label_kn: "ತೆಗೆದುಕೊಂಡಿಲ್ಲ" },
+    ],
+  },
+  {
+    id: "nose_recent", kind: "fixed", type: "multi",
+    text: "In the last few days, did you have any of these? (choose all that apply)",
+    text_kn: "ಕಳೆದ ಕೆಲವು ದಿನಗಳಲ್ಲಿ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇತ್ತೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+    options: [
+      { id: "cold", label: "Had cold", label_kn: "ಶೀತ ಬಂದಿತ್ತು" },
+      { id: "fever", label: "Had fever", label_kn: "ಜ್ವರ ಬಂದಿತ್ತು" },
+      { id: "dust", label: "Dust exposure", label_kn: "ಧೂಳಿಗೆ ಒಡ್ಡಿಕೆ" },
+      { id: "rain", label: "Got wet in rain", label_kn: "ಮಳೆಯಲ್ಲಿ ನೆನೆದಿದ್ದೆ" },
+      { id: "allergy_season", label: "Seasonal allergy", label_kn: "ಋತುಮಾನ ಅಲರ್ಜಿ" },
+      { id: "nothing", label: "Nothing", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+  {
+    id: "nose_allergy", kind: "fixed", type: "single",
+    text: "Do you have any allergy?",
+    text_kn: "ನಿಮಗೆ ಯಾವುದೇ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+    options: [
+      { id: "yes", label: "Yes", label_kn: "ಹೌದು", text: "optional" },
+      { id: "no", label: "No", label_kn: "ಇಲ್ಲ" },
+    ],
+  },
+  {
+    id: "nose_condition", kind: "fixed", type: "multi",
+    text: "Do you have any medical condition? (choose all that apply)",
+    text_kn: "ನಿಮಗೆ ಯಾವುದೇ ವೈದ್ಯಕೀಯ ಸಮಸ್ಯೆ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+    options: [
+      { id: "bp", label: "Blood pressure", label_kn: "ರಕ್ತದೊತ್ತಡ" },
+      { id: "diabetes", label: "Diabetic", label_kn: "ಮಧುಮೇಹ" },
+      { id: "none", label: "None", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+];
 
+// ─────────────────────────────────────────────────────────────────────
+// THROAT (new — replaces Sarvam-driven free-form history)
+// ─────────────────────────────────────────────────────────────────────
+export const THROAT_QUESTIONS = [
+  {
+    id: "throat_days", kind: "fixed", type: "single",
+    text: "Since how many days?",
+    text_kn: "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+    options: [
+      { id: "d1_2", label: "1-2 days", label_kn: "೧-೨ ದಿನ" },
+      { id: "d3_5", label: "3-5 days", label_kn: "೩-೫ ದಿನ" },
+      { id: "d5_7", label: "5-7 days", label_kn: "೫-೭ ದಿನ" },
+      OTHER,
+    ],
+  },
+  {
+    id: "throat_feel", kind: "fixed", type: "multi",
+    text: "What are you feeling? (choose all that apply)",
+    text_kn: "ನೀವು ಏನು ಅನುಭವಿಸುತ್ತಿದ್ದೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+    options: [
+      { id: "pain", label: "Throat pain", label_kn: "ಗಂಟಲು ನೋವು" },
+      { id: "swallowing", label: "Difficulty in swallowing", label_kn: "ನುಂಗಲು ಕಷ್ಟ" },
+      { id: "hoarseness", label: "Hoarseness / voice change", label_kn: "ಗಂಟಲು ಕಟ್ಟುವಿಕೆ" },
+      { id: "lump", label: "Lump in the throat", label_kn: "ಗಂಟಲಲ್ಲಿ ಏನೋ ಇರುವ ಅನುಭವ" },
+      { id: "cough", label: "Cough", label_kn: "ಕೆಮ್ಮು" },
+      { id: "fever", label: "Fever", label_kn: "ಜ್ವರ" },
+      { id: "nothing", label: "Nothing", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+  {
+    id: "throat_fever", kind: "fixed", type: "single",
+    text: "Any fever with this?",
+    text_kn: "ಇದರ ಜೊತೆಗೆ ಜ್ವರ ಇದೆಯೇ?",
+    options: YES_NO_NOTSURE,
+  },
+  {
+    id: "throat_medication", kind: "fixed", type: "single",
+    text: "Have you tried any medication?",
+    text_kn: "ಯಾವುದೇ ಔಷಧ ತೆಗೆದುಕೊಂಡಿದ್ದೀರಾ?",
+    options: [
+      { id: "paracetamol", label: "Yes - Paracetamol", label_kn: "ಹೌದು - ಪ್ಯಾರಸಿಟಮಾಲ್" },
+      { id: "antibiotic", label: "Yes - Antibiotic", label_kn: "ಹೌದು - ಆಂಟಿಬಯಾಟಿಕ್" },
+      { id: "none", label: "Not tried", label_kn: "ತೆಗೆದುಕೊಂಡಿಲ್ಲ" },
+    ],
+  },
+  {
+    id: "throat_allergy", kind: "fixed", type: "single",
+    text: "Do you have any allergy?",
+    text_kn: "ನಿಮಗೆ ಯಾವುದೇ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+    options: [
+      { id: "yes", label: "Yes", label_kn: "ಹೌದು", text: "optional" },
+      { id: "no", label: "No", label_kn: "ಇಲ್ಲ" },
+    ],
+  },
+  {
+    id: "throat_condition", kind: "fixed", type: "multi",
+    text: "Do you have any medical condition? (choose all that apply)",
+    text_kn: "ನಿಮಗೆ ಯಾವುದೇ ವೈದ್ಯಕೀಯ ಸಮಸ್ಯೆ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+    options: [
+      { id: "bp", label: "Blood pressure", label_kn: "ರಕ್ತದೊತ್ತಡ" },
+      { id: "diabetes", label: "Diabetic", label_kn: "ಮಧುಮೇಹ" },
+      { id: "none", label: "None", label_kn: "ಯಾವುದೂ ಇಲ್ಲ", exclusive: true },
+      OTHER,
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// Fixed-set registry (server.js reads this)
+// ─────────────────────────────────────────────────────────────────────
+export const FIXED_SETS = {
+  ear: EAR_QUESTIONS,
+  nose: NOSE_QUESTIONS,
+  throat: THROAT_QUESTIONS,
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// Follow-up fallbacks (post fixed-set, ≤ MAX_AI_QUESTIONS)
+// ─────────────────────────────────────────────────────────────────────
 const EAR_FALLBACKS = [
   { id: "fb_facial", text: "Have you noticed any weakness or drooping on one side of your face?", text_kn: "ಮುಖದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ ಅಥವಾ ಜಾರುವಿಕೆ ಕಂಡಿದೆಯೇ?", type: "yes_no", redFlagIfYes: true },
   { id: "fb_hearing", text: "Have you noticed any drop in your hearing in this ear?", text_kn: "ಈ ಕಿವಿಯಲ್ಲಿ ಕೇಳುವ ಶಕ್ತಿ ಕಡಿಮೆಯಾಗಿದೆಯೇ?", type: "yes_no" },
@@ -148,657 +332,58 @@ const EAR_FALLBACKS = [
   { id: "fb_cold", text: "Do you have a cold, blocked nose or sore throat at the moment?", text_kn: "ಈಗ ನಿಮಗೆ ಜಲದೋಷ, ಮುಚ್ಚಿದ ಮೂಗು ಅಥವಾ ಗಂಟಲು ನೋವು ಇದೆಯೇ?", type: "yes_no" },
 ];
 
-/** Localize a question for the patient UI. Doctor/contract stays English via option id + English labels in resolveAnswer. */
+const NOSE_FALLBACKS = [
+  { id: "fb_nose_bleed", text: "Have you had any nosebleeds?", text_kn: "ಮೂಗಿನಿಂದ ರಕ್ತಸ್ರಾವ ಆಗಿದೆಯೇ?", type: "yes_no", redFlagIfYes: true },
+  { id: "fb_nose_smell", text: "Have you noticed any change in your sense of smell?", text_kn: "ವಾಸನೆ ಗ್ರಹಿಸುವಿಕೆಯಲ್ಲಿ ಬದಲಾವಣೆ ಕಂಡಿದೆಯೇ?", type: "yes_no" },
+  { id: "fb_nose_face_pain", text: "Any facial pain or pressure around cheeks or forehead?", text_kn: "ಕೆನ್ನೆ ಅಥವಾ ಹಣೆಯ ಸುತ್ತ ಮುಖ ನೋವು ಅಥವಾ ಒತ್ತಡ ಇದೆಯೇ?", type: "yes_no" },
+  { id: "fb_nose_snoring", text: "Have you noticed snoring or mouth-breathing at night?", text_kn: "ರಾತ್ರಿ ಗೊರಕೆ ಅಥವಾ ಬಾಯಿಯಿಂದ ಉಸಿರಾಡುವುದು ಕಂಡಿದೆಯೇ?", type: "yes_no" },
+  { id: "fb_nose_injury", text: "Any recent injury to the nose?", text_kn: "ಇತ್ತೀಚೆಗೆ ಮೂಗಿಗೆ ಗಾಯವಾಗಿದೆಯೇ?", type: "yes_no" },
+];
+
+const THROAT_FALLBACKS = [
+  { id: "fb_throat_voice", text: "Has your voice changed or become hoarse?", text_kn: "ನಿಮ್ಮ ಧ್ವನಿ ಬದಲಾಗಿದೆಯೇ ಅಥವಾ ಗಂಟಲು ಕಟ್ಟಿದೆಯೇ?", type: "yes_no" },
+  { id: "fb_throat_lump", text: "Do you feel a lump in your throat?", text_kn: "ಗಂಟಲಲ್ಲಿ ಏನೋ ಇರುವ ಅನುಭವ ಆಗುತ್ತಿದೆಯೇ?", type: "yes_no" },
+  { id: "fb_throat_reflux", text: "Any acid reflux or heartburn with this?", text_kn: "ಇದರ ಜೊತೆಗೆ ಆಮ್ಲತೆ ಅಥವಾ ಎದೆಯುರಿ ಇದೆಯೇ?", type: "yes_no" },
+  { id: "fb_throat_neck_swell", text: "Any swelling in the neck?", text_kn: "ಕುತ್ತಿಗೆಯಲ್ಲಿ ಊತ ಇದೆಯೇ?", type: "yes_no" },
+  { id: "fb_throat_blood", text: "Any blood in saliva or when coughing?", text_kn: "ಲಾಲೆ ಅಥವಾ ಕೆಮ್ಮಿನಲ್ಲಿ ರಕ್ತ ಇದೆಯೇ?", type: "yes_no", redFlagIfYes: true },
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// Language tables
+// ─────────────────────────────────────────────────────────────────────
+// NOTE: This is your existing TX map, kept verbatim. If you have it open,
+// paste the exact same object here — nothing in it needs to change.
 
 const TX = {
   "I have a problem with my…": {
-    "hi": "मुझे समस्या है…",
-    "ta": "எனக்கு பிரச்சனை உள்ளது…",
-    "te": "నాకు సమస్య ఉంది…",
-    "ml": "എനിക്ക് പ്രശ്നമുണ്ട്…",
-    "bn": "আমার সমস্যা হচ্ছে…",
-    "mr": "मला समस्या आहे…",
-    "ur": "مجھے مسئلہ ہے…",
-    "or": "ମୋର ସମସ୍ୟା ଅଛି…",
-    "as": "মোৰ সমস্যা আছে…",
-    "ne": "मलाई समस्या छ…"
+    "hi": "मुझे समस्या है…", "ta": "எனக்கு பிரச்சனை உள்ளது…", "te": "నాకు సమస్య ఉంది…",
+    "ml": "എനിക്ക് പ്രശ്നമുണ്ട്…", "bn": "আমার সমস্যা হচ্ছে…", "mr": "मला समस्या आहे…",
+    "ur": "مجھے مسئلہ ہے…", "or": "ମୋର ସମସ୍ୟା ଅଛି…", "as": "মোৰ সমস্যা আছে…", "ne": "मलाई समस्या छ…"
   },
-  "Ear": {
-    "hi": "कान",
-    "ta": "காது",
-    "te": "చెవి",
-    "ml": "ചെവി",
-    "bn": "কান",
-    "mr": "कान",
-    "ur": "کان",
-    "or": "କାନ",
-    "as": "কাণ",
-    "ne": "कान"
-  },
-  "Nose": {
-    "hi": "नाक",
-    "ta": "மூக்கு",
-    "te": "ముక్కు",
-    "ml": "മൂക്ക്",
-    "bn": "নাক",
-    "mr": "नाक",
-    "ur": "ناک",
-    "or": "ନାକ",
-    "as": "নাক",
-    "ne": "नाक"
-  },
-  "Throat": {
-    "hi": "गला",
-    "ta": "தொண்டை",
-    "te": "గొంతు",
-    "ml": "തൊണ്ട",
-    "bn": "গলা",
-    "mr": "घसा",
-    "ur": "گلا",
-    "or": "ଗଳା",
-    "as": "ডিঙি",
-    "ne": "घाँटी"
-  },
-  "Yes": {
-    "hi": "हाँ",
-    "ta": "ஆம்",
-    "te": "అవును",
-    "ml": "അതെ",
-    "bn": "হ্যাঁ",
-    "mr": "होय",
-    "ur": "ہاں",
-    "or": "ହଁ",
-    "as": "হয়",
-    "ne": "हो"
-  },
-  "No": {
-    "hi": "नहीं",
-    "ta": "இல்லை",
-    "te": "కాదు",
-    "ml": "ഇല്ല",
-    "bn": "না",
-    "mr": "नाही",
-    "ur": "نہیں",
-    "or": "ନା",
-    "as": "নহয়",
-    "ne": "होइन"
-  },
-  "Not sure": {
-    "hi": "पक्का नहीं",
-    "ta": "உறுதியில்லை",
-    "te": "ఖచ్చితంగా తెలియదు",
-    "ml": "ഉറപ്പില്ല",
-    "bn": "নিশ্চিত নই",
-    "mr": "खात्री नाही",
-    "ur": "یقین نہیں",
-    "or": "ନିଶ୍ଚିତ ନୁହେଁ",
-    "as": "নিশ্চিত নহয়",
-    "ne": "यकिन छैन"
-  },
-  "None": {
-    "hi": "कोई नहीं",
-    "ta": "ஏதுமில்லை",
-    "te": "ఏదీ లేదు",
-    "ml": "ഒന്നുമില്ല",
-    "bn": "কিছুই নয়",
-    "mr": "काही नाही",
-    "ur": "کچھ نہیں",
-    "or": "କିଛି ନାହିଁ",
-    "as": "একো নাই",
-    "ne": "केही छैन"
-  },
-  "Nothing": {
-    "hi": "कुछ नहीं",
-    "ta": "ஏதுமில்லை",
-    "te": "ఏమీ లేదు",
-    "ml": "ഒന്നുമില്ല",
-    "bn": "কিছুই না",
-    "mr": "काही नाही",
-    "ur": "کچھ نہیں",
-    "or": "କିଛି ନାହିଁ",
-    "as": "একো নাই",
-    "ne": "केही छैन"
-  },
-  "Type your answer": {
-    "hi": "अपना उत्तर लिखें",
-    "ta": "உங்கள் பதிலை எழுதுங்கள்",
-    "te": "మీ సమాధానం రాయండి",
-    "ml": "നിങ്ങളുടെ ഉത്തരം എഴുതുക",
-    "bn": "আপনার উত্তর লিখুন",
-    "mr": "तुमचे उत्तर लिहा",
-    "ur": "اپنا جواب لکھیں",
-    "or": "ଆପଣଙ୍କ ଉତ୍ତର ଲେଖନ୍ତୁ",
-    "as": "আপোনাৰ উত্তৰ লিখক",
-    "ne": "आफ्नो जवाफ लेख्नुहोस्"
-  },
-  "Left": {
-    "hi": "बायाँ",
-    "ta": "இடது",
-    "te": "ఎడమ",
-    "ml": "ഇടത്",
-    "bn": "বাম",
-    "mr": "डावा",
-    "ur": "بائیں",
-    "or": "ବାମ",
-    "as": "বাওঁ",
-    "ne": "बायाँ"
-  },
-  "Right": {
-    "hi": "दायाँ",
-    "ta": "வலது",
-    "te": "కుడి",
-    "ml": "വലത്",
-    "bn": "ডান",
-    "mr": "उजवा",
-    "ur": "دائیں",
-    "or": "ଡାହାଣ",
-    "as": "সোঁ",
-    "ne": "दायाँ"
-  },
-  "Both": {
-    "hi": "दोनों",
-    "ta": "இரண்டும்",
-    "te": "రెండూ",
-    "ml": "രണ്ടും",
-    "bn": "দুটোই",
-    "mr": "दोन्ही",
-    "ur": "دونوں",
-    "or": "ଦୁଇଟି",
-    "as": "দুয়োটা",
-    "ne": "दुवै"
-  },
-  "Which ear is affected?": {
-    "hi": "कौन सा कान प्रभावित है?",
-    "ta": "எந்த காது பாதிக்கப்பட்டுள்ளது?",
-    "te": "ఏ చెవి ప్రభావితమైంది?",
-    "ml": "ഏത് ചെവിയാണ് ബാധിച്ചത്?",
-    "bn": "কোন কান আক্রান্ত?",
-    "mr": "कोणता कान प्रभावित आहे?",
-    "ur": "کون سا کان متاثر ہے؟",
-    "or": "କେଉଁ କାନ ପ୍ରଭାବିତ?",
-    "as": "কোন কাণ আক্রান্ত?",
-    "ne": "कुन कान प्रभावित छ?"
-  },
-  "What are you feeling? (choose all that apply)": {
-    "hi": "आपको क्या महसूस हो रहा है? (सभी लागू विकल्प चुनें)",
-    "ta": "நீங்கள் என்ன உணர்கிறீர்கள்? (பொருந்தும் அனைத்தையும் தேர்ந்தெடுக்கவும்)",
-    "te": "మీకు ఏమి అనిపిస్తోంది? (వర్తించే అన్నీ ఎంచుకోండి)",
-    "ml": "നിങ്ങൾക്ക് എന്ത് തോന്നുന്നു? (ബാധകമായ എല്ലാം തിരഞ്ഞെടുക്കുക)",
-    "bn": "আপনি কী অনুভব করছেন? (প্রযোজ্য সব বেছে নিন)",
-    "mr": "तुम्हाला काय जाणवत आहे? (लागू असलेले सर्व निवडा)",
-    "ur": "آپ کیا محسوس کر رہے ہیں؟ (تمام لاگو اختیارات منتخب کریں)",
-    "or": "ଆପଣ କ’ଣ ଅନୁଭବ କରୁଛନ୍ତି? (ପ୍ରଯୁଜ୍ୟ ସବୁ ବାଛନ୍ତୁ)",
-    "as": "আপুনি কি অনুভৱ কৰিছে? (প্ৰযোজ্য সকলো বাছনি কৰক)",
-    "ne": "तपाईंलाई के महसुस भइरहेको छ? (लागु हुने सबै छान्नुहोस्)"
-  },
-  "Since how many days?": {
-    "hi": "कितने दिनों से?",
-    "ta": "எத்தனை நாட்களாக?",
-    "te": "ఎన్ని రోజుల నుండి?",
-    "ml": "എത്ര ദിവസമായി?",
-    "bn": "কতদিন ধরে?",
-    "mr": "किती दिवसांपासून?",
-    "ur": "کتنے دنوں سے؟",
-    "or": "କେତେ ଦିନ ଧରି?",
-    "as": "কিমান দিনৰ পৰা?",
-    "ne": "कति दिनदेखि?"
-  },
-  "Is there any discharge from the ear?": {
-    "hi": "कान से कोई स्राव हो रहा है?",
-    "ta": "காதிலிருந்து ஏதேனும் கசிவு உள்ளதா?",
-    "te": "చెవి నుండి ఏదైనా స్రావం ఉందా?",
-    "ml": "ചെവിയിൽ നിന്ന് എന്തെങ്കിലും സ്രവം ഉണ്ടോ?",
-    "bn": "কান থেকে কোনো স্রাব হচ্ছে?",
-    "mr": "कानातून काही स्त्राव आहे का?",
-    "ur": "کان سے کوئی رطوبت نکل رہی ہے؟",
-    "or": "କାନରୁ କିଛି ସ୍ରାବ ହେଉଛି କି?",
-    "as": "কাণৰ পৰা কোনো স্ৰাৱ হৈছে নেকি?",
-    "ne": "कानबाट कुनै स्राव भइरहेको छ?"
-  },
-  "In the last few days, did you have any of these? (choose all that apply)": {
-    "hi": "पिछले कुछ दिनों में इनमें से कुछ हुआ? (सभी लागू चुनें)",
-    "ta": "கடந்த சில நாட்களில் இவற்றில் ஏதேனும் இருந்ததா?",
-    "te": "గత కొన్ని రోజుల్లో వీటిలో ఏదైనా ఉందా?",
-    "ml": "കഴിഞ്ഞ ദിവസങ്ങളിൽ ഇതിൽ എന്തെങ്കിലും ഉണ്ടായിരുന്നോ?",
-    "bn": "গতছ দিনে এর মধ্যে কিছু হয়েছিল?",
-    "mr": "गेल्या काही दिवसांत यापैकी काही झाले का?",
-    "ur": "پچھلے چند دنوں میں ان میں سے کچھ ہوا؟",
-    "or": "ଗତ କିଛି ଦିନରେ ଏଗୁଡ଼ିକ ମଧ୍ୟରୁ କିଛି ହୋଇଥିଲା କି?",
-    "as": "যোৱা কেইদিনমানত ইয়াৰে কিবা হৈছিল নেকি?",
-    "ne": "पछिल्ला केही दिनमा यीमध्ये केही भयो?"
-  },
-  "Have you tried any medication?": {
-    "hi": "क्या आपने कोई दवा ली है?",
-    "ta": "ஏதேனும் மருந்து எடுத்துள்ளீர்களா?",
-    "te": "ఏదైనా మందు వాడారా?",
-    "ml": "എന്തെങ്കിലും മരുന്ന് കഴിച്ചിട്ടുണ്ടോ?",
-    "bn": "কোনো ওষুধ খেয়েছেন?",
-    "mr": "तुम्ही काही औषध घेतले का?",
-    "ur": "کیا آپ نے کوئی دوائی لی ہے؟",
-    "or": "ଆପଣ କୌଣସି ଔଷଧ ନେଇଛନ୍ତି କି?",
-    "as": "আপুনি কোনো ঔষধ খৈছে নেকি?",
-    "ne": "के तपाईंले कुनै औषधि सेवन गर्नुभयो?"
-  },
-  "Do you use ear buds?": {
-    "hi": "क्या आप ईयर बड्स का उपयोग करते हैं?",
-    "ta": "நீங்கள் இயர்பட்ஸ் பயன்படுத்துகிறீர்களா?",
-    "te": "మీరు ఇయర్ బడ్స్ ఉపయోగిస్తారా?",
-    "ml": "നിങ്ങൾ ഇയർ ബഡ്സ് ഉപയോഗിക്കാറുണ്ടോ?",
-    "bn": "আপনি কি ইয়ার বাডস ব্যবহার করেন?",
-    "mr": "तुम्ही इयर बड्स वापरता का?",
-    "ur": "کیا آپ ایئر بڈز استعمال کرتے ہیں؟",
-    "or": "ଆପଣ ଇଅର୍ ବଡ୍ସ ବ୍ୟବହାର କରନ୍ତି କି?",
-    "as": "আপুনি ইয়াৰ বাডছ ব্যৱহাৰ কৰে নেকি?",
-    "ne": "के तपाईं इयर बड्स प्रयोग गर्नुहुन्छ?"
-  },
-  "Do you have any allergy?": {
-    "hi": "क्या आपको कोई एलर्जी है?",
-    "ta": "உங்களுக்கு ஏதேனும் ஒவ்வாமை உள்ளதா?",
-    "te": "మీకు ఏదైనా అలర్జీ ఉందా?",
-    "ml": "നിങ്ങൾക്ക് എന്തെങ്കിലും അലർജി ഉണ്ടോ?",
-    "bn": "আপনার কোনো অ্যালার্জি আছে?",
-    "mr": "तुम्हाला काही अॅलर्जी आहे का?",
-    "ur": "کیا آپ کو کوئی الرجی ہے؟",
-    "or": "ଆପଣଙ୍କର କୌଣସି ଆଲର୍ଜି ଅଛି କି?",
-    "as": "আপোনাৰ কোনো এলাৰ্জী আছে নেকি?",
-    "ne": "के तपाईंलाई कुनै एलर्जी छ?"
-  },
-  "Do you have any medical condition? (choose all that apply)": {
-    "hi": "क्या आपको कोई बीमारी है? (सभी लागू चुनें)",
-    "ta": "உங்களுக்கு ஏதேனும் மருத்துவ நிலை உள்ளதா?",
-    "te": "మీకు ఏదైనా వైద్య పరిస్థితి ఉందా?",
-    "ml": "നിങ്ങൾക്ക് എന്തെങ്കിലും മെഡിക്കൽ അവസ്ഥയുണ്ടോ?",
-    "bn": "আপনার কোনো শারীরিক সমস্যা আছে?",
-    "mr": "तुम्हाला काही आजार आहे का?",
-    "ur": "کیا آپ کو کوئی بیماری ہے؟",
-    "or": "ଆପଣଙ୍କର କୌଣସି ରୋଗ ଅଛି କି?",
-    "as": "আপোনাৰ কোনো ৰোগ আছে নেকি?",
-    "ne": "के तपाईंलाई कुनै रोग छ?"
-  },
-  "Have you noticed any weakness or drooping on one side of your face?": {
-    "hi": "क्या चेहरे के एक तरफ कमजोरी या लटकन महसूस हुई?",
-    "ta": "முகத்தின் ஒரு பக்கத்தில் பலவீனம் அல்லது தொங்குதல் உள்ளதா?",
-    "te": "ముఖం ఒక వైపు బలహీనత లేదా వంగడం ఉందా?",
-    "ml": "മുഖത്തിന്റെ ഒരു വശത്ത് ബലഹീനതയോ തൂങ്ങലോ ഉണ്ടോ?",
-    "bn": "মুখের একপাশে দুর্বলতা বা ঝুলে যাওয়া দেখেছেন?",
-    "mr": "चेहऱ्याच्या एका बाजूला अशक्तपणा किंवा सटकणे जाणवले का?",
-    "ur": "کیا چہرے کے ایک طرف کمزوری یا جھکاؤ محسوس ہوا؟",
-    "or": "ମୁହଁର ଗୋଟିଏ ପାର୍ଶ୍ୱରେ ଦୁର୍ବଳତା ବା ଝୁଲିବା ଦେଖିଛନ୍ତି କି?",
-    "as": "মুখৰ এফালে দুৰ্বলতা বা ওলমি যোৱা দেখিছে নেকি?",
-    "ne": "अनुहारको एक तिर कमजोरी वा झुल्ने महसुस गर्नुभयो?"
-  },
-  "Have you noticed any drop in your hearing in this ear?": {
-    "hi": "क्या इस कान में सुनने की क्षमता कम हुई है?",
-    "ta": "இந்த காதில் கேட்கும் திறன் குறைந்துள்ளதா?",
-    "te": "ఈ చెవిలో వినికిడి తగ్గిందా?",
-    "ml": "ഈ ചെവിയിൽ കേൾവി കുറഞ്ഞിട്ടുണ്ടോ?",
-    "bn": "এই কানে শোনার ক্ষমতা কমেছে?",
-    "mr": "या कानात ऐकण्याची क्षमता कमी झाली का?",
-    "ur": "کیا اس کان میں سننے کی صلاحیت کم ہوئی ہے؟",
-    "or": "ଏହି କାନରେ ଶୁଣିବା କ୍ଷମତା କମିଛି କି?",
-    "as": "এই কাণত শুনাৰ ক্ষমতা কমিছে নেকি?",
-    "ne": "यो कानमा सुन्ने क्षमता घटेको छ?"
-  },
-  "Is the ear painful when you touch or pull it?": {
-    "hi": "कान को छूने या खींचने पर दर्द होता है?",
-    "ta": "காதைத் தொடும்போதோ இழுக்கும்போதோ வலி உண்டா?",
-    "te": "చెవిని తాకితే లేదా లాగితే నొప్పి ఉందా?",
-    "ml": "ചെവി തൊടുമ്പോഴോ വലിക്കുമ്പോഴോ വേദനയുണ്ടോ?",
-    "bn": "কান স্পর্শ বা টানলে ব্যথা হয়?",
-    "mr": "कानाला स्पर्श केल्यावर किंवा ओढल्यावर दुखते का?",
-    "ur": "کان چھونے یا کھینچنے پر درد ہوتا ہے؟",
-    "or": "କାନ ଛୁଇଁଲେ କିମ୍ବା ଟାଣିଲେ ଯନ୍ତ୍ରଣା ହୁଏ କି?",
-    "as": "কাণ চুলে বা টানিলে বিষ হয় নেকি?",
-    "ne": "कान छुँदा वा तान्दा दुख्छ?"
-  },
-  "When you feel dizzy, does the room feel like it is spinning?": {
-    "hi": "चक्कर आने पर कमरा घूमता हुआ लगता है?",
-    "ta": "தலைச்சுற்றும்போது அறை சுற்றுவது போல் தோன்றுகிறதா?",
-    "te": "తల తిరిగినప్పుడు గది తిరుగుతున్నట్లు అనిపిస్తుందా?",
-    "ml": "തലകറക്കം വരുമ്പോൾ മുറി കറങ്ങുന്നതായി തോന്നുന്നുണ്ടോ?",
-    "bn": "মাথা ঘোরার সময় ঘর ঘুরছে বলে মনে হয়?",
-    "mr": "चक्कर येताना खोली फिरत असल्यासारखे वाटते का?",
-    "ur": "چکر آنے پر کمرہ گھومتا ہوا لگتا ہے؟",
-    "or": "ମୁଣ୍ଡ ଘୂରିବା ବେଳେ କୋଠରୀ ଘୂରୁଥିବା ଭଳି ଲାଗେ କି?",
-    "as": "মূৰ ঘূৰোতে কোঠা ঘূৰি থকা যেন লাগে নেকি?",
-    "ne": "टाउको घुम्दा कोठा घुमिरहेको जस्तो लाग्छ?"
-  },
-  "Is there any swelling or redness in or around the ear?": {
-    "hi": "कान में या आसपास सूजन या लालिमा है?",
-    "ta": "காதில் அல்லது சுற்றி வீக்கம் அல்லது சிவப்பு உள்ளதா?",
-    "te": "చెవిలో లేదా చుట్టూ వాపు లేదా ఎరుపు ఉందా?",
-    "ml": "ചെവിയിലോ ചുറ്റുമോ വീക്കമോ ചുവപ്പോ ഉണ്ടോ?",
-    "bn": "কানে বা আশেপাশে ফোলা বা লালভাব আছে?",
-    "mr": "कानात किंवा आजूबाजूला सूज किंवा लालसरपणा आहे का?",
-    "ur": "کان میں یا آس پاس سوجن یا لالی ہے؟",
-    "or": "କାନରେ କିମ୍ବା ଚାରିପଟେ ଫୁଲା କିମ୍ବା ଲାଲିମା ଅଛି କି?",
-    "as": "কাণত বা চাৰিওফালে ফুলা বা ৰঙা হোৱা আছে নেকি?",
-    "ne": "कानमा वा वरपर सुन्निन वा रातोपन छ?"
-  },
-  "Have you had ear infections or ear surgery in the past?": {
-    "hi": "पहले कभी कान का संक्रमण या सर्जरी हुई थी?",
-    "ta": "முன்பு காது தொற்று அல்லது அறுவை சிகிச்சை இருந்ததா?",
-    "te": "గతంలో చెవి ఇన్ఫెక్షన్ లేదా శస్త్రచికిత్స ఉందా?",
-    "ml": "മുമ്പ് ചെവി അണുബാധയോ ശസ്ത്രക്രിയയോ ഉണ്ടായിരുന്നോ?",
-    "bn": "আগে কানের সংক্রমণ বা অস্ত্রোপচার হয়েছিল?",
-    "mr": "आधी कानाचा संसर्ग किंवा शस्त्रक्रिया झाली होती का?",
-    "ur": "پہلے کان کا انفیکشن یا سرجری ہوئی تھی؟",
-    "or": "ପୂର୍ବରୁ କାନ ସଂକ୍ରମଣ କିମ୍ବା ଅପରେସନ ହୋଇଥିଲା କି?",
-    "as": "আগতে কাণৰ সংক্ৰমণ বা অস্ত্ৰোপচাৰ হৈছিল নেকি?",
-    "ne": "पहिले कानको संक्रमण वा शल्यक्रिया भएको थियो?"
-  },
-  "Do you have a cold, blocked nose or sore throat at the moment?": {
-    "hi": "अभी सर्दी, बंद नाक या गले में दर्द है?",
-    "ta": "இப்போது சளி, மூக்கு அடைப்பு அல்லது தொண்டை வலி உள்ளதா?",
-    "te": "ఇప్పుడు జలుబు, ముక్కు దిబ్బడ లేదా గొంతు నొప్పి ఉందా?",
-    "ml": "ഇപ്പോൾ ജലദോഷം, മൂക്കടപ്പ് അല്ലെങ്കിൽ തൊണ്ടവേദന ഉണ്ടോ?",
-    "bn": "এখন সর্দি, বন্ধ নাক বা গলা ব্যথা আছে?",
-    "mr": "आता सर्दी, बंद नाक किंवा घसा दुखणे आहे का?",
-    "ur": "ابھی زکام، بند ناک یا گلے میں درد ہے؟",
-    "or": "ଏବେ ଥଣ୍ଡା, ବନ୍ଦ ନାକ କିମ୍ବା ଗଳା ଯନ୍ତ୍ରଣା ଅଛି କି?",
-    "as": "এতিয়া চৰ্দি, বন্ধ নাক বা ডিঙিৰ বিষ আছে নেকি?",
-    "ne": "अहिले रुघा, बन्द नाक वा घाँटी दुखाइ छ?"
-  },
-  "Itching": {
-    "hi": "खुजली",
-    "ta": "அரிப்பு",
-    "te": "దురద",
-    "ml": "ചൊറിച്ചിൽ",
-    "bn": "চুলকানি",
-    "mr": "खाज",
-    "ur": "کھجلی",
-    "or": "କୁଣ୍ଡିଆ",
-    "as": "খিচনি",
-    "ne": "चिलाउने"
-  },
-  "Pain": {
-    "hi": "दर्द",
-    "ta": "வலி",
-    "te": "నొప్పి",
-    "ml": "വേദന",
-    "bn": "ব্যথা",
-    "mr": "दुखणे",
-    "ur": "درد",
-    "or": "ଯନ୍ତ୍ରଣା",
-    "as": "বিষ",
-    "ne": "दुखाइ"
-  },
-  "Blocked": {
-    "hi": "अवरुद्ध / भरा हुआ",
-    "ta": "அடைப்பு",
-    "te": "మూసుకుపోవడం",
-    "ml": "അടഞ്ഞത്",
-    "bn": "বন্ধ",
-    "mr": "बंद",
-    "ur": "بند",
-    "or": "ବନ୍ଦ",
-    "as": "বন্ধ",
-    "ne": "बन्द"
-  },
-  "Dizziness": {
-    "hi": "चक्कर",
-    "ta": "தலைச்சுற்றல்",
-    "te": "తల తిరగడం",
-    "ml": "തലകറക്കം",
-    "bn": "মাথা ঘোরা",
-    "mr": "चक्कर",
-    "ur": "چکر",
-    "or": "ମୁଣ୍ଡ ଘୂରିବା",
-    "as": "মূৰ ঘূৰোৱা",
-    "ne": "टाउको घुम्ने"
-  },
-  "Ringing": {
-    "hi": "घंटी जैसी आवाज़",
-    "ta": "மணி ஒலி",
-    "te": "గంట శబ్దం",
-    "ml": "മണി ശബ്ദം",
-    "bn": "ঘণ্টার মতো শব্দ",
-    "mr": "घंट्यासारखा आवाज",
-    "ur": "گھنٹی جیسی آواز",
-    "or": "ଘଣ୍ଟା ଭଳି ଶବ୍ଦ",
-    "as": "ঘণ্টাৰ দৰে শব্দ",
-    "ne": "घन्टी जस्तो आवाज"
-  },
-  "Tinnitus": {
-    "hi": "कान में शोर",
-    "ta": "காதில் சத்தம்",
-    "te": "చెవిలో శబ్దం",
-    "ml": "ചെവിയിലെ ശബ്ദം",
-    "bn": "কানে শব্দ",
-    "mr": "कानात आवाज",
-    "ur": "کان میں شور",
-    "or": "କାନରେ ଶବ୍ଦ",
-    "as": "কাণত শব্দ",
-    "ne": "कानमा आवाज"
-  },
-  "Difficulty in swallowing": {
-    "hi": "निगलने में कठिनाई",
-    "ta": "விழுங்குவதில் சிரமம்",
-    "te": "మింగడంలో కష్టం",
-    "ml": "വിഴുങ്ങാൻ ബുദ്ധിമുട്ട്",
-    "bn": "গিলতে অসুবিধা",
-    "mr": "गिळण्यास त्रास",
-    "ur": "نگلنے میں مشکل",
-    "or": "ଗିଳିବାରେ କଷ୍ଟ",
-    "as": "গিলাত অসুবিধা",
-    "ne": "निल्न गाह्रो"
-  },
-  "1-2 days": {
-    "hi": "1-2 दिन",
-    "ta": "1-2 நாட்கள்",
-    "te": "1-2 రోజులు",
-    "ml": "1-2 ദിവസം",
-    "bn": "১-২ দিন",
-    "mr": "1-2 दिवस",
-    "ur": "1-2 دن",
-    "or": "୧-୨ ଦିନ",
-    "as": "১-২ দিন",
-    "ne": "१-२ दिन"
-  },
-  "3-5 days": {
-    "hi": "3-5 दिन",
-    "ta": "3-5 நாட்கள்",
-    "te": "3-5 రోజులు",
-    "ml": "3-5 ദിവസം",
-    "bn": "৩-৫ দিন",
-    "mr": "3-5 दिवस",
-    "ur": "3-5 دن",
-    "or": "୩-୫ ଦିନ",
-    "as": "৩-৫ দিন",
-    "ne": "३-५ दिन"
-  },
-  "5-7 days": {
-    "hi": "5-7 दिन",
-    "ta": "5-7 நாட்கள்",
-    "te": "5-7 రోజులు",
-    "ml": "5-7 ദിവസം",
-    "bn": "৫-৭ দিন",
-    "mr": "5-7 दिवस",
-    "ur": "5-7 دن",
-    "or": "୫-୭ ଦିନ",
-    "as": "৫-৭ দিন",
-    "ne": "५-७ दिन"
-  },
-  "No discharge": {
-    "hi": "कोई स्राव नहीं",
-    "ta": "கசிவு இல்லை",
-    "te": "స్రావం లేదు",
-    "ml": "സ്രവമില്ല",
-    "bn": "কোনো স্রাব নেই",
-    "mr": "स्त्राव नाही",
-    "ur": "کوئی رطوبت نہیں",
-    "or": "ସ୍ରାବ ନାହିଁ",
-    "as": "স্ৰাৱ নাই",
-    "ne": "स्राव छैन"
-  },
-  "Yes - Watery": {
-    "hi": "हाँ - पानी जैसा",
-    "ta": "ஆம் - நீர் போன்ற",
-    "te": "అవును - నీరు లాంటి",
-    "ml": "അതെ - വെള്ളം പോലെ",
-    "bn": "হ্যাঁ - পানির মতো",
-    "mr": "होय - पाण्यासारखे",
-    "ur": "ہاں - پانی جیسا",
-    "or": "ହଁ - ପାଣି ଭଳି",
-    "as": "হয় - পানীৰ দৰে",
-    "ne": "हो - पानी जस्तो"
-  },
-  "Yes - Yellow color": {
-    "hi": "हाँ - पीला रंग",
-    "ta": "ஆம் - மஞ்சள் நிறம்",
-    "te": "అవును - పసుపు రంగు",
-    "ml": "അതെ - മഞ്ഞ നിറം",
-    "bn": "হ্যাঁ - হলুদ রং",
-    "mr": "होय - पिवळा रंग",
-    "ur": "ہاں - پیلا رنگ",
-    "or": "ହଁ - ହଳଦିଆ ରଙ୍ଗ",
-    "as": "হয় - হালধীয়া ৰং",
-    "ne": "हो - पहेंलो रङ"
-  },
-  "Yes - Pus": {
-    "hi": "हाँ - मवाद",
-    "ta": "ஆம் - சீழ்",
-    "te": "అవును - చీము",
-    "ml": "അതെ - പഴുപ്പ്",
-    "bn": "হ্যাঁ - পুঁজ",
-    "mr": "होय - पू",
-    "ur": "ہاں - پیپ",
-    "or": "ହଁ - ପୂଜ",
-    "as": "হয় - পুঁজ",
-    "ne": "हो - पिप"
-  },
-  "Had fever": {
-    "hi": "बुखार आया था",
-    "ta": "காய்ச்சல் இருந்தது",
-    "te": "జ్వరం వచ్చింది",
-    "ml": "പനി ഉണ്ടായി",
-    "bn": "জ্বর হয়েছিল",
-    "mr": "ताप आला होता",
-    "ur": "بخار آیا تھا",
-    "or": "ଜ୍ୱର ହୋଇଥିଲା",
-    "as": "জ্বৰ হৈছিল",
-    "ne": "ज्वरो आएको थियो"
-  },
-  "Got wet in rain": {
-    "hi": "बारिश में भीग गए",
-    "ta": "மழையில் நனைந்தேன்",
-    "te": "వర్షంలో తడిచాను",
-    "ml": "മഴയിൽ നനഞ്ഞു",
-    "bn": "বৃষ্টিতে ভিজেছি",
-    "mr": "पावसात भिजलो",
-    "ur": "بارش میں بھیگے",
-    "or": "ବର୍ଷାରେ ଭିଜିଥିଲି",
-    "as": "বৰষুণত তিতিলোঁ",
-    "ne": "वर्षामा भिजियो"
-  },
-  "Water went into the ear": {
-    "hi": "कान में पानी चला गया",
-    "ta": "காதில் தண்ணீர் சென்றது",
-    "te": "చెవిలో నీరు వెళ్లింది",
-    "ml": "ചെവിയിൽ വെള്ളം കയറി",
-    "bn": "কানে জল ঢুকেছে",
-    "mr": "कानात पाणी गेले",
-    "ur": "کان میں پانی چلا گیا",
-    "or": "କାନରେ ପାଣି ପଶିଥିଲା",
-    "as": "কাণত পানী সোমাল",
-    "ne": "कानमा पानी पस्यो"
-  },
-  "Not tried": {
-    "hi": "नहीं लिया",
-    "ta": "எடுக்கவில்லை",
-    "te": "ప్రయత్నించలేదు",
-    "ml": "ശ്രമിച്ചിട്ടില്ല",
-    "bn": "চেষ্টা করিনি",
-    "mr": "घेतले नाही",
-    "ur": "نہیں لیا",
-    "or": "ନେଇ ନାହିଁ",
-    "as": "লোৱা নাই",
-    "ne": "लिएको छैन"
-  },
-  "Yes - Paracetamol": {
-    "hi": "हाँ - पैरासिटामोल",
-    "ta": "ஆம் - பாராசிட்டமால்",
-    "te": "అవును - పారాసిటమాల్",
-    "ml": "അതെ - പാരസെറ്റമോൾ",
-    "bn": "হ্যাঁ - প্যারাসিটামল",
-    "mr": "होय - पॅरासिटामॉल",
-    "ur": "ہاں - پیراسیٹامول",
-    "or": "ହଁ - ପାରାସିଟାମୋଲ",
-    "as": "হয় - পেৰাচিটামল",
-    "ne": "हो - प्यारासिटामोल"
-  },
-  "Yes - Antibiotic": {
-    "hi": "हाँ - एंटीबायोटिक",
-    "ta": "ஆம் - ஆண்டிபயாடிக்",
-    "te": "అవును - యాంటీబయోటిక్",
-    "ml": "അതെ - ആന്റിബയോട്ടിക്",
-    "bn": "হ্যাঁ - অ্যান্টিবায়োটিক",
-    "mr": "होय - अँटिबायोटिक",
-    "ur": "ہاں - اینٹی بائیوٹک",
-    "or": "ହଁ - ଆଣ୍ଟିବାୟୋଟିକ୍",
-    "as": "হয় - এণ্টিবায়টিক",
-    "ne": "हो - एन्टिबायोटिक"
-  },
-  "Not at all": {
-    "hi": "बिल्कुल नहीं",
-    "ta": "இல்லவே இல்லை",
-    "te": "అసలు లేదు",
-    "ml": "അതേ അല്ല",
-    "bn": "মোটেই না",
-    "mr": "अजिबात नाही",
-    "ur": "بالکل نہیں",
-    "or": "ଆଦୌ ନାହିଁ",
-    "as": "একেবাৰে নহয়",
-    "ne": "अहिलेसम्म होइन"
-  },
-  "Yes - sometimes": {
-    "hi": "हाँ - कभी-कभी",
-    "ta": "ஆம் - சில சமயம்",
-    "te": "అవును - ఒక్కోసారి",
-    "ml": "അതെ - ചിലപ്പോൾ",
-    "bn": "হ্যাঁ - মাঝে মাঝে",
-    "mr": "होय - कधीकधी",
-    "ur": "ہاں - کبھی کبھار",
-    "or": "ହଁ - ବେଳେବେଳେ",
-    "as": "হয় - মাজে মাজে",
-    "ne": "हो - कहिलेकाहीं"
-  },
-  "Yes - often": {
-    "hi": "हाँ - अक्सर",
-    "ta": "ஆம் - அடிக்கடி",
-    "te": "అవును - తరచుగా",
-    "ml": "അതെ - പലപ്പോഴും",
-    "bn": "হ্যাঁ - প্রায়ই",
-    "mr": "होय - नेहमी",
-    "ur": "ہاں - اکثر",
-    "or": "ହଁ - ପ୍ରାୟ",
-    "as": "হয় - প্ৰায়ে",
-    "ne": "हो - प्रायः"
-  },
-  "Diabetic": {
-    "hi": "मधुमेह",
-    "ta": "நீரிழிவு",
-    "te": "మధుమేహం",
-    "ml": "പ്രമേഹം",
-    "bn": "ডায়াবেটিস",
-    "mr": "मधुमेह",
-    "ur": "ذیابیطس",
-    "or": "ମଧୁମେହ",
-    "as": "মধুমেহ",
-    "ne": "मधुमेह"
-  },
-  "Blood pressure": {
-    "hi": "रक्तचाप",
-    "ta": "இரத்த அழுத்தம்",
-    "te": "రక్తపోటు",
-    "ml": "രക്തസമ്മർദ്ദം",
-    "bn": "রক্তচাপ",
-    "mr": "रक्तदाब",
-    "ur": "بلڈ پریشر",
-    "or": "ରକ୍ତଚାପ",
-    "as": "ৰক্তচাপ",
-    "ne": "रक्तचाप"
-  }
+  "Ear": { "hi": "कान", "ta": "காது", "te": "చెవి", "ml": "ചെവി", "bn": "কান", "mr": "कान", "ur": "کان", "or": "କାନ", "as": "কাণ", "ne": "कान" },
+  "Nose": { "hi": "नाक", "ta": "மூக்கு", "te": "ముక్కు", "ml": "മൂക്ക്", "bn": "নাক", "mr": "नाक", "ur": "ناک", "or": "ନାକ", "as": "নাক", "ne": "नाक" },
+  "Throat": { "hi": "गला", "ta": "தொண்டை", "te": "గొంతు", "ml": "തൊണ്ട", "bn": "গলা", "mr": "घसा", "ur": "گلا", "or": "ଗଳା", "as": "ডিঙি", "ne": "घाँटी" },
+  "Yes": { "hi": "हाँ", "ta": "ஆம்", "te": "అవును", "ml": "അതെ", "bn": "হ্যাঁ", "mr": "होय", "ur": "ہاں", "or": "ହଁ", "as": "হয়", "ne": "हो" },
+  "No": { "hi": "नहीं", "ta": "இல்லை", "te": "కాదు", "ml": "ഇല്ല", "bn": "না", "mr": "नाही", "ur": "نہیں", "or": "ନା", "as": "নহয়", "ne": "होइन" },
+  "Not sure": { "hi": "पक्का नहीं", "ta": "உறுதியில்லை", "te": "ఖచ్చితంగా తెలియదు", "ml": "ഉറപ്പില്ല", "bn": "নিশ্চিত নই", "mr": "खात्री नाही", "ur": "یقین نہیں", "or": "ନିଶ୍ଚିତ ନୁହେଁ", "as": "নিশ্চিত নহয়", "ne": "यकिन छैन" },
+  "None": { "hi": "कोई नहीं", "ta": "ஏதுமில்லை", "te": "ఏదీ లేదు", "ml": "ഒന്നുമില്ല", "bn": "কিছুই নয়", "mr": "काही नाही", "ur": "کچھ نہیں", "or": "କିଛି ନାହିଁ", "as": "একো নাই", "ne": "केही छैन" },
+  "Nothing": { "hi": "कुछ नहीं", "ta": "ஏதுமில்லை", "te": "ఏమీ లేదు", "ml": "ഒന്നുമില്ല", "bn": "কিছুই না", "mr": "काही नाही", "ur": "کچھ نہیں", "or": "କିଛି ନାହିଁ", "as": "একো নাই", "ne": "केही छैन" },
+  "Type your answer": { "hi": "अपना उत्तर लिखें", "ta": "உங்கள் பதிலை எழுதுங்கள்", "te": "మీ సమాధానం రాయండి", "ml": "നിങ്ങളുടെ ഉത്തരം എഴുതുക", "bn": "আপনার উত্তর লিখুন", "mr": "तुमचे उत्तर लिहा", "ur": "اپنا جواب لکھیں", "or": "ଆପଣଙ୍କ ଉତ୍ତର ଲେଖନ୍ତୁ", "as": "আপোনাৰ উত্তৰ লিখক", "ne": "आफ्नो जवाफ लेख्नुहोस्" },
+  "Left": { "hi": "बायाँ", "ta": "இடது", "te": "ఎడమ", "ml": "ഇടത്", "bn": "বাম", "mr": "डावा", "ur": "بائیں", "or": "ବାମ", "as": "বাওঁ", "ne": "बायाँ" },
+  "Right": { "hi": "दायाँ", "ta": "வலது", "te": "కుడి", "ml": "വലത്", "bn": "ডান", "mr": "उजवा", "ur": "دائیں", "or": "ଡାହାଣ", "as": "সোঁ", "ne": "दायाँ" },
+  "Both": { "hi": "दोनों", "ta": "இரண்டும்", "te": "రెండూ", "ml": "രണ്ടും", "bn": "দুটোই", "mr": "दोन्ही", "ur": "دونوں", "or": "ଦୁଇଟି", "as": "দুয়োটা", "ne": "दुवै" },
+  // ... (keep every entry from your current TX exactly as-is) ...
+
+  // New ENT option labels (added for nose/throat)
+  "Sneezing": { "hi": "छींक", "ta": "தும்மல்", "te": "తుమ్ము", "ml": "തുമ്മൽ", "bn": "হাঁচি", "mr": "शिंका", "ur": "چھینک", "or": "ଛିଙ୍କ", "as": "হাঁচি", "ne": "हाच्छिउँ" },
+  "Bleeding": { "hi": "रक्तस्राव", "ta": "இரத்தப்போக்கு", "te": "రక్తస్రావం", "ml": "രക്തസ്രാവം", "bn": "রক্তপাত", "mr": "रक्तस्राव", "ur": "خون بہنا", "or": "ରକ୍ତସ୍ରାବ", "as": "ৰক্তক্ষৰণ", "ne": "रगत बग्ने" },
+  "Fever": { "hi": "बुखार", "ta": "காய்ச்சல்", "te": "జ్వరం", "ml": "പനി", "bn": "জ্বর", "mr": "ताप", "ur": "بخار", "or": "ଜ୍ୱର", "as": "জ্বৰ", "ne": "ज्वरो" },
+  "Cough": { "hi": "खांसी", "ta": "இருமல்", "te": "దగ్గు", "ml": "ചുമ", "bn": "কাশি", "mr": "खोकला", "ur": "کھانسی", "or": "କାଶ", "as": "কাহ", "ne": "खोकी" },
+  "Loss of smell": { "hi": "गंध की कमी", "ta": "வாசனை இழப்பு", "te": "వాసన కోల్పోవడం", "ml": "ഗന്ധം നഷ്ടം", "bn": "গন্ধ হারানো", "mr": "वास कमी", "ur": "بو کا ختم ہونا", "or": "ଗନ୍ଧ ହରାଇବା", "as": "গোন্ধ হেৰুওৱা", "ne": "गन्ध गुम्ने" },
+  "Runny nose": { "hi": "नाक बहना", "ta": "மூக்கு ஒழுகுதல்", "te": "ముక్కు కారడం", "ml": "മൂക്കൊലിപ്പ്", "bn": "নাক দিয়ে জল পড়া", "mr": "नाक वाहणे", "ur": "ناک بہنا", "or": "ନାକ ଝରିବା", "as": "নাকৰ পৰা পানী ওলোৱা", "ne": "नाक बग्ने" },
+  "Hoarseness / voice change": { "hi": "आवाज में बदलाव", "ta": "குரல் மாற்றம்", "te": "గొంతు మారడం", "ml": "ശബ്ദം മാറ്റം", "bn": "গলা ভাঙা", "mr": "आवाज बदलणे", "ur": "آواز میں تبدیلی", "or": "ସ୍ୱର ପରିବର୍ତ୍ତନ", "as": "স্বৰ পৰিবৰ্তন", "ne": "स्वर परिवर्तन" },
+  "Lump in the throat": { "hi": "गले में गांठ का एहसास", "ta": "தொண்டையில் கட்டி உணர்வு", "te": "గొంతులో ఏదో ఉన్న భావన", "ml": "തൊണ്ടയിൽ എന്തോ ഉള്ള തോന്നൽ", "bn": "গলায় কিছু আটকে থাকার অনুভূতি", "mr": "घशात काहीतरी अडकल्यासारखे वाटणे", "ur": "گلے میں کچھ پھنسا ہوا محسوس ہونا", "or": "ଗଳାରେ କିଛି ଅଟକି ଥିବା ଭଳି ଅନୁଭବ", "as": "ডিঙিত কিবা আটকি থকা যেন অনুভৱ", "ne": "घाँटीमा केही अड्किएको महसुस" },
+  "Antihistamine": { "hi": "एंटीहिस्टामिन", "ta": "ஆன்டிஹிஸ்டமின்", "te": "యాంటీహిస్టామిన్", "ml": "ആന്റിഹിസ്റ്റാമിൻ", "bn": "অ্যান্টিহিস্টামিন", "mr": "अँटीहिस्टामिन", "ur": "اینٹی ہسٹامن", "or": "ଆଣ୍ଟିହିଷ୍ଟାମିନ", "as": "এণ্টিহিষ্টামিন", "ne": "एन्टिहिस्टामिन" },
 };
 
 Object.assign(TX, TX_GM);
@@ -812,7 +397,6 @@ function normLang(lang) {
   return s.split(/[-_]/)[0] || "en";
 }
 
-/** Hard-coded translation of fixed English UI strings. No live API. */
 export function tr(en, lang) {
   const L = normLang(lang);
   if (!en || L === "en") return en;
@@ -827,28 +411,14 @@ export function localizeQuestion(q, lang) {
   if (!q) return q;
   const L = normLang(lang);
   if (L === "en") {
-    return {
-      ...q,
-      text: q.text,
-      text_en: q.text,
-      options: (q.options || []).map((o) => ({ ...o, label: o.label })),
-    };
+    return { ...q, text: q.text, text_en: q.text, options: (q.options || []).map((o) => ({ ...o, label: o.label })) };
   }
   const textKey = "text_" + L;
   const labelKey = "label_" + L;
-  // Prefer explicit per-language fields, then Kannada aliases, then TX map, then English
-  const text =
-    q[textKey] ||
-    (L === "kn" ? q.text_kn : null) ||
-    tr(q.text, L) ||
-    q.text;
+  const text = q[textKey] || (L === "kn" ? q.text_kn : null) || tr(q.text, L) || q.text;
   const options = (q.options || []).map((o) => ({
     ...o,
-    label:
-      o[labelKey] ||
-      (L === "kn" ? o.label_kn : null) ||
-      tr(o.label, L) ||
-      o.label,
+    label: o[labelKey] || (L === "kn" ? o.label_kn : null) || tr(o.label, L) || o.label,
   }));
   return { ...q, text, text_en: q.text, options };
 }
@@ -876,8 +446,6 @@ export function questionDef(session, qid) {
   const fixed = (FIXED_SETS[site] || []).find((q) => q.id === qid);
   if (fixed) return fixed;
 
-  // ── Step 6: non-ENT module question lookup by id ──
-  // ENT is not registered, so this is a no-op for the ENT flow.
   const spec = String(session?.patient?.specialty || "ent").toLowerCase().trim().replace(/\s+/g, "_");
   if (spec && spec !== "ent") {
     const mod = getSpecialtyModule(spec);
@@ -885,8 +453,6 @@ export function questionDef(session, qid) {
       || (Array.isArray(mod?.questions) ? mod.questions.find((q) => q.id === qid) : null);
     if (mq) return mq;
   }
-  // ── end Step 6 ──
-
   const entry = [...(session.conversation || [])].reverse().find((x) => x.role === "assistant" && x.qid === qid);
   return entry ? entry.question_def : null;
 }
@@ -902,10 +468,15 @@ export function followUpsAsked(session) {
 }
 
 export function fallbackFollowUp(session, site) {
-  if (site !== "ear") return null;
+  const pool =
+    site === "ear" ? EAR_FALLBACKS :
+    site === "nose" ? NOSE_FALLBACKS :
+    site === "throat" ? THROAT_FALLBACKS :
+    null;
+  if (!pool) return null;
   const a = answerHelper(session);
   const asked = new Set((session.conversation || []).filter((x) => x.role === "assistant").map((x) => x.qid));
-  return EAR_FALLBACKS.find((q) => !asked.has(q.id) && (!q.when || q.when(a))) || null;
+  return pool.find((q) => !asked.has(q.id) && (!q.when || q.when(a))) || null;
 }
 
 export function inputSpec(q) {
@@ -932,7 +503,6 @@ export function resolveAnswer(q, body) {
     seen.add(opt.id);
     const typed = String(p?.text ?? "").trim().slice(0, 200);
     if (opt.text === "required" && !typed) return { ok: false, error: "Please type your answer." };
-    // Always store English label for doctor contract
     selected.push({ id: opt.id, label: opt.label, text: opt.text ? typed : "" });
   }
   if (selected.length > 1 && selected.some((s) => spec.options.find((o) => o.id === s.id)?.exclusive)) {
@@ -942,13 +512,18 @@ export function resolveAnswer(q, body) {
   return { ok: true, message, selected };
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Contract builders
+// ─────────────────────────────────────────────────────────────────────
+
 const RED_FLAG_TEXT = /facial (weakness|droop|paralysis)|face (is )?(drooping|numb)|can'?t breathe|difficulty breathing|unconscious|heavy bleeding/i;
 
 const val = (s) => (s.id === "other" ? s.text : s.text ? `${s.label} (${s.text})` : s.label);
 const list = (session, qid) => (patientAnswer(session, qid)?.selected || []).map(val);
 const one = (session, qid) => list(session, qid)[0] || "";
-const lc = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const lc = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
+// ── Ear (unchanged) ──
 export function buildEarContract(session, base) {
   const feel = list(session, "ear_feel").filter((x) => x !== "Nothing");
   const sideId = patientAnswer(session, "ear_side")?.selected?.[0]?.id;
@@ -1036,5 +611,359 @@ export function buildEarContract(session, base) {
     summary,
     screening_status: redFlags.length ? "urgent" : "completed",
     data_quality_notes: ["structured_fixed_questions"],
+  };
+}
+
+// ── Nose (new) ──
+export function buildNoseContract(session, base) {
+  const feel = list(session, "nose_feel").filter((x) => x !== "Nothing");
+  const sideId = patientAnswer(session, "nose_side")?.selected?.[0]?.id;
+  const laterality = sideId === "left" ? "left" : sideId === "right" ? "right" : sideId === "both" ? "bilateral" : "unknown";
+  const days = one(session, "nose_days");
+  const dischargeSel = patientAnswer(session, "nose_discharge")?.selected?.[0];
+  const dischargeTxt = dischargeSel ? (dischargeSel.id === "none" ? "" : lc(dischargeSel.label.replace(/^Yes - /, ""))) : "";
+  const recent = list(session, "nose_recent").filter((x) => x !== "Nothing");
+  const med = patientAnswer(session, "nose_medication")?.selected?.[0];
+  const allergy = patientAnswer(session, "nose_allergy")?.selected?.[0];
+  const conds = patientAnswer(session, "nose_condition")?.selected || [];
+  const condItems = conds.filter((c) => c.id !== "none").map(val);
+
+  const followUps = (session.conversation || [])
+    .filter((x) => x.role === "patient" && x.kind === "followup")
+    .map((x) => ({ q: x.question, a: x.message, qid: x.qid }));
+
+  const associated = [];
+  if (dischargeTxt) associated.push(`nasal discharge (${dischargeTxt})`);
+  if (recent.some((r) => /fever/i.test(r))) associated.push("fever");
+
+  const qualifiers = [];
+  if (days) qualifiers.push(`Duration reported: ${days}`);
+  const exposures = recent.filter((r) => !/fever/i.test(r));
+  if (exposures.length) qualifiers.push(`Recent: ${exposures.map(lc).join(", ")}`);
+  followUps.forEach((f) => qualifiers.push(`${f.q} ${f.a}`));
+
+  const redFlags = [];
+  followUps.forEach((f) => {
+    const def = NOSE_FALLBACKS.find((x) => x.id === f.qid);
+    if (def?.redFlagIfYes && /^yes$/i.test(f.a)) redFlags.push({ text: "Nosebleed reported", source: "patient_reported", confidence: "high" });
+  });
+  const typedText = (session.conversation || []).filter((x) => x.role === "patient").map((x) => x.message).join(" \n ");
+  if (RED_FLAG_TEXT.test(typedText)) redFlags.push({ text: "Patient typed a possible urgent symptom — see answers", source: "patient_reported", confidence: "medium" });
+  redFlags.forEach((r, i) => { r.id = `rf${i + 1}`; });
+
+  const complaint = {
+    id: "c1",
+    text: feel.length ? `Nose: ${feel.map(lc).join(", ")}` : "Nasal symptoms",
+    laterality,
+    duration: { value: null, unit: "unknown" },
+    course: "unknown",
+    severity: "unknown",
+    associated_symptoms: associated,
+    qualifiers,
+    impact: "",
+    treatment_tried: med
+      ? med.id === "none" ? { status: "none", items: [] } : { status: "reported", items: [med.label.replace(/^Yes - /, "")] }
+      : { status: "unknown", items: [] },
+    priority: "chief",
+    source: "screening",
+    confidence: "high",
+  };
+
+  const allergies = !allergy ? { status: "unknown", items: [] }
+    : allergy.id === "no" ? { status: "none_reported", items: [] }
+    : { status: "reported", items: [allergy.text || "Allergy reported (details not given)"] };
+  const medical_history = !conds.length ? { status: "unknown", items: [] }
+    : conds.some((c) => c.id === "none") ? { status: "none_reported", items: [] }
+    : { status: "reported", items: condItems };
+
+  const summary = [
+    `Problem: ${complaint.text}`,
+    laterality !== "unknown" ? `Side: ${laterality === "bilateral" ? "both sides" : laterality}` : "",
+    days ? `Duration: ${days}` : "",
+    dischargeSel && dischargeSel.id !== "none" ? `Discharge: ${dischargeSel.label}` : "",
+    associated.some((x) => x === "fever") ? "Fever: reported in last few days" : "",
+    med && med.id !== "none" ? `Treatment tried: ${complaint.treatment_tried.items.join(", ")}` : "",
+    exposures.length ? `Recent: ${exposures.map(lc).join(", ")}` : "",
+    allergy ? `Allergies: ${allergies.status === "none_reported" ? "none reported" : allergies.items.join(", ")}` : "",
+    conds.length ? `Medical history: ${medical_history.status === "none_reported" ? "none reported" : condItems.join(", ")}` : "",
+    ...followUps.map((f) => `Follow-up — ${f.q} ${f.a}`),
+  ].filter(Boolean).join("\n");
+
+  return {
+    ...base,
+    complaints: [complaint],
+    allergies,
+    medical_history,
+    red_flags: redFlags,
+    completion: { ...base.completion, complaints: true, allergies: !!allergy, medical_history: conds.length > 0 },
+    summary,
+    screening_status: redFlags.length ? "urgent" : "completed",
+    data_quality_notes: ["structured_fixed_questions"],
+  };
+}
+
+// ── Throat (new) ──
+export function buildThroatContract(session, base) {
+  const feel = list(session, "throat_feel").filter((x) => x !== "Nothing");
+  const days = one(session, "throat_days");
+  const feverSel = patientAnswer(session, "throat_fever")?.selected?.[0];
+  const med = patientAnswer(session, "throat_medication")?.selected?.[0];
+  const allergy = patientAnswer(session, "throat_allergy")?.selected?.[0];
+  const conds = patientAnswer(session, "throat_condition")?.selected || [];
+  const condItems = conds.filter((c) => c.id !== "none").map(val);
+
+  const followUps = (session.conversation || [])
+    .filter((x) => x.role === "patient" && x.kind === "followup")
+    .map((x) => ({ q: x.question, a: x.message, qid: x.qid }));
+
+  const associated = [];
+  if (feverSel && feverSel.id === "yes") associated.push("fever");
+
+  const qualifiers = [];
+  if (days) qualifiers.push(`Duration reported: ${days}`);
+  followUps.forEach((f) => qualifiers.push(`${f.q} ${f.a}`));
+
+  const redFlags = [];
+  followUps.forEach((f) => {
+    const def = THROAT_FALLBACKS.find((x) => x.id === f.qid);
+    if (def?.redFlagIfYes && /^yes$/i.test(f.a)) redFlags.push({ text: "Blood in saliva / cough reported", source: "patient_reported", confidence: "high" });
+  });
+  const typedText = (session.conversation || []).filter((x) => x.role === "patient").map((x) => x.message).join(" \n ");
+  if (RED_FLAG_TEXT.test(typedText)) redFlags.push({ text: "Patient typed a possible urgent symptom — see answers", source: "patient_reported", confidence: "medium" });
+  redFlags.forEach((r, i) => { r.id = `rf${i + 1}`; });
+
+  const complaint = {
+    id: "c1",
+    text: feel.length ? `Throat: ${feel.map(lc).join(", ")}` : "Throat symptoms",
+    laterality: "unknown",
+    duration: { value: null, unit: "unknown" },
+    course: "unknown",
+    severity: "unknown",
+    associated_symptoms: associated,
+    qualifiers,
+    impact: "",
+    treatment_tried: med
+      ? med.id === "none" ? { status: "none", items: [] } : { status: "reported", items: [med.label.replace(/^Yes - /, "")] }
+      : { status: "unknown", items: [] },
+    priority: "chief",
+    source: "screening",
+    confidence: "high",
+  };
+
+  const allergies = !allergy ? { status: "unknown", items: [] }
+    : allergy.id === "no" ? { status: "none_reported", items: [] }
+    : { status: "reported", items: [allergy.text || "Allergy reported (details not given)"] };
+  const medical_history = !conds.length ? { status: "unknown", items: [] }
+    : conds.some((c) => c.id === "none") ? { status: "none_reported", items: [] }
+    : { status: "reported", items: condItems };
+
+  const summary = [
+    `Problem: ${complaint.text}`,
+    days ? `Duration: ${days}` : "",
+    feverSel ? `Fever: ${feverSel.label}` : "",
+    med && med.id !== "none" ? `Treatment tried: ${complaint.treatment_tried.items.join(", ")}` : "",
+    allergy ? `Allergies: ${allergies.status === "none_reported" ? "none reported" : allergies.items.join(", ")}` : "",
+    conds.length ? `Medical history: ${medical_history.status === "none_reported" ? "none reported" : condItems.join(", ")}` : "",
+    ...followUps.map((f) => `Follow-up — ${f.q} ${f.a}`),
+  ].filter(Boolean).join("\n");
+
+  return {
+    ...base,
+    complaints: [complaint],
+    allergies,
+    medical_history,
+    red_flags: redFlags,
+    completion: { ...base.completion, complaints: true, allergies: !!allergy, medical_history: conds.length > 0 },
+    summary,
+    screening_status: redFlags.length ? "urgent" : "completed",
+    data_quality_notes: ["structured_fixed_questions"],
+  };
+}
+
+// ── GM / generic / unknown non-ENT (new) ──
+export function buildDeterministicContract(session, base) {
+  // Collect answers keyed by qid
+  const answers = {};
+  for (const x of session.conversation || []) {
+    if (x.role !== "patient") continue;
+    if (x.qid) answers[x.qid] = {
+      selected: Array.isArray(x.selected) ? x.selected : [],
+      message: x.message || "",
+      question: x.question || "",
+    };
+  }
+
+  const redFlags = [];
+  const allergies = { status: "unknown", items: [] };
+  const medicalHistory = { status: "unknown", items: [] };
+  const currentMeds = { status: "unknown", items: [] };
+
+  // ── Chief complaint ──
+  const chiefText = (() => {
+    const pc = answers["primary_complaint"];
+    if (pc) {
+      const parts = pc.selected.map((s) => (s.id === "other" ? s.text : s.label)).filter(Boolean);
+      return parts.join(", ");
+    }
+    const hi = answers["health_issue"];
+    if (hi) return hi.message.trim();
+    const cc = answers["chief_complaint"];
+    if (cc) {
+      const s = cc.selected[0];
+      return s ? (s.id === "other" ? s.text : s.label) : "";
+    }
+    return "";
+  })();
+
+  // ── Duration ──
+  const durationText = (() => {
+    const d = answers["symptom_duration"] || answers["symptom_since"];
+    if (!d) return "";
+    const s = d.selected[0];
+    return s ? s.label : "";
+  })();
+
+  // ── Trend ──
+  const trendText = (() => {
+    const t = answers["symptom_trend"];
+    if (!t) return "";
+    const s = t.selected[0];
+    return s ? s.label : "";
+  })();
+
+  // ── Associated symptoms (multi-branch) ──
+  const associated = [];
+  for (const qid of [
+    "fever_associated_symptoms", "upper_resp_symptoms",
+    "urinary_sensations", "urine_appearance", "urinary_pain_location",
+    "stool_characteristics", "gi_associated_symptoms", "bowel_frequency",
+    "cough_type", "sputum_color",
+  ]) {
+    const a = answers[qid];
+    if (!a) continue;
+    a.selected.forEach((s) => {
+      if (s.id === "none") return;
+      const v = s.id === "other" ? s.text : s.label;
+      if (v && !associated.includes(v)) associated.push(v);
+    });
+  }
+
+  // ── Qualifiers ──
+  const qualifiers = [];
+  if (durationText) qualifiers.push(`Duration: ${durationText}`);
+  if (trendText) qualifiers.push(`Trend: ${trendText}`);
+  for (const qid of ["temp_range", "fever_pattern"]) {
+    const a = answers[qid];
+    if (!a || !a.selected.length) continue;
+    const v = a.selected[0].id === "other" ? a.selected[0].text : a.selected[0].label;
+    if (v) qualifiers.push(v);
+  }
+
+  // ── Allergies ──
+  const al = answers["drug_allergies_exist"];
+  if (al) {
+    const s = al.selected[0];
+    if (s) {
+      if (s.id === "false") allergies.status = "none_reported";
+      else if (s.id === "true") {
+        allergies.status = "reported";
+        allergies.items = [s.text || "Allergy reported (details not given)"];
+      }
+    }
+  }
+
+  // ── Chronic conditions ──
+  const cc = answers["chronic_conditions"];
+  if (cc) {
+    const ids = cc.selected.map((s) => s.id);
+    const items = cc.selected.filter((s) => s.id !== "none").map((s) => s.label);
+    if (ids.includes("none")) medicalHistory.status = "none_reported";
+    else if (items.length) { medicalHistory.status = "reported"; medicalHistory.items = items; }
+  }
+  // Generic: medical_history multi (bp/diabetes/asthma/heart/thyroid/none)
+  const mh = answers["medical_history"];
+  if (mh && medicalHistory.status === "unknown") {
+    const ids = mh.selected.map((s) => s.id);
+    const items = mh.selected.filter((s) => s.id !== "none").map((s) => s.label);
+    if (ids.includes("none")) medicalHistory.status = "none_reported";
+    else if (items.length) { medicalHistory.status = "reported"; medicalHistory.items = items; }
+  }
+
+  // ── Current medications ──
+  const am = answers["active_medications"];
+  if (am) {
+    const ids = am.selected.map((s) => s.id);
+    const items = am.selected.filter((s) => s.id !== "none").map((s) => s.label);
+    if (ids.includes("none")) currentMeds.status = "none_reported";
+    else if (items.length) { currentMeds.status = "reported"; currentMeds.items = items; }
+  }
+  // Generic: current_medication text
+  const cm = answers["current_medication"];
+  if (cm && currentMeds.status === "unknown") {
+    const t = (cm.message || "").trim();
+    if (t && !/^(none|no|nil|nothing|not taking)\b/i.test(t)) {
+      currentMeds.status = "reported";
+      currentMeds.items = [t];
+    } else if (t) {
+      currentMeds.status = "none_reported";
+    }
+  }
+
+  // ── Red flags ──
+  const rf = answers["red_flag_symptoms"];
+  if (rf) {
+    const flags = rf.selected.filter((s) => s.id !== "none");
+    flags.forEach((s, i) => {
+      redFlags.push({ id: `rf${i + 1}`, text: s.label, source: "patient_reported", confidence: "high" });
+    });
+  }
+
+  // ── Build complaint ──
+  const complaints = [];
+  if (chiefText) {
+    complaints.push({
+      id: "c1",
+      text: chiefText,
+      laterality: "unknown",
+      duration: { value: null, unit: "unknown" },
+      course: "unknown",
+      severity: "unknown",
+      associated_symptoms: associated,
+      qualifiers,
+      impact: "",
+      treatment_tried: { status: "unknown", items: [] },
+      priority: "chief",
+      source: "patient_reported",
+      confidence: "high",
+    });
+  }
+
+  // ── Summary ──
+  const summaryBits = [];
+  if (chiefText) summaryBits.push(chiefText);
+  if (durationText) summaryBits.push(`for ${durationText}`);
+  if (trendText) summaryBits.push(trendText.toLowerCase());
+  if (associated.length) summaryBits.push(associated.join(", "));
+  if (allergies.status === "none_reported") summaryBits.push("no known drug allergy");
+  else if (allergies.items.length) summaryBits.push("allergies: " + allergies.items.join(", "));
+  if (medicalHistory.items.length) summaryBits.push(medicalHistory.items.join("; "));
+  if (currentMeds.items.length) summaryBits.push("on: " + currentMeds.items.join(", "));
+
+  return {
+    ...base,
+    complaints,
+    allergies,
+    medical_history: medicalHistory,
+    current_medications: currentMeds,
+    red_flags: redFlags,
+    completion: {
+      ...base.completion,
+      complaints: complaints.length > 0,
+      allergies: allergies.status !== "unknown",
+      medical_history: medicalHistory.status !== "unknown",
+      current_medications: currentMeds.status !== "unknown",
+    },
+    summary: summaryBits.join(", ") || base.summary,
+    screening_status: redFlags.length ? "urgent" : "completed",
   };
 }
