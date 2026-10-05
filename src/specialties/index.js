@@ -4,6 +4,9 @@
 // Other non-ENT specialties → generic module + their JSON pack (when populated).
 
 import generic from './generic/index.js';
+import { packCodeForSpecialty } from './packCodes.js';
+
+export { packCodeForSpecialty } from './packCodes.js';
 
 const USERNAME_PREFIXES = {
   genmed: 'general_medicine',
@@ -48,20 +51,6 @@ export const GENERIC_SPECIALTY_CODES = new Set([
   'pulmonology', 'neurology', 'endocrinology', 'nephrology', 'general_surgery',
   'ayurveda', 'other', 'generic',
 ]);
-
-/** Map clinical specialty codes onto the cascading pack file to load. */
-const PACK_ALIASES = {
-  general_medicine: 'primary_care',
-  gm: 'primary_care',
-  general: 'primary_care',
-  internal_medicine: 'primary_care',
-  family_medicine: 'primary_care',
-};
-
-export function packCodeForSpecialty(code) {
-  const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
-  return PACK_ALIASES[c] || c;
-}
 
 const REGISTRY = {
   generic,
@@ -123,7 +112,6 @@ function specialtyModuleFor(code) {
     code: c || packCode,
     label: c === 'general_medicine' ? 'General Medicine' : (c || packCode),
     questions,
-    // Force pack lookup key used by nextQuestion / questionDef
     packCode,
   };
 }
@@ -144,7 +132,11 @@ export function getSpecialtyModule(code) {
     c === 'primary' ||
     c === 'pc'
   ) {
-    return specialtyModuleFor(c === 'primary_care' || c === 'primarycare' || c === 'primary' || c === 'pc' ? 'primary_care' : 'general_medicine');
+    return specialtyModuleFor(
+      c === 'primary_care' || c === 'primarycare' || c === 'primary' || c === 'pc'
+        ? 'primary_care'
+        : 'general_medicine'
+    );
   }
 
   if (GENERIC_SPECIALTY_CODES.has(c)) return specialtyModuleFor(c);

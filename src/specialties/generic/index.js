@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { GENERIC_QUESTIONS } from './questions.js';
 import { cascadingQuestionDef, isCascadingPack, nextCascadingQuestion } from './cascading.js';
-import { packCodeForSpecialty } from '../index.js';
+import { packCodeForSpecialty } from '../packCodes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -60,7 +60,6 @@ function loadQuestionPack(code) {
       } else if (Array.isArray(pack?.questions) && pack.questions.length) {
         result = { type: 'questions', questions: pack.questions };
       } else {
-        // Draft / empty pack (level1 null) — do not treat as success.
         result = null;
       }
       if (result) {
@@ -72,7 +71,6 @@ function loadQuestionPack(code) {
     }
   }
 
-  // Last resort: require() so bundlers include the file when present.
   try {
     const pack = require('../question-packs/' + packCode + '.json');
     if (isCascadingPack(pack)) result = { type: 'cascading', pack };
@@ -90,8 +88,7 @@ function loadQuestionPack(code) {
 
 function sessionSpecialtyCode(session) {
   const fromPatient = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\s+/g, '_');
-  const fromMod = String(session?.__packCode || '').toLowerCase().trim().replace(/\s+/g, '_');
-  return packCodeForSpecialty(fromPatient || fromMod || 'primary_care');
+  return packCodeForSpecialty(fromPatient || 'primary_care');
 }
 
 export function questionsForSpecialty(code) {
@@ -112,7 +109,6 @@ export default {
     if (loaded?.type === 'questions') {
       return loaded.questions.find((q) => !((session.conversation || []).some((x) => x.role === 'patient' && x.qid === q.id))) || null;
     }
-    // Fallback linear generic questions only when no cascading pack exists.
     return GENERIC_QUESTIONS.find((q) => !((session.conversation || []).some((x) => x.role === 'patient' && x.qid === q.id))) || null;
   },
   questionDef: (session, qid) => {
