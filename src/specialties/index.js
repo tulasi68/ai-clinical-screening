@@ -9,6 +9,9 @@ import generic from './generic/index.js';
 const USERNAME_PREFIXES = {
   genmed: 'general_medicine',
   gm:     'general_medicine',
+  primarycare: 'primary_care',
+  primary: 'primary_care',
+  pc: 'primary_care',
   gyno:   'gynecology',
   gyn:    'gynecology',
   obg:    'gynecology',
@@ -39,6 +42,7 @@ const USERNAME_PREFIXES = {
 
 /** Codes that use the generic/JSON pack (NOT general_medicine or ENT). */
 export const GENERIC_SPECIALTY_CODES = new Set([
+  'primary_care',
   'gynecology', 'cardiology', 'pediatrics', 'orthopedics', 'dermatology',
   'ophthalmology', 'dentistry', 'psychiatry', 'urology', 'gastroenterology',
   'pulmonology', 'neurology', 'endocrinology', 'nephrology', 'general_surgery',
@@ -55,7 +59,6 @@ for (const mod of SPECIALTY_MODULES) {
   if (!mod || !mod.code) continue;
   REGISTRY[mod.code] = mod;
   for (const alias of mod.aliases || []) {
-    // Never let generic aliases overwrite general_medicine
     if (alias === 'general_medicine' || alias === 'gm') continue;
     REGISTRY[alias] = mod;
   }
@@ -111,13 +114,6 @@ function specialtyModuleFor(code) {
   return REGISTRY[c] || null;
 }
 
-/**
- * Get the module for a specialty code.
- * - ent → null (flow.js ENT path)
- * - general_medicine / gm / general → GM module (never generic)
- * - known other specialties → generic/JSON pack
- * - unknown → general_medicine (safer than generic for clinical content)
- */
 export function getSpecialtyModule(code) {
   const c = String(code || '').toLowerCase().trim().replace(/\s+/g, '_');
   if (!c || c === 'ent') return null;
@@ -135,7 +131,6 @@ export function getSpecialtyModule(code) {
   if (GENERIC_SPECIALTY_CODES.has(c)) return specialtyModuleFor(c);
   if (REGISTRY[c]) return REGISTRY[c];
 
-  // Unknown non-ENT → prefer GM (full clinical questions), not generic
   return REGISTRY.general_medicine || REGISTRY.generic || null;
 }
 
