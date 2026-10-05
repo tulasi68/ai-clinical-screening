@@ -1,6 +1,6 @@
 // Data-driven cascading screening engine.
 // Supports JSON packs with: level1 -> complaints -> level2/level3 -> shared_tail.
-// It is deliberately isolated from the General Medicine and ENT/Ear flows.
+// This path is used only by populated cascading specialty packs.
 
 function answered(session, qid) {
   return (session.conversation || []).some((x) => x.role === 'patient' && x.qid === qid);
@@ -8,7 +8,7 @@ function answered(session, qid) {
 
 function answerIds(session, qid) {
   const a = [...(session.conversation || [])].reverse().find((x) => x.role === 'patient' && x.qid === qid);
-  return (a?.selected || []).map((x) => x.id);
+  return (a?.selected || []).map((x) => typeof x === 'string' ? x : x.id);
 }
 
 function normalizeList(v) {
@@ -17,8 +17,6 @@ function normalizeList(v) {
   return [v];
 }
 
-// JSON showIf is intentionally small and declarative. Unknown operators fail closed
-// for that condition rather than accidentally showing a question.
 export function matchesShowIf(session, condition) {
   if (!condition) return true;
   if (Array.isArray(condition)) return condition.every((c) => matchesShowIf(session, c));
@@ -50,7 +48,6 @@ function flatten(value, out = []) {
   }
   if (typeof value === 'object') {
     if (value.id && value.text && value.type) out.push(value);
-    // Common pack shapes: level2, level3, questions, items.
     for (const key of ['questions', 'level2', 'level3', 'items']) {
       if (value[key]) flatten(value[key], out);
     }
@@ -69,42 +66,50 @@ function complaintBranches(pack, selectedIds) {
   return out;
 }
 
+function sharedTail(pack) {
+  return flatten(pack?.shared_tail || []);
+}
+
+function nextUnanswered(questions, session) {
+  for (const q of questions) {
+    if (!q?.id || answered(session, q.id)) continue;
+    if (!matchesShowIf(session, q.showIf)) continue;
+    return q;
+  }
+  return null;
+}
+
 export function cascadingQuestions(pack, session) {
   if (!pack?.level1?.id || !pack?.complaints || typeof pack.complaints !== 'object') return [];
   const selected = answerIds(session, pack.level1.id);
   const out = [pack.level1];
-  for (const q of complaintBranches(pack, selected)) {
-    if (!q?.id || answered(session, q.id)) continue;
-    if (!matchesShowIf(session, q.showIf)) continue;
-    out.push(q);
-  }
+  out.push(...complaintBranches(pack, selected).filter((q) => q?.id && matchesShowIf(session, q.showIf)));
+  out.push(...sharedTail(pack).filter((q) => q?.id && matchesShowIf(session, q.showIf)));
   return out;
 }
 
 export function nextCascadingQuestion(pack, session) {
   if (!pack?.level1?.id || !pack?.complaints) return null;
 
-  // Level 1 is always first and must be answered before any branch can open.
   if (!answered(session, pack.level1.id)) return pack.level1;
 
   const selected = answerIds(session, pack.level1.id);
-  for (const q of complaintBranches(pack, selected)) {
-    if (!q?.id || answered(session, q.id)) continue;
-    if (!matchesShowIf(session, q.showIf)) continue;
-    return q;
-  }
+  const branchQuestion = nextUnanswered(complaintBranches(pack, selected), session);
+  if (branchQuestion) return branchQuestion;
 
-  // shared_tail is supported by the schema, but is not automatically appended here.
-  // The existing application's fixed tail remains in control unless a pack explicitly
-  // exposes its own tail through a future module implementation.
-  return null;
+  // After all selected complaint branches, run the pack's shared tail.
+  return nextUnanswered(sharedTail(pack), session);
 }
 
 export function cascadingQuestionDef(pack, session, qid) {
   if (!pack || !qid) return null;
   if (pack.level1?.id === qid) return pack.level1;
+
   const selected = answerIds(session, pack.level1?.id);
-  return complaintBranches(pack, selected).find((q) => q?.id === qid) || null;
+  const branch = complaintBranches(pack, selected).find((q) => q?.id === qid);
+  if (branch) return branch;
+
+  return sharedTail(pack).find((q) => q?.id === qid) || null;
 }
 
 export function isCascadingPack(pack) {
