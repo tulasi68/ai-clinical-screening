@@ -1,6 +1,6 @@
 // Data-driven cascading screening engine.
-// Supports JSON packs with: level1 -> complaints -> level2/level3 -> shared_tail.
-// This path is used only by populated cascading specialty packs.
+// Flow: level1 (single primary complaint) -> that complaint's level2/level3 -> shared_tail.
+// Only the selected complaint branch is asked — never mixes unrelated branches.
 
 function answered(session, qid) {
   return (session.conversation || []).some((x) => x.role === 'patient' && x.qid === qid);
@@ -8,7 +8,13 @@ function answered(session, qid) {
 
 function answerIds(session, qid) {
   const a = [...(session.conversation || [])].reverse().find((x) => x.role === 'patient' && x.qid === qid);
-  return (a?.selected || []).map((x) => typeof x === 'string' ? x : x.id);
+  if (!a) return [];
+  // Prefer structured selected[]; fall back to empty (do not guess from message text).
+  const sel = a.selected;
+  if (Array.isArray(sel) && sel.length) {
+    return sel.map((x) => (typeof x === 'string' ? x : x?.id)).filter(Boolean);
+  }
+  return [];
 }
 
 function normalizeList(v) {
@@ -55,6 +61,26 @@ function flatten(value, out = []) {
   return out;
 }
 
+/** Only expand branches that exist in the pack and were actually selected. */
+function selectedComplaintIds(pack, session) {
+  const level1Id = pack?.level1?.id;
+  if (!level1Id) return [];
+  const complaints = pack?.complaints || {};
+  const raw = answerIds(session, level1Id);
+  // De-dupe, keep order, drop unknown ids (prevents stray branches).
+  const seen = new Set();
+  const out = [];
+  for (const id of raw) {
+    if (!id || seen.has(id)) continue;
+    if (!complaints[id]) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  // Single primary path: only the first valid complaint is drilled into.
+  // (level1 is single-select; if older sessions still have multi answers, take the first only.)
+  return out.slice(0, 1);
+}
+
 function complaintBranches(pack, selectedIds) {
   const complaints = pack?.complaints || {};
   const out = [];
@@ -81,7 +107,7 @@ function nextUnanswered(questions, session) {
 
 export function cascadingQuestions(pack, session) {
   if (!pack?.level1?.id || !pack?.complaints || typeof pack.complaints !== 'object') return [];
-  const selected = answerIds(session, pack.level1.id);
+  const selected = selectedComplaintIds(pack, session);
   const out = [pack.level1];
   out.push(...complaintBranches(pack, selected).filter((q) => q?.id && matchesShowIf(session, q.showIf)));
   out.push(...sharedTail(pack).filter((q) => q?.id && matchesShowIf(session, q.showIf)));
@@ -93,11 +119,11 @@ export function nextCascadingQuestion(pack, session) {
 
   if (!answered(session, pack.level1.id)) return pack.level1;
 
-  const selected = answerIds(session, pack.level1.id);
+  const selected = selectedComplaintIds(pack, session);
+  // No recognised complaint → shared tail.
   const branchQuestion = nextUnanswered(complaintBranches(pack, selected), session);
   if (branchQuestion) return branchQuestion;
 
-  // After all selected complaint branches, run the pack's shared tail.
   return nextUnanswered(sharedTail(pack), session);
 }
 
@@ -105,7 +131,7 @@ export function cascadingQuestionDef(pack, session, qid) {
   if (!pack || !qid) return null;
   if (pack.level1?.id === qid) return pack.level1;
 
-  const selected = answerIds(session, pack.level1?.id);
+  const selected = selectedComplaintIds(pack, session);
   const branch = complaintBranches(pack, selected).find((q) => q?.id === qid);
   if (branch) return branch;
 
