@@ -1,7 +1,7 @@
 import { GENERIC_QUESTIONS } from './questions.js';
 import { cascadingQuestionDef, isCascadingPack, nextCascadingQuestion } from './cascading.js';
 import { packCodeForSpecialty } from '../packCodes.js';
-import PRIMARY_CARE_PACK from '../question-packs/primary_care.json' with { type: 'json' };
+import PRIMARY_CARE_PACK from '../question-packs/primary_care.json';
 
 const packCache = new Map();
 
