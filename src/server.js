@@ -563,4 +563,4 @@ app.get('/health', (req, res) => res.json({
 }));
 
 export default app;
-if (process.env.VERCEL !== '1') app.listen(port, () => console.log(`AI Clinical Screening listening on :${port}`));
+
