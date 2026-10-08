@@ -1,28 +1,15 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import { GENERIC_QUESTIONS } from './questions.js';
 import { cascadingQuestionDef, isCascadingPack, nextCascadingQuestion } from './cascading.js';
 import { packCodeForSpecialty } from '../packCodes.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-
-// Static require so Vercel always bundles the populated cascading pack.
-let PRIMARY_CARE_PACK = null;
-try {
-  PRIMARY_CARE_PACK = require('../question-packs/primary_care.json');
-} catch (err) {
-  console.warn('primary_care.json static load failed:', err?.message || err);
-}
+import PRIMARY_CARE_PACK from '../question-packs/primary_care.json';
 
 const packCache = new Map();
 
 function loadQuestionPack(code) {
-  // All "other" specialties resolve to primary_care pack file.
+  // All non-GM/non-ENT specialties currently share the primary-care pack.
   const packCode = packCodeForSpecialty(code) || 'primary_care';
-  // Never load a JSON pack for GM / ENT via this path.
+
+  // GM / ENT are handled by their dedicated modules.
   if (
     packCode === 'general_medicine' ||
     packCode === 'gm' ||
@@ -35,52 +22,31 @@ function loadQuestionPack(code) {
 
   if (packCache.has(packCode)) return packCache.get(packCode);
 
-  let result = null;
-
-  if (packCode === 'primary_care' && PRIMARY_CARE_PACK && isCascadingPack(PRIMARY_CARE_PACK)) {
-    result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
+  // Keep the question pack statically imported so the same module works
+  // in Vercel Node.js and Cloudflare Workers. Do not use fs/path/import.meta
+  // filesystem resolution here because Workers have no deployment filesystem.
+  if (packCode === 'primary_care' && isCascadingPack(PRIMARY_CARE_PACK)) {
+    const result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
     packCache.set(packCode, result);
     return result;
   }
 
-  const candidates = [
-    path.join(__dirname, '..', 'question-packs', packCode + '.json'),
-    path.join(process.cwd(), 'src', 'specialties', 'question-packs', packCode + '.json'),
-  ];
-
-  for (const file of candidates) {
-    try {
-      if (!fs.existsSync(file)) continue;
-      const pack = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (isCascadingPack(pack)) {
-        result = { type: 'cascading', pack };
-      } else if (Array.isArray(pack?.questions) && pack.questions.length) {
-        result = { type: 'questions', questions: pack.questions };
-      }
-      if (result) {
-        packCache.set(packCode, result);
-        return result;
-      }
-    } catch (err) {
-      console.warn('Specialty JSON pack read failed:', packCode, file, err?.message || err);
-    }
-  }
-
-  // Empty specialty-specific pack → fall back to primary_care cascading.
-  if (packCode !== 'primary_care' && PRIMARY_CARE_PACK && isCascadingPack(PRIMARY_CARE_PACK)) {
-    result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
+  // Any future/unknown generic specialty falls back to the same primary-care pack.
+  if (isCascadingPack(PRIMARY_CARE_PACK)) {
+    const result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
     packCache.set(packCode, result);
     return result;
   }
 
-  console.warn('Specialty JSON pack unavailable; using linear generic questions:', packCode);
+  console.warn('Primary-care question pack unavailable; using linear generic questions:', packCode);
   packCache.set(packCode, null);
   return null;
 }
 
 function sessionSpecialtyCode(session) {
   const fromPatient = String(session?.patient?.specialty || '').toLowerCase().trim().replace(/\s+/g, '_');
-  // GM / ENT should never reach this module; if they do, do not rewrite to primary_care.
+
+  // GM / ENT should never reach this module; if they do, preserve the code.
   if (
     fromPatient === 'general_medicine' ||
     fromPatient === 'gm' ||
@@ -89,6 +55,7 @@ function sessionSpecialtyCode(session) {
   ) {
     return fromPatient;
   }
+
   return packCodeForSpecialty(fromPatient || 'primary_care') || 'primary_care';
 }
 
