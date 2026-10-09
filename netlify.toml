@@ -1,0 +1,33 @@
+[build]
+  command = "npm install"
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["src/**", "public/**"]
+
+# API + health go to the Express serverless function (rewrite, keep path)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/webhooks/*"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
+
+# Patient screening links → SPA shell (static index.html)
+[[redirects]]
+  from = "/s/*"
+  to = "/index.html"
+  status = 200
