@@ -5,6 +5,8 @@
   "compatibility_date": "2026-10-08",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "PATIENT_APP_URL": "https://ai-clinical-screening.tulasianand6.workers.dev"
+    "PATIENT_APP_URL": "https://ai-clinical-screening.tulasianand6.workers.dev",
+    "MAX_QUESTIONS": "14",
+    "MIN_QUESTIONS": "6"
   }
 }
