@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'node:path';
+import fs from 'node:fs';
 import {
   createSession, getSession, saveSession, saveOutput, getOutput,
   getSessionByPatientToken
@@ -16,9 +17,70 @@ import { getSpecialtyModule } from './specialties/index.js';
 
 const app = express();
 app.use(express.json({ limit: '256kb' }));
-// Resolve from the project root in Vercel and Cloudflare's virtual filesystem.
-const __dirname = path.resolve('src');
-app.use(express.static(path.join(__dirname, '../public')));
+
+// Resolve public assets from several possible roots (Node, Vercel, CF Workers VFS).
+const publicRoots = [
+  path.join(process.cwd(), 'public'),
+  path.resolve('public'),
+  path.resolve('src', '..', 'public'),
+  path.join(path.resolve('src'), '..', 'public'),
+];
+
+function resolvePublic(...parts) {
+  for (const root of publicRoots) {
+    const full = path.join(root, ...parts);
+    try {
+      if (fs.existsSync(full)) return full;
+    } catch {}
+  }
+  return null;
+}
+
+for (const root of publicRoots) {
+  try {
+    if (fs.existsSync(root)) app.use(express.static(root));
+  } catch {}
+}
+
+const PATIENT_PAGE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>AI Clinical Screening</title>
+<link rel="stylesheet" href="/screening.css">
+</head>
+<body>
+<main class="shell"><div id="app" class="card"></div></main>
+<script src="/app.js"></script>
+</body>
+</html>
+`;
+
+function servePatientPage(_req, res) {
+  const file = resolvePublic('index.html');
+  if (file) {
+    try {
+      return res.type('html').send(fs.readFileSync(file, 'utf8'));
+    } catch {}
+  }
+  return res.type('html').send(PATIENT_PAGE_HTML);
+}
+
+function serveStaticAsset(name, contentType) {
+  return (_req, res) => {
+    const file = resolvePublic(name);
+    if (file) {
+      try {
+        res.type(contentType).send(fs.readFileSync(file, 'utf8'));
+        return;
+      } catch {}
+    }
+    res.status(404).type('text').send('Not Found');
+  };
+}
+
 const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
 
@@ -169,7 +231,6 @@ function questionPayload(s, entry) {
   const def = entry.qid ? specialtyQuestionDef(s, entry.qid) : null;
   const lang = normalizeUiLang(s.patient?.ui_language);
 
-  // Free-form AI question (no fixed def)
   if (!def) {
     return {
       type: 'question',
@@ -189,7 +250,6 @@ function questionPayload(s, entry) {
 
   const loc = localizeQuestion(def, lang);
   const spec = inputSpec(def);
-  // Prefer labels from localizeQuestion; keep option ids intact
   let options = (loc.options && loc.options.length)
     ? loc.options
     : (spec.options || []).map((o) => ({
@@ -344,7 +404,7 @@ function patientUrl(req, token) {
 
 function queueStatusUrl() {
   const configured = String(process.env.MEDILOOP_QUEUE_STATUS_URL || '').trim();
-  return configured || 'https://mediloop-ai.vercel.app/api/public/queue-status';
+  return configured || 'https://mediloop-ai.netlify.app/api/public/queue-status';
 }
 
 async function getPatientContext(token, res) {
@@ -364,8 +424,10 @@ function applyLanguage(s, body) {
   return { lang, changed };
 }
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
-app.get('/s/:token', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+app.get('/', servePatientPage);
+app.get('/s/:token', servePatientPage);
+app.get('/app.js', serveStaticAsset('app.js', 'application/javascript'));
+app.get('/screening.css', serveStaticAsset('screening.css', 'text/css'));
 
 app.get('/api/patient/s/:token', async (req, res) => {
   try {
@@ -499,7 +561,7 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     s.submitted_at = finalOutput.submitted_at;
     await saveSession(s);
 
-    const complaintLink = String(req.params.token ? `${String(process.env.BASE_URL || '').replace(/\/$/, '')}/s/${encodeURIComponent(req.params.token)}` : '').trim();
+    const complaintLink = String(req.params.token ? `${String(process.env.PATIENT_APP_URL || process.env.BASE_URL || '').replace(/\/$/, '')}/s/${encodeURIComponent(req.params.token)}` : '').trim();
     const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink) : { ok: false, error: 'Patient link unavailable' };
 
     res.json({
@@ -540,27 +602,55 @@ app.post('/api/screenings', async (req, res) => {
   }
 });
 
-app.get('/api/screenings/:id/output', async (req, res) => {
-  if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
-  const o = await getOutput(req.params.id);
-  if (!o) return res.status(404).json({ screening_id: req.params.id, status: 'in_progress' });
-  res.json(o);
-});
-
 app.get('/api/screenings/:id', async (req, res) => {
-  if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
-  const s = await getSession(req.params.id);
-  if (!s) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...publicSession(s), patient_token_hash: undefined });
+  try {
+    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
+    const s = await getSession(req.params.id);
+    if (!s) return res.status(404).json({ error: 'Screening not found.' });
+    res.json(publicSession(s));
+  } catch (e) {
+    console.error('screening get error', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
-app.get('/health', (req, res) => res.json({
-  ok: true,
-  service: 'ai-clinical-screening',
-  architecture: 'browser-screening',
-  link_delivery: "consumer_application",
-  inbound_whatsapp_conversation: false
-}));
+app.get('/api/screenings/:id/output', async (req, res) => {
+  try {
+    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
+    const s = await getSession(req.params.id);
+    if (!s) return res.status(404).json({ error: 'Screening not found.' });
+    const output = await getOutput(req.params.id);
+    if (!output) {
+      return res.json({
+        screening_id: s.screening_id,
+        status: s.status,
+        screening_status: s.status,
+        in_progress: s.status === 'in_progress',
+        output: null
+      });
+    }
+    res.json({ ...output, status: s.status });
+  } catch (e) {
+    console.error('screening output error', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'ai-clinical-screening',
+    architecture: 'browser-screening',
+    link_delivery: 'consumer_application',
+    inbound_whatsapp_conversation: false
+  });
+});
+
+// Only start a real TCP listener outside Cloudflare Workers.
+if (!globalThis.Cloudflare && !process.env.CF_PAGES) {
+  app.listen(port, () => {
+    console.log(`AI Clinical Screening listening on :${port}`);
+  });
+}
 
 export default app;
-

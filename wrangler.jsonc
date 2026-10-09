@@ -4,6 +4,12 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-08",
   "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health", "/webhooks/*"]
+  },
   "vars": {
     "PATIENT_APP_URL": "https://ai-clinical-screening.tulasianand6.workers.dev",
     "MAX_QUESTIONS": "14",
