@@ -1,20 +1,43 @@
 import crypto from 'node:crypto';
 
-const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+/**
+ * Read Supabase credentials at call time (not module load).
+ * Cloudflare Workers may not inject secrets into process.env until
+ * the request handler runs; top-level const capture then stays empty.
+ */
+function supabaseCreds() {
+  const url = String(
+    process.env.SUPABASE_URL ||
+    globalThis?.SUPABASE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const key = String(
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    globalThis?.SUPABASE_SERVICE_ROLE_KEY ||
+    ''
+  ).trim();
+  return { url, key };
+}
 
-function configured() { return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY); }
+function configured() {
+  const { url, key } = supabaseCreds();
+  return Boolean(url && key);
+}
+
 function requireConfigured() {
-  if (!configured()) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable.');
+  if (!configured()) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable.');
+  }
 }
 
 async function request(path, options = {}) {
   requireConfigured();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const { url, key } = supabaseCreds();
+  const response = await fetch(`${url}/rest/v1/${path}`, {
     ...options,
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       ...(options.headers || {})
     }
@@ -86,7 +109,6 @@ export async function createSession(input) {
       complaint: input.complaint, phone: normalizePhone(input.phone),
       clinic_id: input.clinic_id || null,
       queue_token: input.queue_token || null, waiting_ahead: input.waiting_ahead ?? null,
-      // Step 4: persist specialty. Default is "ent" so absent field is safe for ENT.
       specialty: normalizeSpecialty(input.specialty)
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
@@ -132,7 +154,6 @@ export async function getOutput(screeningId) {
   return rows?.[0]?.output || null;
 }
 
-// Legacy WhatsApp lookup retained only for compatibility with existing records/routes.
 export async function findActiveByPhone(phone) {
   const target = normalizePhone(phone);
   if (!target) return null;
