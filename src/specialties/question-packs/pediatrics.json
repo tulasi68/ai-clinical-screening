@@ -1,9 +1,624 @@
 {
   "version": "1.0.0",
   "specialty": "pediatrics",
-  "status": "draft",
-  "description": "Specialization-specific cascading clinical screening questions for pediatrics. Questions will be added and expanded later.",
-  "level1": null,
-  "complaints": {},
-  "shared_tail": []
+  "label": "Pediatrics",
+  "level1": {
+    "id": "primary_complaint",
+    "kind": "fixed",
+    "type": "single",
+    "text": "What is the main problem you are facing today? (choose one)",
+    "text_kn": "ಇಂದು ನೀವು ಎದುರಿಸುತ್ತಿರುವ ಮುಖ್ಯ ಸಮಸ್ಯೆ ಯಾವುದು? (ಒಂದನ್ನು ಆಯ್ಕೆ ಮಾಡಿ)",
+    "options": [
+      { "id": "fever",            "label": "Fever",                              "label_kn": "ಜ್ವರ" },
+      { "id": "cough_cold",       "label": "Cough, cold or running nose",        "label_kn": "ಕೆಮ್ಮು, ಶೀತ ಅಥವಾ ಮೂಗು ಸೋರುವುದು" },
+      { "id": "breathing",        "label": "Breathing difficulty or wheezing",   "label_kn": "ಉಸಿರಾಟದ ತೊಂದರೆ ಅಥವಾ ಉಬ್ಬಸ" },
+      { "id": "vomiting_diarrhea","label": "Vomiting or loose motions",          "label_kn": "ವಾಂತಿ ಅಥವಾ ಭೇದಿ" },
+      { "id": "rash",             "label": "Rash or skin problem",               "label_kn": "ದದ್ದು ಅಥವಾ ಚರ್ಮದ ಸಮಸ್ಯೆ" },
+      { "id": "ear",              "label": "Ear pain or ear discharge",          "label_kn": "ಕಿವಿ ನೋವು ಅಥವಾ ಕಿವಿ ಸ್ರಾವ" },
+      { "id": "throat",           "label": "Sore throat or difficulty swallowing","label_kn": "ಗಂಟಲು ನೋವು ಅಥವಾ ನುಂಗಲು ಕಷ್ಟ" },
+      { "id": "feeding",          "label": "Feeding or weight concern",          "label_kn": "ಆಹಾರ ಅಥವಾ ತೂಕದ ಚಿಂತೆ" },
+      { "id": "seizure",          "label": "Fit / seizure",                      "label_kn": "ಫಿಟ್ / ಮೂರ್ಛೆ" },
+      { "id": "injury",           "label": "Injury or fall",                     "label_kn": "ಗಾಯ ಅಥವಾ ಬೀಳುವಿಕೆ" },
+      { "id": "vaccination",      "label": "Vaccination query",                  "label_kn": "ಲಸಿಕೆ ಪ್ರಶ್ನೆ" },
+      { "id": "other_ped",        "label": "Something else",                     "label_kn": "ಬೇರೆ ಏನಾದರೂ", "text": "required" }
+    ]
+  },
+  "complaints": {
+    "fever": [
+      {
+        "id": "f_duration", "kind": "fixed", "type": "single",
+        "text": "How many days has the fever been present?",
+        "text_kn": "ಜ್ವರ ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "1d",    "label": "1 day",          "label_kn": "1 ದಿನ" },
+          { "id": "2_3d",  "label": "2-3 days",       "label_kn": "2-3 ದಿನ" },
+          { "id": "4_7d",  "label": "4-7 days",       "label_kn": "4-7 ದಿನ" },
+          { "id": "gt_1w", "label": "More than a week","label_kn": "ಒಂದು ವಾರಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "f_temp", "kind": "fixed", "type": "single",
+        "text": "What is the highest recorded temperature?",
+        "text_kn": "ದಾಖಲಾದ ಅತಿ ಹೆಚ್ಚು ತಾಪಮಾನ ಎಷ್ಟು?",
+        "options": [
+          { "id": "lt_100",   "label": "Below 100°F",         "label_kn": "100°F ಗಿಂತ ಕಡಿಮೆ" },
+          { "id": "100_102",  "label": "100-102°F",           "label_kn": "100-102°F" },
+          { "id": "102_104",  "label": "102-104°F",           "label_kn": "102-104°F" },
+          { "id": "gt_104",   "label": "Above 104°F",         "label_kn": "104°F ಗಿಂತ ಹೆಚ್ಚು" },
+          { "id": "not_meas", "label": "Not measured",        "label_kn": "ಅಳೆಯಲಾಗಿಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "f_associated", "kind": "fixed", "type": "multi",
+        "text": "Any of these along with fever? (choose all that apply)",
+        "text_kn": "ಜ್ವರದ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "cough",       "label": "Cough",                       "label_kn": "ಕೆಮ್ಮು" },
+          { "id": "cold",        "label": "Running nose",                "label_kn": "ಮೂಗು ಸೋರುವುದು" },
+          { "id": "vomiting",    "label": "Vomiting",                    "label_kn": "ವಾಂತಿ" },
+          { "id": "diarrhea",    "label": "Loose motions",               "label_kn": "ಭೇದಿ" },
+          { "id": "rash",        "label": "Rash",                        "label_kn": "ದದ್ದು" },
+          { "id": "ear_pain",    "label": "Ear pain / pulling ear",      "label_kn": "ಕಿವಿ ನೋವು / ಕಿವಿ ಎಳೆಯುವುದು" },
+          { "id": "refusing",    "label": "Refusing feeds",              "label_kn": "ಆಹಾರ ನಿರಾಕರಣೆ" },
+          { "id": "irritable",   "label": "Very irritable / crying",     "label_kn": "ಬಹಳ ಕಿರಿಕಿರಿ / ಅಳುವುದು" },
+          { "id": "drowsy",      "label": "Drowsy / difficult to wake",  "label_kn": "ನಿದ್ರಾಳು / ಎಚ್ಚರಿಸಲು ಕಷ್ಟ" },
+          { "id": "convulsion",  "label": "Convulsion / fit",            "label_kn": "ಮೂರ್ಛೆ / ಫಿಟ್" },
+          { "id": "none",        "label": "None of these",               "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      },
+      {
+        "id": "f_feeding", "kind": "fixed", "type": "single",
+        "text": "Is the child feeding normally?",
+        "text_kn": "ಮಗು ಸಾಮಾನ್ಯವಾಗಿ ಆಹಾರ ಸೇವಿಸುತ್ತಿದೆಯೇ?",
+        "options": [
+          { "id": "normal",   "label": "Normal",              "label_kn": "ಸಾಮಾನ್ಯ" },
+          { "id": "reduced",  "label": "Reduced",             "label_kn": "ಕಡಿಮೆಯಾಗಿದೆ" },
+          { "id": "refusing", "label": "Refusing completely", "label_kn": "ಸಂಪೂರ್ಣ ನಿರಾಕರಣೆ" }
+        ]
+      },
+      {
+        "id": "f_urine", "kind": "fixed", "type": "single",
+        "text": "Is urine output normal?",
+        "text_kn": "ಮೂತ್ರ ವಿಸರ್ಜನೆ ಸಾಮಾನ್ಯವಾಗಿದೆಯೇ?",
+        "options": [
+          { "id": "normal",  "label": "Normal",                       "label_kn": "ಸಾಮಾನ್ಯ" },
+          { "id": "reduced", "label": "Reduced",                      "label_kn": "ಕಡಿಮೆಯಾಗಿದೆ" },
+          { "id": "very_low","label": "Very little / none in 8 hours","label_kn": "ಬಹಳ ಕಡಿಮೆ / 8 ಗಂಟೆಗಳಲ್ಲಿ ಇಲ್ಲ" }
+        ]
+      }
+    ],
+
+    "cough_cold": [
+      {
+        "id": "cc_duration", "kind": "fixed", "type": "single",
+        "text": "How long has the cough / cold been present?",
+        "text_kn": "ಕೆಮ್ಮು / ಶೀತ ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "1_3d",  "label": "1-3 days",           "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d",  "label": "4-7 days",           "label_kn": "4-7 ದಿನ" },
+          { "id": "1_2w",  "label": "1-2 weeks",          "label_kn": "1-2 ವಾರ" },
+          { "id": "gt_2w", "label": "More than 2 weeks",  "label_kn": "2 ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "cc_type", "kind": "fixed", "type": "single",
+        "text": "What type of cough is it?",
+        "text_kn": "ಯಾವ ರೀತಿಯ ಕೆಮ್ಮು?",
+        "options": [
+          { "id": "dry",     "label": "Dry cough",                "label_kn": "ಒಣ ಕೆಮ್ಮು" },
+          { "id": "wet",     "label": "Wet / phlegm",             "label_kn": "ಒದ್ದೆ / ಕಫ" },
+          { "id": "barking", "label": "Barking (like a seal)",    "label_kn": "ನಾಯಿಯಂತಹ ಕೆಮ್ಮು" },
+          { "id": "whoop",   "label": "Whooping / long spells",   "label_kn": "ಉಬ್ಬಸದ ಕೆಮ್ಮು" }
+        ]
+      },
+      {
+        "id": "cc_night", "kind": "fixed", "type": "single",
+        "text": "Is the cough worse at night or early morning?",
+        "text_kn": "ರಾತ್ರಿ ಅಥವಾ ಬೆಳಿಗ್ಗೆ ಕೆಮ್ಮು ಹೆಚ್ಚಾಗುತ್ತದೆಯೇ?",
+        "options": [
+          { "id": "no",  "label": "No",  "label_kn": "ಇಲ್ಲ" },
+          { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" }
+        ]
+      },
+      {
+        "id": "cc_breathing", "kind": "fixed", "type": "single",
+        "text": "Is the child having difficulty breathing?",
+        "text_kn": "ಮಗು ಉಸಿರಾಡಲು ಕಷ್ಟಪಡುತ್ತಿದೆಯೇ?",
+        "options": [
+          { "id": "no",     "label": "No",                                 "label_kn": "ಇಲ್ಲ" },
+          { "id": "mild",   "label": "Mild — only on running / playing",   "label_kn": "ಸೌಮ್ಯ — ಓಡುವಾಗ / ಆಡುವಾಗ ಮಾತ್ರ" },
+          { "id": "at_rest","label": "Yes — even at rest",                 "label_kn": "ಹೌದು — ವಿಶ್ರಾಂತಿಯಲ್ಲೂ" }
+        ]
+      },
+      {
+        "id": "cc_fever", "kind": "fixed", "type": "single",
+        "text": "Any fever with this?",
+        "text_kn": "ಇದರ ಜೊತೆಗೆ ಜ್ವರ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",         "label": "No fever",                  "label_kn": "ಜ್ವರ ಇಲ್ಲ" },
+          { "id": "low",        "label": "Low grade (below 100°F)",   "label_kn": "ಸೌಮ್ಯ (100°F ಗಿಂತ ಕಡಿಮೆ)" },
+          { "id": "high",       "label": "High grade (100°F or above)","label_kn": "ಹೆಚ್ಚು (100°F ಅಥವಾ ಹೆಚ್ಚು)" }
+        ]
+      }
+    ],
+
+    "breathing": [
+      {
+        "id": "br_duration", "kind": "fixed", "type": "single",
+        "text": "How long has the breathing problem been present?",
+        "text_kn": "ಉಸಿರಾಟದ ಸಮಸ್ಯೆ ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "hours",  "label": "A few hours",         "label_kn": "ಕೆಲವು ಗಂಟೆಗಳು" },
+          { "id": "1_2d",   "label": "1-2 days",            "label_kn": "1-2 ದಿನ" },
+          { "id": "3_7d",   "label": "3-7 days",            "label_kn": "3-7 ದಿನ" },
+          { "id": "gt_1w",  "label": "More than a week",    "label_kn": "ಒಂದು ವಾರಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "br_severity", "kind": "fixed", "type": "single",
+        "text": "How severe is the breathing difficulty?",
+        "text_kn": "ಉಸಿರಾಟದ ತೊಂದರೆ ಎಷ್ಟು ತೀವ್ರವಾಗಿದೆ?",
+        "options": [
+          { "id": "mild",     "label": "Mild — only on running",          "label_kn": "ಸೌಮ್ಯ — ಓಡುವಾಗ ಮಾತ್ರ" },
+          { "id": "moderate", "label": "Moderate — on walking / talking", "label_kn": "ಮಧ್ಯಮ — ನಡೆಯುವಾಗ / ಮಾತನಾಡುವಾಗ" },
+          { "id": "severe",   "label": "Severe — at rest, struggling",    "label_kn": "ತೀವ್ರ — ವಿಶ್ರಾಂತಿಯಲ್ಲಿ, ಹೆಣಗಾಡುತ್ತಿದೆ" }
+        ]
+      },
+      {
+        "id": "br_associated", "kind": "fixed", "type": "multi",
+        "text": "Any of these along with the breathing problem? (choose all that apply)",
+        "text_kn": "ಉಸಿರಾಟದ ಸಮಸ್ಯೆಯ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "wheeze",       "label": "Wheezing sound",           "label_kn": "ಉಬ್ಬಸದ ಶಬ್ದ" },
+          { "id": "cough",        "label": "Cough",                    "label_kn": "ಕೆಮ್ಮು" },
+          { "id": "fever",        "label": "Fever",                    "label_kn": "ಜ್ವರ" },
+          { "id": "chest_indraw", "label": "Chest pulling in",         "label_kn": "ಎದೆ ಒಳಕ್ಕೆ ಎಳೆಯುವುದು" },
+          { "id": "nasal_flare",  "label": "Nose flaring",             "label_kn": "ಮೂಗು ಹಿಗ್ಗುವುದು" },
+          { "id": "none",         "label": "None of these",            "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      },
+      {
+        "id": "br_previous", "kind": "fixed", "type": "single",
+        "text": "Has the child had similar episodes before?",
+        "text_kn": "ಮಗುವಿಗೆ ಹಿಂದೆ ಇಂತಹ ಘಟನೆಗಳು ಸಂಭವಿಸಿದೆಯೇ?",
+        "options": [
+          { "id": "no",             "label": "No",                                  "label_kn": "ಇಲ್ಲ" },
+          { "id": "once",           "label": "Once before",                          "label_kn": "ಹಿಂದೆ ಒಮ್ಮೆ" },
+          { "id": "recurrent",      "label": "Recurrent — happens often",            "label_kn": "ಪುನರಾವರ್ತಿತ — ಆಗಾಗ್ಗೆ ಸಂಭವಿಸುತ್ತದೆ" },
+          { "id": "known_asthma",   "label": "Known asthma / wheezing child",        "label_kn": "ತಿಳಿದಿರುವ ಆಸ್ತಮಾ / ಉಬ್ಬಸ ಮಗು" }
+        ]
+      }
+    ],
+
+    "vomiting_diarrhea": [
+      {
+        "id": "vd2_duration", "kind": "fixed", "type": "single",
+        "text": "How long has this been going on?",
+        "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "hours",  "label": "A few hours",     "label_kn": "ಕೆಲವು ಗಂಟೆಗಳು" },
+          { "id": "1d",     "label": "1 day",           "label_kn": "1 ದಿನ" },
+          { "id": "2_3d",   "label": "2-3 days",        "label_kn": "2-3 ದಿನ" },
+          { "id": "gt_3d",  "label": "More than 3 days","label_kn": "3 ದಿನಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "vd2_type", "kind": "fixed", "type": "single",
+        "text": "What is the child having?",
+        "text_kn": "ಮಗುವಿಗೆ ಏನಾಗುತ್ತಿದೆ?",
+        "options": [
+          { "id": "vomiting_only",  "label": "Vomiting only",        "label_kn": "ವಾಂತಿ ಮಾತ್ರ" },
+          { "id": "diarrhea_only",  "label": "Loose motions only",   "label_kn": "ಭೇದಿ ಮಾತ್ರ" },
+          { "id": "both",           "label": "Both vomiting and loose motions", "label_kn": "ವಾಂತಿ ಮತ್ತು ಭೇದಿ ಎರಡೂ" }
+        ]
+      },
+      {
+        "id": "vd2_frequency", "kind": "fixed", "type": "single",
+        "text": "How many times in the last 24 hours?",
+        "text_kn": "ಕಳೆದ 24 ಗಂಟೆಗಳಲ್ಲಿ ಎಷ್ಟು ಬಾರಿ?",
+        "options": [
+          { "id": "1_3",   "label": "1-3 times",    "label_kn": "1-3 ಬಾರಿ" },
+          { "id": "4_6",   "label": "4-6 times",    "label_kn": "4-6 ಬಾರಿ" },
+          { "id": "gt_6",  "label": "More than 6",  "label_kn": "6 ಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "vd2_hydration", "kind": "fixed", "type": "multi",
+        "text": "Any of these dehydration signs? (choose all that apply)",
+        "text_kn": "ನಿರ್ಜಲೀಕರಣದ ಲಕ್ಷಣಗಳು ಯಾವುದಾದರೂ ಇವೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "dry_mouth",   "label": "Dry mouth / tongue",          "label_kn": "ಒಣ ಬಾಯಿ / ನಾಲಿಗೆ" },
+          { "id": "no_tears",    "label": "No tears when crying",        "label_kn": "ಅಳುವಾಗ ಕಣ್ಣೀರು ಇಲ್ಲ" },
+          { "id": "sunken_eyes", "label": "Sunken eyes",                 "label_kn": "ಒಳಕ್ಕೆ ಹೋದ ಕಣ್ಣುಗಳು" },
+          { "id": "low_urine",   "label": "Very little urine",           "label_kn": "ಬಹಳ ಕಡಿಮೆ ಮೂತ್ರ" },
+          { "id": "lethargy",    "label": "Lethargic / difficult to wake","label_kn": "ನಿದ್ರಾಳು / ಎಚ್ಚರಿಸಲು ಕಷ್ಟ" },
+          { "id": "none",        "label": "None of these",               "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      },
+      {
+        "id": "vd2_stool", "kind": "fixed", "type": "single",
+        "text": "Any blood or mucus in the stool?",
+        "text_kn": "ಮಲದಲ್ಲಿ ರಕ್ತ ಅಥವಾ ಲೋಳೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",       "label": "No",               "label_kn": "ಇಲ್ಲ" },
+          { "id": "mucus",    "label": "Mucus only",       "label_kn": "ಲೋಳೆ ಮಾತ್ರ" },
+          { "id": "blood",    "label": "Blood present",    "label_kn": "ರಕ್ತ ಇದೆ" },
+          { "id": "both",     "label": "Both blood and mucus","label_kn": "ರಕ್ತ ಮತ್ತು ಲೋಳೆ ಎರಡೂ" }
+        ]
+      }
+    ],
+
+    "rash": [
+      {
+        "id": "r_duration", "kind": "fixed", "type": "single",
+        "text": "How long has the rash been present?",
+        "text_kn": "ದದ್ದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "hours", "label": "A few hours",     "label_kn": "ಕೆಲವು ಗಂಟೆಗಳು" },
+          { "id": "1_3d",  "label": "1-3 days",        "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d",  "label": "4-7 days",        "label_kn": "4-7 ದಿನ" },
+          { "id": "gt_1w", "label": "More than a week","label_kn": "ಒಂದು ವಾರಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "r_location", "kind": "fixed", "type": "single",
+        "text": "Where is the rash mainly?",
+        "text_kn": "ದದ್ದು ಮುಖ್ಯವಾಗಿ ಎಲ್ಲಿ ಇದೆ?",
+        "options": [
+          { "id": "face",        "label": "Face",                   "label_kn": "ಮುಖ" },
+          { "id": "trunk",       "label": "Trunk / chest / back",    "label_kn": "ಮುಂಡ / ಎದೆ / ಬೆನ್ನು" },
+          { "id": "limbs",       "label": "Arms / legs",             "label_kn": "ಕೈಗಳು / ಕಾಲುಗಳು" },
+          { "id": "whole_body",  "label": "Whole body",              "label_kn": "ಇಡೀ ದೇಹ" },
+          { "id": "localized",   "label": "One area only",           "label_kn": "ಒಂದು ಜಾಗದಲ್ಲಿ ಮಾತ್ರ" }
+        ]
+      },
+      {
+        "id": "r_appearance", "kind": "fixed", "type": "single",
+        "text": "How does the rash look?",
+        "text_kn": "ದದ್ದು ಹೇಗೆ ಕಾಣುತ್ತದೆ?",
+        "options": [
+          { "id": "red_flat",   "label": "Red flat spots",          "label_kn": "ಕೆಂಪು ಚಪ್ಪಟೆ ಚುಕ್ಕೆಗಳು" },
+          { "id": "raised",     "label": "Raised / bumpy",          "label_kn": "ಎತ್ತರಿಸಿದ / ಉಬ್ಬಿದ" },
+          { "id": "blisters",   "label": "Blisters / fluid-filled","label_kn": "ಗುಳ್ಳೆಗಳು / ನೀರು ತುಂಬಿದ" },
+          { "id": "scaly",      "label": "Scaly / dry patches",     "label_kn": "ಪೊರೆ / ಒಣ ತೇಪೆಗಳು" },
+          { "id": "petechiae",  "label": "Pinpoint red spots that don't blanch", "label_kn": "ಒತ್ತಿದರೂ ಮಾಸದ ಸಣ್ಣ ಕೆಂಪು ಚುಕ್ಕೆಗಳು" }
+        ]
+      },
+      {
+        "id": "r_associated", "kind": "fixed", "type": "multi",
+        "text": "Any of these along with the rash? (choose all that apply)",
+        "text_kn": "ದದ್ದಿನ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "fever",     "label": "Fever",              "label_kn": "ಜ್ವರ" },
+          { "id": "itching",   "label": "Itching",            "label_kn": "ತುರಿಕೆ" },
+          { "id": "joint_pain","label": "Joint pain",         "label_kn": "ಕೀಲು ನೋವು" },
+          { "id": "swelling",  "label": "Swelling of face / lips", "label_kn": "ಮುಖ / ತುಟಿಗಳ ಊತ" },
+          { "id": "none",      "label": "None of these",      "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      }
+    ],
+
+    "ear": [
+      {
+        "id": "e_side", "kind": "fixed", "type": "single",
+        "text": "Which ear is affected?",
+        "text_kn": "ಯಾವ ಕಿವಿಗೆ ಸಮಸ್ಯೆ ಇದೆ?",
+        "options": [
+          { "id": "left",  "label": "Left",  "label_kn": "ಎಡ" },
+          { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+          { "id": "both",  "label": "Both",  "label_kn": "ಎರಡೂ" }
+        ]
+      },
+      {
+        "id": "e_duration", "kind": "fixed", "type": "single",
+        "text": "Since how many days?",
+        "text_kn": "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+        "options": [
+          { "id": "1_2d", "label": "1-2 days", "label_kn": "1-2 ದಿನ" },
+          { "id": "3_5d", "label": "3-5 days", "label_kn": "3-5 ದಿನ" },
+          { "id": "6_7d", "label": "6-7 days", "label_kn": "6-7 ದಿನ" },
+          { "id": "gt_1w","label": "More than a week", "label_kn": "ಒಂದು ವಾರಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "e_symptoms", "kind": "fixed", "type": "multi",
+        "text": "What are you noticing? (choose all that apply)",
+        "text_kn": "ನೀವು ಏನನ್ನು ಗಮನಿಸುತ್ತಿದ್ದೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "pain",         "label": "Pain",                    "label_kn": "ನೋವು" },
+          { "id": "discharge",    "label": "Discharge from ear",      "label_kn": "ಕಿವಿಯಿಂದ ಸ್ರಾವ" },
+          { "id": "pulling",      "label": "Pulling at the ear",      "label_kn": "ಕಿವಿ ಎಳೆಯುವುದು" },
+          { "id": "hearing_loss", "label": "Reduced hearing",         "label_kn": "ಕೇಳುವ ಶಕ್ತಿ ಕಡಿಮೆ" },
+          { "id": "fever",        "label": "Fever",                   "label_kn": "ಜ್ವರ" },
+          { "id": "irritability", "label": "Irritable / crying",      "label_kn": "ಕಿರಿಕಿರಿ / ಅಳುವುದು" }
+        ]
+      },
+      {
+        "id": "e_discharge_color", "kind": "fixed", "type": "single",
+        "text": "If there is discharge, what colour is it?",
+        "text_kn": "ಸ್ರಾವ ಇದ್ದರೆ, ಅದರ ಬಣ್ಣ ಏನು?",
+        "options": [
+          { "id": "none",     "label": "No discharge",     "label_kn": "ಸ್ರಾವ ಇಲ್ಲ" },
+          { "id": "watery",   "label": "Watery / clear",   "label_kn": "ನೀರಿನಂತೆ / ಸ್ಪಷ್ಟ" },
+          { "id": "yellow",   "label": "Yellow",           "label_kn": "ಹಳದಿ" },
+          { "id": "pus",      "label": "Pus / thick",      "label_kn": "ಕೀವು / ದಪ್ಪ" },
+          { "id": "bloody",   "label": "Blood stained",    "label_kn": "ರಕ್ತಮಿಶ್ರಿತ" }
+        ]
+      }
+    ],
+
+    "throat": [
+      {
+        "id": "t_duration", "kind": "fixed", "type": "single",
+        "text": "Since how many days?",
+        "text_kn": "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+        "options": [
+          { "id": "1_2d",  "label": "1-2 days",  "label_kn": "1-2 ದಿನ" },
+          { "id": "3_5d",  "label": "3-5 days",  "label_kn": "3-5 ದಿನ" },
+          { "id": "6_7d",  "label": "6-7 days",  "label_kn": "6-7 ದಿನ" },
+          { "id": "gt_1w", "label": "More than a week", "label_kn": "ಒಂದು ವಾರಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "t_symptoms", "kind": "fixed", "type": "multi",
+        "text": "What are you noticing? (choose all that apply)",
+        "text_kn": "ನೀವು ಏನನ್ನು ಗಮನಿಸುತ್ತಿದ್ದೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "pain",          "label": "Throat pain",                   "label_kn": "ಗಂಟಲು ನೋವು" },
+          { "id": "swallowing",    "label": "Difficulty swallowing",         "label_kn": "ನುಂಗಲು ಕಷ್ಟ" },
+          { "id": "refusing_feeds","label": "Refusing feeds",                "label_kn": "ಆಹಾರ ನಿರಾಕರಣೆ" },
+          { "id": "drooling",      "label": "Drooling",                      "label_kn": "ಲಾಲೆ ಸೋರುವುದು" },
+          { "id": "voice_change",  "label": "Voice change / muffled voice",  "label_kn": "ಧ್ವನಿ ಬದಲಾವಣೆ / ಮಂದ ಧ್ವನಿ" },
+          { "id": "fever",         "label": "Fever",                         "label_kn": "ಜ್ವರ" }
+        ]
+      },
+      {
+        "id": "t_fever", "kind": "fixed", "type": "single",
+        "text": "Any fever with this?",
+        "text_kn": "ಇದರ ಜೊತೆಗೆ ಜ್ವರ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",  "label": "No",  "label_kn": "ಇಲ್ಲ" },
+          { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" }
+        ]
+      },
+      {
+        "id": "t_breathing", "kind": "fixed", "type": "single",
+        "text": "Is the child having any difficulty breathing?",
+        "text_kn": "ಮಗು ಉಸಿರಾಡಲು ಕಷ್ಟಪಡುತ್ತಿದೆಯೇ?",
+        "options": [
+          { "id": "no",  "label": "No",  "label_kn": "ಇಲ್ಲ" },
+          { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" }
+        ]
+      }
+    ],
+
+    "feeding": [
+      {
+        "id": "fd_duration", "kind": "fixed", "type": "single",
+        "text": "How long has this been a concern?",
+        "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಚಿಂತೆಯ ವಿಷಯವಾಗಿದೆ?",
+        "options": [
+          { "id": "1w",    "label": "About 1 week",          "label_kn": "ಸುಮಾರು 1 ವಾರ" },
+          { "id": "1_4w",  "label": "1-4 weeks",             "label_kn": "1-4 ವಾರ" },
+          { "id": "1_6m",  "label": "1-6 months",            "label_kn": "1-6 ತಿಂಗಳು" },
+          { "id": "gt_6m", "label": "More than 6 months",    "label_kn": "6 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "fd_type", "kind": "fixed", "type": "single",
+        "text": "What best describes the concern?",
+        "text_kn": "ಚಿಂತೆಯನ್ನು ಉತ್ತಮವಾಗಿ ವಿವರಿಸುವುದು ಯಾವುದು?",
+        "options": [
+          { "id": "not_gaining",    "label": "Not gaining weight",           "label_kn": "ತೂಕ ಹೆಚ್ಚಾಗುತ್ತಿಲ್ಲ" },
+          { "id": "losing",         "label": "Losing weight",                "label_kn": "ತೂಕ ಕಳೆದುಕೊಳ್ಳುತ್ತಿದೆ" },
+          { "id": "refusing_feeds", "label": "Refusing feeds",               "label_kn": "ಆಹಾರ ನಿರಾಕರಣೆ" },
+          { "id": "picky_eater",    "label": "Very picky eater",             "label_kn": "ಬಹಳ ಆಯ್ಕೆಯ ಆಹಾರ ಸೇವಕ" },
+          { "id": "vomiting_after", "label": "Vomiting after feeds",         "label_kn": "ಆಹಾರದ ನಂತರ ವಾಂತಿ" }
+        ]
+      },
+      {
+        "id": "fd_feeding_type", "kind": "fixed", "type": "single",
+        "text": "How is the child fed?",
+        "text_kn": "ಮಗುವಿಗೆ ಹೇಗೆ ಆಹಾರ ನೀಡಲಾಗುತ್ತದೆ?",
+        "options": [
+          { "id": "breastfed",  "label": "Breastfed only",          "label_kn": "ಎದೆಹಾಲು ಮಾತ್ರ" },
+          { "id": "formula",    "label": "Formula only",            "label_kn": "ಫಾರ್ಮುಲಾ ಮಾತ್ರ" },
+          { "id": "mixed",      "label": "Both breast and formula", "label_kn": "ಎದೆಹಾಲು ಮತ್ತು ಫಾರ್ಮುಲಾ ಎರಡೂ" },
+          { "id": "solids",     "label": "On solid food",           "label_kn": "ಘನ ಆಹಾರದಲ್ಲಿ" }
+        ]
+      }
+    ],
+
+    "seizure": [
+      {
+        "id": "sz_duration", "kind": "fixed", "type": "single",
+        "text": "How long did the seizure last?",
+        "text_kn": "ಮೂರ್ಛೆ ಎಷ್ಟು ಸಮಯ ಇತ್ತು?",
+        "options": [
+          { "id": "lt_1m",  "label": "Less than 1 minute",   "label_kn": "1 ನಿಮಿಷಕ್ಕಿಂತ ಕಡಿಮೆ" },
+          { "id": "1_5m",   "label": "1-5 minutes",          "label_kn": "1-5 ನಿಮಿಷ" },
+          { "id": "gt_5m",  "label": "More than 5 minutes",  "label_kn": "5 ನಿಮಿಷಕ್ಕಿಂತ ಹೆಚ್ಚು" },
+          { "id": "unsure", "label": "Not sure",             "label_kn": "ಖಚಿತವಿಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "sz_first", "kind": "fixed", "type": "single",
+        "text": "Is this the first such episode?",
+        "text_kn": "ಇದು ಮೊದಲ ಘಟನೆಯೇ?",
+        "options": [
+          { "id": "first",     "label": "Yes, first time",        "label_kn": "ಹೌದು, ಮೊದಲ ಬಾರಿ" },
+          { "id": "recurrent", "label": "No, happened before",    "label_kn": "ಇಲ್ಲ, ಹಿಂದೆ ಸಂಭವಿಸಿದೆ" },
+          { "id": "known_epi", "label": "Known epilepsy on treatment", "label_kn": "ತಿಳಿದಿರುವ ಅಪಸ್ಮಾರ, ಚಿಕಿತ್ಸೆಯಲ್ಲಿ" }
+        ]
+      },
+      {
+        "id": "sz_associated", "kind": "fixed", "type": "multi",
+        "text": "Any of these around the episode? (choose all that apply)",
+        "text_kn": "ಘಟನೆಯ ಸಮಯದಲ್ಲಿ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇತ್ತೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "fever",     "label": "Fever at the time",       "label_kn": "ಆ ಸಮಯದಲ್ಲಿ ಜ್ವರ" },
+          { "id": "stiffness", "label": "Stiffness / jerking of limbs", "label_kn": "ಬಿಗಿತ / ಕೈಕಾಲುಗಳ ಜರ್ಕ್" },
+          { "id": "unconscious","label": "Loss of consciousness",  "label_kn": "ಪ್ರಜ್ಞೆ ಕಳೆದುಕೊಳ್ಳುವುದು" },
+          { "id": "urine",     "label": "Passed urine during episode", "label_kn": "ಘಟನೆಯ ಸಮಯದಲ್ಲಿ ಮೂತ್ರ ವಿಸರ್ಜನೆ" },
+          { "id": "post_drowsy","label": "Drowsy after episode",   "label_kn": "ಘಟನೆಯ ನಂತರ ನಿದ್ರಾಳು" },
+          { "id": "none",      "label": "None of these",           "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      }
+    ],
+
+    "injury": [
+      {
+        "id": "in_when", "kind": "fixed", "type": "single",
+        "text": "When did the injury happen?",
+        "text_kn": "ಗಾಯ ಯಾವಾಗ ಸಂಭವಿಸಿತು?",
+        "options": [
+          { "id": "lt_1h",  "label": "Less than 1 hour ago",   "label_kn": "1 ಗಂಟೆಗಿಂತ ಕಡಿಮೆ ಹಿಂದೆ" },
+          { "id": "1_6h",   "label": "1-6 hours ago",           "label_kn": "1-6 ಗಂಟೆಗಳ ಹಿಂದೆ" },
+          { "id": "6_24h",  "label": "6-24 hours ago",          "label_kn": "6-24 ಗಂಟೆಗಳ ಹಿಂದೆ" },
+          { "id": "gt_1d",  "label": "More than a day ago",     "label_kn": "ಒಂದು ದಿನಕ್ಕಿಂತ ಹೆಚ್ಚು ಹಿಂದೆ" }
+        ]
+      },
+      {
+        "id": "in_mechanism", "kind": "fixed", "type": "single",
+        "text": "How did it happen?",
+        "text_kn": "ಅದು ಹೇಗೆ ಸಂಭವಿಸಿತು?",
+        "options": [
+          { "id": "fall",      "label": "Fall from standing",       "label_kn": "ನಿಂತಲ್ಲಿಂದ ಬೀಳುವಿಕೆ" },
+          { "id": "fall_high", "label": "Fall from height",         "label_kn": "ಎತ್ತರದಿಂದ ಬೀಳುವಿಕೆ" },
+          { "id": "hit",       "label": "Hit by object",            "label_kn": "ವಸ್ತುವಿನಿಂದ ಹೊಡೆತ" },
+          { "id": "road",      "label": "Road traffic accident",    "label_kn": "ರಸ್ತೆ ಅಪಘಾತ" },
+          { "id": "burn",      "label": "Burn / scald",             "label_kn": "ಸುಟ್ಟ ಗಾಯ / ಬಿಸಿ ನೀರಿನ ಸುಡು" },
+          { "id": "other",     "label": "Other mechanism",          "label_kn": "ಇತರೆ ಕಾರಣ", "text": "required" }
+        ]
+      },
+      {
+        "id": "in_red_flags", "kind": "fixed", "type": "multi",
+        "text": "Any of these warning signs? (choose all that apply)",
+        "text_kn": "ಈ ಎಚ್ಚರಿಕೆ ಚಿಹ್ನೆಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "vomiting",     "label": "Vomiting after injury",       "label_kn": "ಗಾಯದ ನಂತರ ವಾಂತಿ" },
+          { "id": "unconscious",  "label": "Loss of consciousness",        "label_kn": "ಪ್ರಜ್ಞೆ ಕಳೆದುಕೊಳ್ಳುವುದು" },
+          { "id": "bleeding",     "label": "Heavy bleeding",               "label_kn": "ಹೆಚ್ಚು ರಕ್ತಸ್ರಾವ" },
+          { "id": "deformity",    "label": "Obvious deformity of limb",    "label_kn": "ಕೈಕಾಲಿನ ಸ್ಪಷ್ಟ ವಿರೂಪ" },
+          { "id": "not_moving",   "label": "Not moving one limb",          "label_kn": "ಒಂದು ಕೈ/ಕಾಲು ಚಲಿಸುತ್ತಿಲ್ಲ" },
+          { "id": "none",         "label": "None of these",                "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      }
+    ],
+
+    "vaccination": [
+      {
+        "id": "vc_age", "kind": "fixed", "type": "single",
+        "text": "What is the child's age?",
+        "text_kn": "ಮಗುವಿನ ವಯಸ್ಸು ಎಷ್ಟು?",
+        "options": [
+          { "id": "lt_6w",   "label": "Less than 6 weeks",    "label_kn": "6 ವಾರಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+          { "id": "6w_6m",   "label": "6 weeks to 6 months",  "label_kn": "6 ವಾರದಿಂದ 6 ತಿಂಗಳು" },
+          { "id": "6m_1y",   "label": "6 months to 1 year",   "label_kn": "6 ತಿಂಗಳಿಂದ 1 ವರ್ಷ" },
+          { "id": "1_5y",    "label": "1-5 years",            "label_kn": "1-5 ವರ್ಷ" },
+          { "id": "gt_5y",   "label": "More than 5 years",    "label_kn": "5 ವರ್ಷಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "vc_reason", "kind": "fixed", "type": "single",
+        "text": "What do you need help with?",
+        "text_kn": "ನಿಮಗೆ ಯಾವ ವಿಷಯದಲ್ಲಿ ಸಹಾಯ ಬೇಕು?",
+        "options": [
+          { "id": "due",         "label": "Vaccine due now",            "label_kn": "ಈಗ ಲಸಿಕೆ ಬಾಕಿ ಇದೆ" },
+          { "id": "missed",      "label": "Missed a scheduled vaccine", "label_kn": "ನಿಗದಿತ ಲಸಿಕೆ ತಪ್ಪಿಹೋಗಿದೆ" },
+          { "id": "schedule",    "label": "Need the vaccination schedule", "label_kn": "ಲಸಿಕೆ ವೇಳಾಪಟ್ಟಿ ಬೇಕು" },
+          { "id": "side_effect", "label": "Side effect after last vaccine", "label_kn": "ಕೊನೆಯ ಲಸಿಕೆಯ ನಂತರ ಅಡ್ಡ ಪರಿಣಾಮ" }
+        ]
+      },
+      {
+        "id": "vc_last", "kind": "fixed", "type": "single",
+        "text": "When was the last vaccine given?",
+        "text_kn": "ಕೊನೆಯ ಲಸಿಕೆ ಯಾವಾಗ ನೀಡಲಾಗಿದೆ?",
+        "options": [
+          { "id": "lt_1m",  "label": "Less than 1 month ago", "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಕಡಿಮೆ ಹಿಂದೆ" },
+          { "id": "1_3m",   "label": "1-3 months ago",        "label_kn": "1-3 ತಿಂಗಳ ಹಿಂದೆ" },
+          { "id": "3_12m",  "label": "3-12 months ago",       "label_kn": "3-12 ತಿಂಗಳ ಹಿಂದೆ" },
+          { "id": "gt_1y",  "label": "More than 1 year ago",  "label_kn": "1 ವರ್ಷಕ್ಕಿಂತ ಹೆಚ್ಚು ಹಿಂದೆ" },
+          { "id": "never",  "label": "Never vaccinated",      "label_kn": "ಎಂದೂ ಲಸಿಕೆ ಪಡೆದಿಲ್ಲ" }
+        ]
+      }
+    ],
+
+    "other_ped": [
+      {
+        "id": "op_duration", "kind": "fixed", "type": "single",
+        "text": "How long has this been going on?",
+        "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "1_3d",  "label": "1-3 days",           "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d",  "label": "4-7 days",           "label_kn": "4-7 ದಿನ" },
+          { "id": "1_4w",  "label": "1-4 weeks",          "label_kn": "1-4 ವಾರ" },
+          { "id": "gt_1m", "label": "More than 1 month",  "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "op_description", "kind": "fixed", "type": "text",
+        "text": "Please describe your child's problem briefly.",
+        "text_kn": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಮಗುವಿನ ಸಮಸ್ಯೆಯನ್ನು ಸಂಕ್ಷಿಪ್ತವಾಗಿ ವಿವರಿಸಿ."
+      }
+    ]
+  },
+
+  "shared_tail": [
+    {
+      "id": "st_fever", "kind": "fixed", "type": "single",
+      "text": "Does the child have fever right now?",
+      "text_kn": "ಮಗುವಿಗೆ ಈಗ ಜ್ವರ ಇದೆಯೇ?",
+      "options": [
+        { "id": "no",         "label": "No fever",                     "label_kn": "ಜ್ವರ ಇಲ್ಲ" },
+        { "id": "low",        "label": "Low grade (below 100°F)",      "label_kn": "ಸೌಮ್ಯ (100°F ಗಿಂತ ಕಡಿಮೆ)" },
+        { "id": "high",       "label": "High grade (100°F or above)",  "label_kn": "ಹೆಚ್ಚು (100°F ಅಥವಾ ಹೆಚ್ಚು)" },
+        { "id": "recent",     "label": "Had in the last few days",     "label_kn": "ಕಳೆದ ಕೆಲವು ದಿನಗಳಲ್ಲಿ ಇತ್ತು" }
+      ]
+    },
+    {
+      "id": "st_treatment", "kind": "fixed", "type": "single",
+      "text": "Have you given any medicine for this?",
+      "text_kn": "ಇದಕ್ಕಾಗಿ ಯಾವುದೇ ಔಷಧ ನೀಡಿದ್ದೀರಾ?",
+      "options": [
+        { "id": "none",         "label": "Nothing",                 "label_kn": "ಏನೂ ಇಲ್ಲ" },
+        { "id": "paracetamol",  "label": "Paracetamol / Crocin",    "label_kn": "ಪ್ಯಾರಸಿಟಮಾಲ್ / ಕ್ರೋಸಿನ್" },
+        { "id": "ibuprofen",    "label": "Ibuprofen / Mefenamic",   "label_kn": "ಐಬುಪ್ರೊಫೇನ್ / ಮೆಫೆನಾಮಿಕ್" },
+        { "id": "antibiotic",   "label": "Antibiotic",              "label_kn": "ಆಂಟಿಬಯಾಟಿಕ್" },
+        { "id": "home_remedy",  "label": "Home remedy",             "label_kn": "ಮನೆಮದ್ದು" },
+        { "id": "other",        "label": "Something else",          "label_kn": "ಬೇರೆ ಏನೋ" }
+      ]
+    },
+    {
+      "id": "st_allergy", "kind": "fixed", "type": "single",
+      "text": "Does the child have any known allergies?",
+      "text_kn": "ಮಗುವಿಗೆ ಯಾವುದೇ ತಿಳಿದಿರುವ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+      "options": [
+        { "id": "no",  "label": "No known allergy",             "label_kn": "ಯಾವುದೇ ಅಲರ್ಜಿ ಇಲ್ಲ" },
+        { "id": "yes", "label": "Yes — I will describe below",  "label_kn": "ಹೌದು — ಕೆಳಗೆ ವಿವರಿಸುತ್ತೇನೆ", "text": "required" }
+      ]
+    },
+    {
+      "id": "st_history", "kind": "fixed", "type": "multi",
+      "text": "Does the child have any of these ongoing conditions? (choose all that apply)",
+      "text_kn": "ಮಗುವಿಗೆ ಈ ನಿರಂತರ ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+      "options": [
+        { "id": "asthma",         "label": "Asthma / wheezing",       "label_kn": "ಆಸ್ತಮಾ / ಉಬ್ಬಸ" },
+        { "id": "heart",          "label": "Heart problem",           "label_kn": "ಹೃದಯ ಸಮಸ್ಯೆ" },
+        { "id": "seizure",        "label": "Seizure / epilepsy",      "label_kn": "ಮೂರ್ಛೆ / ಅಪಸ್ಮಾರ" },
+        { "id": "birth_preterm",  "label": "Born premature",          "label_kn": "ಅಕಾಲಿಕ ಜನನ" },
+        { "id": "delayed",        "label": "Developmental delay",    "label_kn": "ಬೆಳವಣಿಗೆ ವಿಳಂಬ" },
+        { "id": "none",           "label": "None of these",          "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    },
+    {
+      "id": "st_medications", "kind": "fixed", "type": "single",
+      "text": "Is the child on any regular medicines?",
+      "text_kn": "ಮಗು ಯಾವುದೇ ನಿಯಮಿತ ಔಷಧ ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದೆಯೇ?",
+      "options": [
+        { "id": "no",  "label": "No",                       "label_kn": "ಇಲ್ಲ" },
+        { "id": "yes", "label": "Yes — I will list them",   "label_kn": "ಹೌದು — ಪಟ್ಟಿ ಮಾಡುತ್ತೇನೆ", "text": "required" }
+      ]
+    }
+  ]
 }
