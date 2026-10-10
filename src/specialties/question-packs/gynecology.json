@@ -1,9 +1,567 @@
 {
   "version": "1.0.0",
   "specialty": "gynecology",
-  "status": "draft",
-  "description": "Specialization-specific cascading clinical screening questions for gynecology. Questions will be added and expanded later.",
-  "level1": null,
-  "complaints": {},
-  "shared_tail": []
+  "label": "Gynecology / Obstetrics",
+  "level1": {
+    "id": "primary_complaint",
+    "kind": "fixed",
+    "type": "single",
+    "text": "What is the main problem you are facing today? (choose one)",
+    "text_kn": "ಇಂದು ನೀವು ಎದುರಿಸುತ್ತಿರುವ ಮುಖ್ಯ ಸಮಸ್ಯೆ ಯಾವುದು? (ಒಂದನ್ನು ಆಯ್ಕೆ ಮಾಡಿ)",
+    "options": [
+      { "id": "period_problems",   "label": "Period problems (irregular, painful, heavy, missed)", "label_kn": "ಮುಟ್ಟಿನ ಸಮಸ್ಯೆ (ಅನಿಯಮಿತ, ನೋವು, ಹೆಚ್ಚು ರಕ್ತಸ್ರಾವ, ತಪ್ಪಿಹೋಗುವುದು)" },
+      { "id": "vaginal_discharge", "label": "Vaginal discharge or itching",                          "label_kn": "ಯೋನಿ ಸ್ರಾವ ಅಥವಾ ತುರಿಕೆ" },
+      { "id": "pelvic_pain",       "label": "Lower abdominal or pelvic pain",                         "label_kn": "ಕೆಳ ಹೊಟ್ಟೆ ಅಥವಾ ಸೊಂಟದ ನೋವು" },
+      { "id": "pregnancy_concern", "label": "Pregnancy related concern",                              "label_kn": "ಗರ್ಭಧಾರಣೆಗೆ ಸಂಬಂಧಿಸಿದ ಚಿಂತೆ" },
+      { "id": "contraception",     "label": "Contraception / family planning",                        "label_kn": "ಗರ್ಭನಿರೋಧಕ / ಕುಟುಂಬ ಯೋಜನೆ" },
+      { "id": "menopause",         "label": "Menopause symptoms",                                     "label_kn": "ರಜೋನಿವೃತ್ತಿ ಲಕ್ಷಣಗಳು" },
+      { "id": "breast_problem",    "label": "Breast lump, pain or nipple discharge",                  "label_kn": "ಸ್ತನದ ಗಡ್ಡೆ, ನೋವು ಅಥವಾ ಮೊಲೆತೊಟ್ಟಿನಿಂದ ಸ್ರಾವ" },
+      { "id": "infertility",       "label": "Difficulty conceiving",                                  "label_kn": "ಗರ್ಭ ಧರಿಸಲು ಕಷ್ಟ" },
+      { "id": "urinary_symptoms",  "label": "Urinary symptoms",                                       "label_kn": "ಮೂತ್ರ ಸಮಸ್ಯೆಗಳು" },
+      { "id": "other_gyn",         "label": "Something else",                                         "label_kn": "ಬೇರೆ ಏನಾದರೂ", "text": "required" }
+    ]
+  },
+  "complaints": {
+    "period_problems": [
+      {
+        "id": "pp_duration", "kind": "fixed", "type": "single",
+        "text": "How long has this been going on?",
+        "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "lt_1m", "label": "Less than 1 month", "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+          { "id": "1_3m",  "label": "1 to 3 months",      "label_kn": "1 ರಿಂದ 3 ತಿಂಗಳು" },
+          { "id": "3_6m",  "label": "3 to 6 months",      "label_kn": "3 ರಿಂದ 6 ತಿಂಗಳು" },
+          { "id": "gt_6m", "label": "More than 6 months", "label_kn": "6 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "pp_pattern", "kind": "fixed", "type": "single",
+        "text": "What is the main problem with your periods?",
+        "text_kn": "ನಿಮ್ಮ ಮುಟ್ಟಿನ ಮುಖ್ಯ ಸಮಸ್ಯೆ ಯಾವುದು?",
+        "options": [
+          { "id": "painful",       "label": "Painful periods",              "label_kn": "ನೋವಿನ ಮುಟ್ಟು" },
+          { "id": "irregular",     "label": "Irregular / unpredictable",    "label_kn": "ಅನಿಯಮಿತ / ಊಹಿಸಲಾಗದ" },
+          { "id": "heavy",         "label": "Heavy bleeding",               "label_kn": "ಹೆಚ್ಚು ರಕ್ತಸ್ರಾವ" },
+          { "id": "missed",        "label": "Missed periods",               "label_kn": "ತಪ್ಪಿಹೋದ ಮುಟ್ಟು" },
+          { "id": "between",       "label": "Bleeding between periods",     "label_kn": "ಮುಟ್ಟಿನ ನಡುವೆ ರಕ್ತಸ್ರಾವ" },
+          { "id": "post_coital",   "label": "Bleeding after intercourse",   "label_kn": "ಸಂಭೋಗದ ನಂತರ ರಕ್ತಸ್ರಾವ" }
+        ]
+      },
+      {
+        "id": "pp_clots", "kind": "fixed", "type": "single",
+        "text": "Are there large clots in the bleeding?",
+        "text_kn": "ರಕ್ತಸ್ರಾವದಲ್ಲಿ ದೊಡ್ಡ ಹೆಪ್ಪುಗಟ್ಟುವಿಕೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",        "label": "No",          "label_kn": "ಇಲ್ಲ" },
+          { "id": "small",     "label": "Small clots", "label_kn": "ಸಣ್ಣ ಹೆಪ್ಪುಗಳು" },
+          { "id": "large",     "label": "Large clots", "label_kn": "ದೊಡ್ಡ ಹೆಪ್ಪುಗಳು" }
+        ]
+      },
+      {
+        "id": "pp_pads", "kind": "fixed", "type": "single",
+        "text": "How many pads do you change on the heaviest day?",
+        "text_kn": "ಅತಿ ಹೆಚ್ಚು ರಕ್ತಸ್ರಾವದ ದಿನದಂದು ಎಷ್ಟು ಪ್ಯಾಡ್‌ಗಳನ್ನು ಬದಲಾಯಿಸುತ್ತೀರಿ?",
+        "options": [
+          { "id": "lt_3", "label": "Less than 3", "label_kn": "3 ಕ್ಕಿಂತ ಕಡಿಮೆ" },
+          { "id": "3_5",  "label": "3 to 5",      "label_kn": "3 ರಿಂದ 5" },
+          { "id": "gt_5", "label": "More than 5", "label_kn": "5 ಕ್ಕಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "pp_pregnancy", "kind": "fixed", "type": "single",
+        "text": "Is there any chance you could be pregnant?",
+        "text_kn": "ನೀವು ಗರ್ಭಿಣಿಯಾಗಿರುವ ಸಾಧ್ಯತೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",         "label": "No",                    "label_kn": "ಇಲ್ಲ" },
+          { "id": "possible",   "label": "Possibly",              "label_kn": "ಸಾಧ್ಯತೆ ಇದೆ" },
+          { "id": "yes_test",   "label": "Yes, confirmed by test","label_kn": "ಹೌದು, ಪರೀಕ್ಷೆಯಿಂದ ದೃಢಪಟ್ಟಿದೆ" },
+          { "id": "na",         "label": "Not applicable",        "label_kn": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "pp_associated", "kind": "fixed", "type": "multi",
+        "text": "Any of these along with the period problem? (choose all that apply)",
+        "text_kn": "ಮುಟ್ಟಿನ ಸಮಸ್ಯೆಯ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "discharge",    "label": "White discharge",             "label_kn": "ಬಿಳಿ ಸ್ರಾವ" },
+          { "id": "fever",        "label": "Fever",                       "label_kn": "ಜ್ವರ" },
+          { "id": "dyspareunia",  "label": "Pain during intercourse",     "label_kn": "ಸಂಭೋಗದ ಸಮಯದಲ್ಲಿ ನೋವು" },
+          { "id": "dysuria",      "label": "Burning while passing urine", "label_kn": "ಮೂತ್ರ ವಿಸರ್ಜಿಸುವಾಗ ಉರಿ" },
+          { "id": "weight_gain",  "label": "Recent weight gain",          "label_kn": "ಇತ್ತೀಚಿನ ತೂಕ ಹೆಚ್ಚಳ" },
+          { "id": "hair_growth",  "label": "Excess facial / body hair",   "label_kn": "ಮುಖ / ದೇಹದ ಅಧಿಕ ಕೂದಲು" },
+          { "id": "none",         "label": "None of these",               "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      }
+    ],
+
+    "vaginal_discharge": [
+      {
+        "id": "vd_duration", "kind": "fixed", "type": "single",
+        "text": "How long has the discharge been present?",
+        "text_kn": "ಸ್ರಾವ ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "1_3d", "label": "1-3 days",     "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d", "label": "4-7 days",     "label_kn": "4-7 ದಿನ" },
+          { "id": "1_4w", "label": "1-4 weeks",    "label_kn": "1-4 ವಾರ" },
+          { "id": "gt_1m","label": "More than 1 month", "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "vd_color", "kind": "fixed", "type": "single",
+        "text": "What is the colour of the discharge?",
+        "text_kn": "ಸ್ರಾವದ ಬಣ್ಣ ಏನು?",
+        "options": [
+          { "id": "white",   "label": "White",        "label_kn": "ಬಿಳಿ" },
+          { "id": "yellow",  "label": "Yellow",       "label_kn": "ಹಳದಿ" },
+          { "id": "green",   "label": "Green",        "label_kn": "ಹಸಿರು" },
+          { "id": "blood",   "label": "Blood stained","label_kn": "ರಕ್ತಮಿಶ್ರಿತ" },
+          { "id": "clear",   "label": "Clear / watery","label_kn": "ಸ್ಪಷ್ಟ / ನೀರಿನಂತೆ" }
+        ]
+      },
+      {
+        "id": "vd_smell", "kind": "fixed", "type": "single",
+        "text": "Is there a bad smell?",
+        "text_kn": "ಕೆಟ್ಟ ವಾಸನೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",   "label": "No",         "label_kn": "ಇಲ್ಲ" },
+          { "id": "mild", "label": "Mild",       "label_kn": "ಸೌಮ್ಯ" },
+          { "id": "foul", "label": "Foul smell", "label_kn": "ದುರ್ವಾಸನೆ" }
+        ]
+      },
+      {
+        "id": "vd_itch", "kind": "fixed", "type": "single",
+        "text": "Is there itching or soreness in the area?",
+        "text_kn": "ಆ ಭಾಗದಲ್ಲಿ ತುರಿಕೆ ಅಥವಾ ನೋವು ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",     "label": "No",     "label_kn": "ಇಲ್ಲ" },
+          { "id": "mild",   "label": "Mild",   "label_kn": "ಸೌಮ್ಯ" },
+          { "id": "severe", "label": "Severe", "label_kn": "ತೀವ್ರ" }
+        ]
+      },
+      {
+        "id": "vd_pregnancy", "kind": "fixed", "type": "single",
+        "text": "Is there any chance you could be pregnant?",
+        "text_kn": "ನೀವು ಗರ್ಭಿಣಿಯಾಗಿರುವ ಸಾಧ್ಯತೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",       "label": "No",                     "label_kn": "ಇಲ್ಲ" },
+          { "id": "possible", "label": "Possibly",               "label_kn": "ಸಾಧ್ಯತೆ ಇದೆ" },
+          { "id": "yes_test", "label": "Yes, confirmed by test", "label_kn": "ಹೌದು, ಪರೀಕ್ಷೆಯಿಂದ ದೃಢಪಟ್ಟಿದೆ" }
+        ]
+      }
+    ],
+
+    "pelvic_pain": [
+      {
+        "id": "pp2_duration", "kind": "fixed", "type": "single",
+        "text": "How long has the pain been present?",
+        "text_kn": "ನೋವು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "hours",  "label": "A few hours", "label_kn": "ಕೆಲವು ಗಂಟೆಗಳು" },
+          { "id": "1_3d",   "label": "1-3 days",    "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d",   "label": "4-7 days",    "label_kn": "4-7 ದಿನ" },
+          { "id": "1_4w",   "label": "1-4 weeks",   "label_kn": "1-4 ವಾರ" },
+          { "id": "gt_1m",  "label": "More than 1 month", "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "pp2_side", "kind": "fixed", "type": "single",
+        "text": "Where is the pain mainly?",
+        "text_kn": "ನೋವು ಮುಖ್ಯವಾಗಿ ಎಲ್ಲಿ ಇದೆ?",
+        "options": [
+          { "id": "left",   "label": "Left side",              "label_kn": "ಎಡ ಭಾಗ" },
+          { "id": "right",  "label": "Right side",             "label_kn": "ಬಲ ಭಾಗ" },
+          { "id": "center", "label": "Centre / lower abdomen", "label_kn": "ಮಧ್ಯ / ಕೆಳ ಹೊಟ್ಟೆ" },
+          { "id": "whole",  "label": "Whole lower abdomen",    "label_kn": "ಇಡೀ ಕೆಳ ಹೊಟ್ಟೆ" }
+        ]
+      },
+      {
+        "id": "pp2_severity", "kind": "fixed", "type": "single",
+        "text": "How severe is the pain?",
+        "text_kn": "ನೋವು ಎಷ್ಟು ತೀವ್ರವಾಗಿದೆ?",
+        "options": [
+          { "id": "mild",     "label": "Mild — can do daily work",       "label_kn": "ಸೌಮ್ಯ — ದೈನಂದಿನ ಕೆಲಸ ಮಾಡಬಹುದು" },
+          { "id": "moderate", "label": "Moderate — difficult to work",   "label_kn": "ಮಧ್ಯಮ — ಕೆಲಸ ಮಾಡಲು ಕಷ್ಟ" },
+          { "id": "severe",   "label": "Severe — cannot stand / move",   "label_kn": "ತೀವ್ರ — ನಿಲ್ಲಲು / ಚಲಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "pp2_cycle", "kind": "fixed", "type": "single",
+        "text": "Is the pain related to your periods?",
+        "text_kn": "ನೋವು ನಿಮ್ಮ ಮುಟ್ಟಿಗೆ ಸಂಬಂಧಿಸಿದೆಯೇ?",
+        "options": [
+          { "id": "during",  "label": "During periods",            "label_kn": "ಮುಟ್ಟಿನ ಸಮಯದಲ್ಲಿ" },
+          { "id": "before",  "label": "Before periods",            "label_kn": "ಮುಟ್ಟಿನ ಮೊದಲು" },
+          { "id": "mid",     "label": "Mid cycle",                 "label_kn": "ಚಕ್ರದ ಮಧ್ಯದಲ್ಲಿ" },
+          { "id": "constant","label": "Constant — all through cycle", "label_kn": "ನಿರಂತರ — ಇಡೀ ಚಕ್ರದಲ್ಲಿ" },
+          { "id": "no_rel",  "label": "No relation to cycle",      "label_kn": "ಚಕ್ರಕ್ಕೆ ಸಂಬಂಧವಿಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "pp2_associated", "kind": "fixed", "type": "multi",
+        "text": "Any of these along with the pain? (choose all that apply)",
+        "text_kn": "ನೋವಿನ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "fever",     "label": "Fever",                "label_kn": "ಜ್ವರ" },
+          { "id": "vomiting",  "label": "Vomiting",             "label_kn": "ವಾಂತಿ" },
+          { "id": "discharge", "label": "Vaginal discharge",    "label_kn": "ಯೋನಿ ಸ್ರಾವ" },
+          { "id": "bleeding",  "label": "Abnormal bleeding",    "label_kn": "ಅಸಹಜ ರಕ್ತಸ್ರಾವ" },
+          { "id": "urinary",   "label": "Burning / frequent urine", "label_kn": "ಮೂತ್ರದಲ್ಲಿ ಉರಿ / ಪದೇ ಪದೇ ಮೂತ್ರ" },
+          { "id": "none",      "label": "None of these",        "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      }
+    ],
+
+    "pregnancy_concern": [
+      {
+        "id": "pc_status", "kind": "fixed", "type": "single",
+        "text": "What is your pregnancy status?",
+        "text_kn": "ನಿಮ್ಮ ಗರ್ಭಧಾರಣೆಯ ಸ್ಥಿತಿ ಏನು?",
+        "options": [
+          { "id": "confirmed",  "label": "Confirmed pregnant",           "label_kn": "ಗರ್ಭಿಣಿ ಎಂದು ದೃಢಪಟ್ಟಿದೆ" },
+          { "id": "suspecting", "label": "Suspecting / missed period",   "label_kn": "ಶಂಕೆ / ತಪ್ಪಿಹೋದ ಮುಟ್ಟು" },
+          { "id": "positive",   "label": "Positive home test",           "label_kn": "ಮನೆಯಲ್ಲಿ ಧನಾತ್ಮಕ ಪರೀಕ್ಷೆ" }
+        ]
+      },
+      {
+        "id": "pc_weeks", "kind": "fixed", "type": "single",
+        "text": "How many weeks pregnant (approximately)?",
+        "text_kn": "ಎಷ್ಟು ವಾರಗಳ ಗರ್ಭಿಣಿ (ಅಂದಾಜು)?",
+        "options": [
+          { "id": "lt_8",  "label": "Less than 8 weeks",  "label_kn": "8 ವಾರಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+          { "id": "8_12",  "label": "8-12 weeks",         "label_kn": "8-12 ವಾರ" },
+          { "id": "13_28", "label": "13-28 weeks",        "label_kn": "13-28 ವಾರ" },
+          { "id": "gt_28", "label": "More than 28 weeks", "label_kn": "28 ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" },
+          { "id": "unsure", "label": "Not sure",          "label_kn": "ಖಚಿತವಿಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "pc_main", "kind": "fixed", "type": "single",
+        "text": "What is your main concern?",
+        "text_kn": "ನಿಮ್ಮ ಮುಖ್ಯ ಚಿಂತೆ ಏನು?",
+        "options": [
+          { "id": "anc",       "label": "Routine antenatal check-up",    "label_kn": "ವಾಡಿಕೆಯ ಪ್ರಸವಪೂರ್ವ ತಪಾಸಣೆ" },
+          { "id": "pain_bleed","label": "Pain or bleeding",              "label_kn": "ನೋವು ಅಥವಾ ರಕ್ತಸ್ರಾವ" },
+          { "id": "nausea",    "label": "Nausea / vomiting",             "label_kn": "ವಾಕರಿಕೆ / ವಾಂತಿ" },
+          { "id": "bp_sugar",  "label": "High BP or sugar",              "label_kn": "ಹೆಚ್ಚಿನ ರಕ್ತದೊತ್ತಡ ಅಥವಾ ಸಕ್ಕರೆ" },
+          { "id": "fetal",     "label": "Reduced baby movements",        "label_kn": "ಮಗುವಿನ ಚಲನೆ ಕಡಿಮೆ" },
+          { "id": "other",     "label": "Something else",                "label_kn": "ಬೇರೆ ಏನಾದರೂ", "text": "required" }
+        ]
+      },
+      {
+        "id": "pc_bleeding", "kind": "fixed", "type": "single",
+        "text": "Any bleeding from the vagina in this pregnancy?",
+        "text_kn": "ಈ ಗರ್ಭಧಾರಣೆಯಲ್ಲಿ ಯೋನಿಯಿಂದ ರಕ್ತಸ್ರಾವ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",       "label": "No",              "label_kn": "ಇಲ್ಲ" },
+          { "id": "spotting", "label": "Spotting",        "label_kn": "ತುಂತುರು" },
+          { "id": "heavy",    "label": "Heavy bleeding",  "label_kn": "ಹೆಚ್ಚು ರಕ್ತಸ್ರಾವ" }
+        ]
+      },
+      {
+        "id": "pc_movement", "kind": "fixed", "type": "single",
+        "text": "Are you feeling the baby move normally?",
+        "text_kn": "ಮಗು ಸಾಮಾನ್ಯವಾಗಿ ಚಲಿಸುತ್ತಿರುವುದನ್ನು ಅನುಭವಿಸುತ್ತಿದ್ದೀರಾ?",
+        "options": [
+          { "id": "normal",  "label": "Yes, normal",                    "label_kn": "ಹೌದು, ಸಾಮಾನ್ಯ" },
+          { "id": "reduced", "label": "Reduced",                        "label_kn": "ಕಡಿಮೆಯಾಗಿದೆ" },
+          { "id": "na",      "label": "Not applicable (early pregnancy)","label_kn": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ (ಆರಂಭಿಕ ಗರ್ಭಧಾರಣೆ)" }
+        ]
+      }
+    ],
+
+    "contraception": [
+      {
+        "id": "cp_method", "kind": "fixed", "type": "single",
+        "text": "What are you currently using?",
+        "text_kn": "ನೀವು ಈಗ ಯಾವುದನ್ನು ಬಳಸುತ್ತಿದ್ದೀರಿ?",
+        "options": [
+          { "id": "none",       "label": "Nothing",                     "label_kn": "ಏನೂ ಇಲ್ಲ" },
+          { "id": "pills",      "label": "Oral contraceptive pills",    "label_kn": "ಬಾಯಿಯ ಗರ್ಭನಿರೋಧಕ ಮಾತ್ರೆಗಳು" },
+          { "id": "condoms",    "label": "Condoms",                     "label_kn": "ಕಾಂಡೋಮ್‌ಗಳು" },
+          { "id": "iucd",       "label": "IUCD / Copper-T",             "label_kn": "ತಾಮ್ರದ ಟಿ / IUCD" },
+          { "id": "injection",  "label": "Injection",                   "label_kn": "ಇಂಜೆಕ್ಷನ್" },
+          { "id": "implant",    "label": "Implant",                     "label_kn": "ಇಂಪ್ಲಾಂಟ್" },
+          { "id": "sterilised", "label": "Sterilisation",               "label_kn": "ಸಂತಾನಬಂಧನ" }
+        ]
+      },
+      {
+        "id": "cp_concern", "kind": "fixed", "type": "single",
+        "text": "What would you like help with?",
+        "text_kn": "ನೀವು ಯಾವ ವಿಷಯದಲ್ಲಿ ಸಹಾಯ ಬಯಸುತ್ತೀರಿ?",
+        "options": [
+          { "id": "start",     "label": "Start a method",                    "label_kn": "ಒಂದು ವಿಧಾನವನ್ನು ಪ್ರಾರಂಭಿಸಲು" },
+          { "id": "side_fx",   "label": "Side effects of current method",    "label_kn": "ಪ್ರಸ್ತುತ ವಿಧಾನದ ಅಡ್ಡ ಪರಿಣಾಮಗಳು" },
+          { "id": "missed",    "label": "Missed a pill / dose",              "label_kn": "ಮಾತ್ರೆ / ಡೋಸ್ ತಪ್ಪಿಹೋಗಿದೆ" },
+          { "id": "removal",   "label": "Remove IUCD / implant",             "label_kn": "IUCD / ಇಂಪ್ಲಾಂಟ್ ತೆಗೆಯಲು" },
+          { "id": "advice",    "label": "General advice",                    "label_kn": "ಸಾಮಾನ್ಯ ಸಲಹೆ" }
+        ]
+      },
+      {
+        "id": "cp_pregnancy", "kind": "fixed", "type": "single",
+        "text": "Is there any chance you could be pregnant?",
+        "text_kn": "ನೀವು ಗರ್ಭಿಣಿಯಾಗಿರುವ ಸಾಧ್ಯತೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",       "label": "No",                     "label_kn": "ಇಲ್ಲ" },
+          { "id": "possible", "label": "Possibly",               "label_kn": "ಸಾಧ್ಯತೆ ಇದೆ" },
+          { "id": "yes_test", "label": "Yes, confirmed by test", "label_kn": "ಹೌದು, ಪರೀಕ್ಷೆಯಿಂದ ದೃಢಪಟ್ಟಿದೆ" }
+        ]
+      }
+    ],
+
+    "menopause": [
+      {
+        "id": "mp_last", "kind": "fixed", "type": "single",
+        "text": "When was your last period?",
+        "text_kn": "ನಿಮ್ಮ ಕೊನೆಯ ಮುಟ್ಟು ಯಾವಾಗ?",
+        "options": [
+          { "id": "lt_6m",     "label": "Within the last 6 months",  "label_kn": "ಕಳೆದ 6 ತಿಂಗಳ ಒಳಗೆ" },
+          { "id": "6_12m",     "label": "6-12 months ago",           "label_kn": "6-12 ತಿಂಗಳ ಹಿಂದೆ" },
+          { "id": "gt_12m",    "label": "More than a year ago",      "label_kn": "ಒಂದು ವರ್ಷಕ್ಕಿಂತ ಹೆಚ್ಚು ಹಿಂದೆ" },
+          { "id": "still",     "label": "Still having periods",      "label_kn": "ಇನ್ನೂ ಮುಟ್ಟು ಆಗುತ್ತಿದೆ" }
+        ]
+      },
+      {
+        "id": "mp_symptoms", "kind": "fixed", "type": "multi",
+        "text": "What symptoms are troubling you? (choose all that apply)",
+        "text_kn": "ಯಾವ ಲಕ್ಷಣಗಳು ನಿಮಗೆ ತೊಂದರೆ ಕೊಡುತ್ತಿವೆ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "hot_flushes", "label": "Hot flushes / sweating",     "label_kn": "ಬಿಸಿ ಅಲೆಗಳು / ಬೆವರುವಿಕೆ" },
+          { "id": "mood",        "label": "Mood changes / irritability","label_kn": "ಮನಸ್ಥಿತಿ ಬದಲಾವಣೆ / ಕಿರಿಕಿರಿ" },
+          { "id": "sleep",       "label": "Sleep problems",             "label_kn": "ನಿದ್ರಾ ಸಮಸ್ಯೆಗಳು" },
+          { "id": "dryness",     "label": "Vaginal dryness",            "label_kn": "ಯೋನಿ ಒಣಗುವಿಕೆ" },
+          { "id": "urinary",     "label": "Urinary burning / frequency","label_kn": "ಮೂತ್ರದಲ್ಲಿ ಉರಿ / ಪದೇ ಪದೇ ಮೂತ್ರ" },
+          { "id": "none",        "label": "None of these",              "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+        ]
+      },
+      {
+        "id": "mp_bleeding", "kind": "fixed", "type": "single",
+        "text": "Any bleeding after periods stopped?",
+        "text_kn": "ಮುಟ್ಟು ನಿಂತ ನಂತರ ರಕ್ತಸ್ರಾವ ಆಗಿದೆಯೇ?",
+        "options": [
+          { "id": "no",  "label": "No",  "label_kn": "ಇಲ್ಲ" },
+          { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" }
+        ]
+      }
+    ],
+
+    "breast_problem": [
+      {
+        "id": "bp_duration", "kind": "fixed", "type": "single",
+        "text": "How long has this been present?",
+        "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "1_7d",  "label": "1-7 days",           "label_kn": "1-7 ದಿನ" },
+          { "id": "1_4w",  "label": "1-4 weeks",          "label_kn": "1-4 ವಾರ" },
+          { "id": "gt_1m", "label": "More than a month",  "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "bp_side", "kind": "fixed", "type": "single",
+        "text": "Which breast?",
+        "text_kn": "ಯಾವ ಸ್ತನ?",
+        "options": [
+          { "id": "left",  "label": "Left",  "label_kn": "ಎಡ" },
+          { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+          { "id": "both",  "label": "Both",  "label_kn": "ಎರಡೂ" }
+        ]
+      },
+      {
+        "id": "bp_main", "kind": "fixed", "type": "single",
+        "text": "What is the main problem?",
+        "text_kn": "ಮುಖ್ಯ ಸಮಸ್ಯೆ ಏನು?",
+        "options": [
+          { "id": "lump",           "label": "Lump",                       "label_kn": "ಗಡ್ಡೆ" },
+          { "id": "pain",           "label": "Pain",                       "label_kn": "ನೋವು" },
+          { "id": "nipple_dis",     "label": "Nipple discharge",           "label_kn": "ಮೊಲೆತೊಟ್ಟಿನಿಂದ ಸ್ರಾವ" },
+          { "id": "skin_change",    "label": "Skin change (dimpling, redness)", "label_kn": "ಚರ್ಮ ಬದಲಾವಣೆ (ಸುಕ್ಕು, ಕೆಂಪು)" },
+          { "id": "lump_pain",      "label": "Both lump and pain",         "label_kn": "ಗಡ್ಡೆ ಮತ್ತು ನೋವು ಎರಡೂ" }
+        ]
+      },
+      {
+        "id": "bp_discharge", "kind": "fixed", "type": "single",
+        "text": "If there is nipple discharge, what colour is it?",
+        "text_kn": "ಮೊಲೆತೊಟ್ಟಿನಿಂದ ಸ್ರಾವ ಇದ್ದರೆ, ಅದರ ಬಣ್ಣ ಏನು?",
+        "options": [
+          { "id": "none",    "label": "No discharge",  "label_kn": "ಸ್ರಾವ ಇಲ್ಲ" },
+          { "id": "milky",   "label": "Milky",         "label_kn": "ಹಾಲಿನಂತೆ" },
+          { "id": "yellow",  "label": "Yellow",        "label_kn": "ಹಳದಿ" },
+          { "id": "bloody",  "label": "Blood stained", "label_kn": "ರಕ್ತಮಿಶ್ರಿತ" },
+          { "id": "clear",   "label": "Clear",         "label_kn": "ಸ್ಪಷ್ಟ" }
+        ]
+      },
+      {
+        "id": "bp_change", "kind": "fixed", "type": "single",
+        "text": "Has the lump changed in size?",
+        "text_kn": "ಗಡ್ಡೆ ಗಾತ್ರದಲ್ಲಿ ಬದಲಾವಣೆ ಆಗಿದೆಯೇ?",
+        "options": [
+          { "id": "no",         "label": "No",                     "label_kn": "ಇಲ್ಲ" },
+          { "id": "growing",    "label": "Getting bigger",         "label_kn": "ದೊಡ್ಡದಾಗುತ್ತಿದೆ" },
+          { "id": "fluctuates", "label": "Changes with cycle",     "label_kn": "ಚಕ್ರದೊಂದಿಗೆ ಬದಲಾಗುತ್ತದೆ" },
+          { "id": "na",         "label": "Not applicable",         "label_kn": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ" }
+        ]
+      }
+    ],
+
+    "infertility": [
+      {
+        "id": "if_trying", "kind": "fixed", "type": "single",
+        "text": "How long have you been trying to conceive?",
+        "text_kn": "ಗರ್ಭ ಧರಿಸಲು ಎಷ್ಟು ಸಮಯದಿಂದ ಪ್ರಯತ್ನಿಸುತ್ತಿದ್ದೀರಿ?",
+        "options": [
+          { "id": "lt_6m", "label": "Less than 6 months", "label_kn": "6 ತಿಂಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+          { "id": "6_12m", "label": "6-12 months",        "label_kn": "6-12 ತಿಂಗಳು" },
+          { "id": "1_2y",  "label": "1-2 years",          "label_kn": "1-2 ವರ್ಷ" },
+          { "id": "gt_2y", "label": "More than 2 years",  "label_kn": "2 ವರ್ಷಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "if_previous", "kind": "fixed", "type": "single",
+        "text": "Have you been pregnant before?",
+        "text_kn": "ನೀವು ಹಿಂದೆ ಗರ್ಭಿಣಿಯಾಗಿದ್ದೀರಾ?",
+        "options": [
+          { "id": "never",     "label": "Never",                    "label_kn": "ಎಂದೂ ಇಲ್ಲ" },
+          { "id": "live",      "label": "Yes — live birth",         "label_kn": "ಹೌದು — ಜೀವಂತ ಜನನ" },
+          { "id": "miscarry",  "label": "Yes — but miscarried",     "label_kn": "ಹೌದು — ಆದರೆ ಗರ್ಭಪಾತ" },
+          { "id": "ectopic",   "label": "Yes — ectopic pregnancy",  "label_kn": "ಹೌದು — ಅಕಾಲಿಕ ಗರ್ಭಧಾರಣೆ" }
+        ]
+      },
+      {
+        "id": "if_cycles", "kind": "fixed", "type": "single",
+        "text": "Are your periods regular?",
+        "text_kn": "ನಿಮ್ಮ ಮುಟ್ಟು ನಿಯಮಿತವಾಗಿದೆಯೇ?",
+        "options": [
+          { "id": "regular",   "label": "Regular (21-35 days)",     "label_kn": "ನಿಯಮಿತ (21-35 ದಿನ)" },
+          { "id": "irregular", "label": "Irregular",                "label_kn": "ಅನಿಯಮಿತ" },
+          { "id": "infreq",    "label": "Very infrequent",          "label_kn": "ಬಹಳ ವಿರಳ" },
+          { "id": "absent",    "label": "Absent without medicine",  "label_kn": "ಔಷಧ ಇಲ್ಲದೆ ಇಲ್ಲ" }
+        ]
+      },
+      {
+        "id": "if_partner", "kind": "fixed", "type": "single",
+        "text": "Has your partner been evaluated?",
+        "text_kn": "ನಿಮ್ಮ ಸಂಗಾತಿಯನ್ನು ಪರೀಕ್ಷಿಸಲಾಗಿದೆಯೇ?",
+        "options": [
+          { "id": "no",        "label": "No",                    "label_kn": "ಇಲ್ಲ" },
+          { "id": "yes_norm",  "label": "Yes — normal report",   "label_kn": "ಹೌದು — ಸಾಮಾನ್ಯ ವರದಿ" },
+          { "id": "yes_abn",   "label": "Yes — abnormal report", "label_kn": "ಹೌದು — ಅಸಹಜ ವರದಿ" }
+        ]
+      }
+    ],
+
+    "urinary_symptoms": [
+      {
+        "id": "us_duration", "kind": "fixed", "type": "single",
+        "text": "How long have you had these symptoms?",
+        "text_kn": "ಈ ಲಕ್ಷಣಗಳು ಎಷ್ಟು ಸಮಯದಿಂದ ಇವೆ?",
+        "options": [
+          { "id": "1_3d",  "label": "1-3 days",           "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d",  "label": "4-7 days",           "label_kn": "4-7 ದಿನ" },
+          { "id": "1_4w",  "label": "1-4 weeks",          "label_kn": "1-4 ವಾರ" },
+          { "id": "gt_1m", "label": "More than a month",  "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "us_symptoms", "kind": "fixed", "type": "multi",
+        "text": "What are you experiencing? (choose all that apply)",
+        "text_kn": "ನೀವು ಏನು ಅನುಭವಿಸುತ್ತಿದ್ದೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+        "options": [
+          { "id": "burning",   "label": "Burning while passing urine", "label_kn": "ಮೂತ್ರ ವಿಸರ್ಜಿಸುವಾಗ ಉರಿ" },
+          { "id": "frequency", "label": "Frequent urination",           "label_kn": "ಪದೇ ಪದೇ ಮೂತ್ರ" },
+          { "id": "urgency",   "label": "Sudden urge",                  "label_kn": "ಇದ್ದಕ್ಕಿದ್ದಂತೆ ಆಸೆ" },
+          { "id": "blood",     "label": "Blood in urine",               "label_kn": "ಮೂತ್ರದಲ್ಲಿ ರಕ್ತ" },
+          { "id": "lower_pain","label": "Lower abdominal pain",         "label_kn": "ಕೆಳ ಹೊಟ್ಟೆ ನೋವು" },
+          { "id": "fever",     "label": "Fever",                        "label_kn": "ಜ್ವರ" }
+        ]
+      },
+      {
+        "id": "us_pregnancy", "kind": "fixed", "type": "single",
+        "text": "Is there any chance you could be pregnant?",
+        "text_kn": "ನೀವು ಗರ್ಭಿಣಿಯಾಗಿರುವ ಸಾಧ್ಯತೆ ಇದೆಯೇ?",
+        "options": [
+          { "id": "no",       "label": "No",                     "label_kn": "ಇಲ್ಲ" },
+          { "id": "possible", "label": "Possibly",               "label_kn": "ಸಾಧ್ಯತೆ ಇದೆ" },
+          { "id": "yes_test", "label": "Yes, confirmed by test", "label_kn": "ಹೌದು, ಪರೀಕ್ಷೆಯಿಂದ ದೃಢಪಟ್ಟಿದೆ" }
+        ]
+      }
+    ],
+
+    "other_gyn": [
+      {
+        "id": "og_duration", "kind": "fixed", "type": "single",
+        "text": "How long has this been going on?",
+        "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+        "options": [
+          { "id": "1_3d",  "label": "1-3 days",           "label_kn": "1-3 ದಿನ" },
+          { "id": "4_7d",  "label": "4-7 days",           "label_kn": "4-7 ದಿನ" },
+          { "id": "1_4w",  "label": "1-4 weeks",          "label_kn": "1-4 ವಾರ" },
+          { "id": "gt_1m", "label": "More than 1 month",  "label_kn": "1 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+        ]
+      },
+      {
+        "id": "og_description", "kind": "fixed", "type": "text",
+        "text": "Please describe your problem briefly.",
+        "text_kn": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಮಸ್ಯೆಯನ್ನು ಸಂಕ್ಷಿಪ್ತವಾಗಿ ವಿವರಿಸಿ."
+      }
+    ]
+  },
+
+  "shared_tail": [
+    {
+      "id": "st_fever", "kind": "fixed", "type": "single",
+      "text": "Do you have fever?",
+      "text_kn": "ನಿಮಗೆ ಜ್ವರ ಇದೆಯೇ?",
+      "options": [
+        { "id": "no",         "label": "No fever",                       "label_kn": "ಜ್ವರ ಇಲ್ಲ" },
+        { "id": "low",        "label": "Low grade (below 100°F)",        "label_kn": "ಸೌಮ್ಯ (100°F ಗಿಂತ ಕಡಿಮೆ)" },
+        { "id": "high",       "label": "High grade (100°F or above)",    "label_kn": "ಹೆಚ್ಚು (100°F ಅಥವಾ ಹೆಚ್ಚು)" },
+        { "id": "recent",     "label": "Had in the last few days",       "label_kn": "ಕಳೆದ ಕೆಲವು ದಿನಗಳಲ್ಲಿ ಇತ್ತು" }
+      ]
+    },
+    {
+      "id": "st_treatment", "kind": "fixed", "type": "single",
+      "text": "Have you taken any medicine for this?",
+      "text_kn": "ಇದಕ್ಕಾಗಿ ಯಾವುದೇ ಔಷಧ ತೆಗೆದುಕೊಂಡಿದ್ದೀರಾ?",
+      "options": [
+        { "id": "none",         "label": "Nothing",            "label_kn": "ಏನೂ ಇಲ್ಲ" },
+        { "id": "paracetamol",  "label": "Paracetamol / Crocin","label_kn": "ಪ್ಯಾರಸಿಟಮಾಲ್ / ಕ್ರೋಸಿನ್" },
+        { "id": "painkiller",   "label": "Other painkiller",   "label_kn": "ಬೇರೆ ನೋವು ನಿವಾರಕ" },
+        { "id": "antibiotic",   "label": "Antibiotic",         "label_kn": "ಆಂಟಿಬಯಾಟಿಕ್" },
+        { "id": "home_remedy",  "label": "Home remedy",        "label_kn": "ಮನೆಮದ್ದು" },
+        { "id": "ayurvedic",    "label": "Ayurvedic / herbal", "label_kn": "ಆಯುರ್ವೇದ / ಗಿಡಮೂಲಿಕೆ" },
+        { "id": "other",        "label": "Something else",     "label_kn": "ಬೇರೆ ಏನೋ" }
+      ]
+    },
+    {
+      "id": "st_allergy", "kind": "fixed", "type": "single",
+      "text": "Do you have any known allergies?",
+      "text_kn": "ನಿಮಗೆ ಯಾವುದೇ ತಿಳಿದಿರುವ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+      "options": [
+        { "id": "no",       "label": "No known allergy",             "label_kn": "ಯಾವುದೇ ಅಲರ್ಜಿ ಇಲ್ಲ" },
+        { "id": "yes",      "label": "Yes — I will describe below",  "label_kn": "ಹೌದು — ಕೆಳಗೆ ವಿವರಿಸುತ್ತೇನೆ", "text": "required" }
+      ]
+    },
+    {
+      "id": "st_history", "kind": "fixed", "type": "multi",
+      "text": "Do you have any of these long-term conditions? (choose all that apply)",
+      "text_kn": "ಈ ದೀರ್ಘಕಾಲಿಕ ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+      "options": [
+        { "id": "diabetes",     "label": "Diabetes",             "label_kn": "ಮಧುಮೇಹ" },
+        { "id": "hypertension", "label": "High blood pressure",  "label_kn": "ಹೆಚ್ಚು ರಕ್ತದೊತ್ತಡ" },
+        { "id": "thyroid",      "label": "Thyroid problem",      "label_kn": "ಥೈರಾಯ್ಡ್ ಸಮಸ್ಯೆ" },
+        { "id": "asthma",       "label": "Asthma",               "label_kn": "ಆಸ್ತಮಾ" },
+        { "id": "heart",        "label": "Heart disease",        "label_kn": "ಹೃದಯ ರೋಗ" },
+        { "id": "tb",           "label": "Tuberculosis",         "label_kn": "ಕ್ಷಯ ರೋಗ" },
+        { "id": "none",         "label": "None of these",        "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    },
+    {
+      "id": "st_medications", "kind": "fixed", "type": "single",
+      "text": "Are you taking any regular medicines?",
+      "text_kn": "ನೀವು ಯಾವುದೇ ನಿಯಮಿತ ಔಷಧ ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದ್ದೀರಾ?",
+      "options": [
+        { "id": "no",  "label": "No",                        "label_kn": "ಇಲ್ಲ" },
+        { "id": "yes", "label": "Yes — I will list them",    "label_kn": "ಹೌದು — ಪಟ್ಟಿ ಮಾಡುತ್ತೇನೆ", "text": "required" }
+      ]
+    }
+  ]
 }
