@@ -72,6 +72,17 @@ function normalizeSpecialty(value) {
   return s || 'ent';
 }
 
+/** Supported patient UI languages (must stay in sync with server.js / app.js). */
+const SUPPORTED_UI_LANGS = new Set(['en','kn','hi','ta','te','ml','bn','or','as','mr','ur','bho','mai','ne','mni','brx']);
+function normalizeUiLang(value) {
+  const s = String(value || 'en').toLowerCase().trim();
+  if (SUPPORTED_UI_LANGS.has(s)) return s;
+  for (const c of SUPPORTED_UI_LANGS) {
+    if (s === c || s.startsWith(c + '-') || s.startsWith(c + '_')) return c;
+  }
+  return 'en';
+}
+
 function sessionRow(s) {
   return {
     screening_id: s.screening_id, status: s.status, created_at: s.created_at,
@@ -101,6 +112,10 @@ export async function createSession(input) {
   const now = new Date().toISOString();
   const token = createPatientToken();
   const expires = new Date(Date.now() + Number(process.env.PATIENT_TOKEN_TTL_HOURS || 72) * 3600000).toISOString();
+  // Prefer explicit ui_language / language / preferred_language; default en. Never throw.
+  const ui_language = normalizeUiLang(
+    input.ui_language || input.language || input.preferred_language || 'en'
+  );
   const session = {
     screening_id, status: 'in_progress', created_at: now, updated_at: now,
     completed_at: null, submitted_at: null,
@@ -109,7 +124,8 @@ export async function createSession(input) {
       complaint: input.complaint, phone: normalizePhone(input.phone),
       clinic_id: input.clinic_id || null,
       queue_token: input.queue_token || null, waiting_ahead: input.waiting_ahead ?? null,
-      specialty: normalizeSpecialty(input.specialty)
+      specialty: normalizeSpecialty(input.specialty),
+      ui_language
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
     patient_token_hash: hashPatientToken(token), patient_token_expires_at: expires

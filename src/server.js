@@ -116,12 +116,28 @@ function normalizePhone(phone) {
   return raw;
 }
 
-async function sendComplaintLink(phone, patientUrl) {
+/** Map patient UI language → Meta WhatsApp template language code.
+ *  Falls back to env WA_COMPLAINT_TEMPLATE_LANGUAGE, then en.
+ *  Only codes Meta commonly supports for India templates are preferred.
+ */
+function whatsAppTemplateLanguage(preferred) {
+  const envDefault = String(process.env.WA_COMPLAINT_TEMPLATE_LANGUAGE || 'en').trim() || 'en';
+  const raw = String(preferred || envDefault || 'en').toLowerCase().trim().split(/[-_]/)[0];
+  // Meta template language codes we can safely try (must be approved in BM)
+  const allowed = new Set(['en', 'hi', 'kn', 'ta', 'te', 'ml', 'bn', 'mr', 'ur', 'gu', 'pa']);
+  // Rare langs that share script/register with Hindi templates
+  const hiFamily = new Set(['bho', 'mai', 'mni', 'brx', 'ne', 'as', 'or']);
+  if (allowed.has(raw)) return raw;
+  if (hiFamily.has(raw)) return 'hi';
+  return envDefault;
+}
+
+async function sendComplaintLink(phone, patientUrl, preferredLang) {
   const phoneNumberId = String(process.env.WA_PHONE_NUMBER_ID || '').trim();
   const accessToken = String(process.env.WA_ACCESS_TOKEN || '').trim();
   const apiVersion = String(process.env.WA_API_VERSION || 'v21.0').trim();
   const templateName = String(process.env.WA_COMPLAINT_TEMPLATE_NAME || 'mediloop_add_complaints').trim();
-  const languageCode = String(process.env.WA_COMPLAINT_TEMPLATE_LANGUAGE || 'en').trim();
+  const languageCode = whatsAppTemplateLanguage(preferredLang);
 
   if (!phoneNumberId || !accessToken) return { ok: false, error: 'WhatsApp not configured' };
 
@@ -562,7 +578,7 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     await saveSession(s);
 
     const complaintLink = String(req.params.token ? `${String(process.env.PATIENT_APP_URL || process.env.BASE_URL || '').replace(/\/$/, '')}/s/${encodeURIComponent(req.params.token)}` : '').trim();
-    const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink) : { ok: false, error: 'Patient link unavailable' };
+    const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink, s.patient?.ui_language) : { ok: false, error: 'Patient link unavailable' };
 
     res.json({
       status: 'submitted',
