@@ -2,11 +2,20 @@ import { GENERIC_QUESTIONS } from './questions.js';
 import { cascadingQuestionDef, isCascadingPack, nextCascadingQuestion } from './cascading.js';
 import { packCodeForSpecialty } from '../packCodes.js';
 import PRIMARY_CARE_PACK from '../question-packs/primary_care.json';
+import GYNECOLOGY_PACK from '../question-packs/gynecology.json';
+import PEDIATRICS_PACK from '../question-packs/pediatrics.json';
+
+// Static map so the same module works in Node AND Cloudflare Workers VFS.
+const STATIC_PACKS = {
+  primary_care: PRIMARY_CARE_PACK,
+  gynecology: GYNECOLOGY_PACK,
+  pediatrics: PEDIATRICS_PACK,
+};
 
 const packCache = new Map();
 
 function loadQuestionPack(code) {
-  // All non-GM/non-ENT specialties currently share the primary-care pack.
+  // All non-GM/non-ENT specialties resolve to a cascading pack name.
   const packCode = packCodeForSpecialty(code) || 'primary_care';
 
   // GM / ENT are handled by their dedicated modules.
@@ -22,23 +31,15 @@ function loadQuestionPack(code) {
 
   if (packCache.has(packCode)) return packCache.get(packCode);
 
-  // Keep the question pack statically imported so the same module works
-  // in Vercel Node.js and Cloudflare Workers. Do not use fs/path/import.meta
-  // filesystem resolution here because Workers have no deployment filesystem.
-  if (packCode === 'primary_care' && isCascadingPack(PRIMARY_CARE_PACK)) {
-    const result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
+  // Prefer the specialty-specific pack; fall back to primary_care.
+  const candidate = STATIC_PACKS[packCode] || STATIC_PACKS.primary_care;
+  if (isCascadingPack(candidate)) {
+    const result = { type: 'cascading', pack: candidate };
     packCache.set(packCode, result);
     return result;
   }
 
-  // Any future/unknown generic specialty falls back to the same primary-care pack.
-  if (isCascadingPack(PRIMARY_CARE_PACK)) {
-    const result = { type: 'cascading', pack: PRIMARY_CARE_PACK };
-    packCache.set(packCode, result);
-    return result;
-  }
-
-  console.warn('Primary-care question pack unavailable; using linear generic questions:', packCode);
+  console.warn('No cascading pack available; using linear generic questions:', packCode);
   packCache.set(packCode, null);
   return null;
 }
