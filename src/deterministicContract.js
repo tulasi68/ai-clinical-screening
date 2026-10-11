@@ -1,5 +1,8 @@
 // Deterministic Contract 1.1 builder for non-ENT (GM / primary_care / specialty packs).
 // Separated so pack-aware consolidation can be updated without touching ENT fixed flows.
+//
+// Doctor-facing summary pairs each answer with its question context
+// (not raw chips alone like "yes", "2 days").
 
 export function buildDeterministicContract(session, base) {
   const answers = {};
@@ -36,6 +39,76 @@ export function buildDeterministicContract(session, base) {
     return (a?.selected || []).map((s) => s && s.id).filter(Boolean);
   }
 
+  /** Human-readable answer value for one question. */
+  function answerValue(a, { skipNone = true } = {}) {
+    if (!a) return "";
+    const labels = selectedLabels(a, { skipNone });
+    if (labels.length) return labels.join(", ");
+    const msg = (a.message || "").trim();
+    if (msg) return msg;
+    // include none/nothing when that was the only choice and skipNone was true
+    const all = selectedLabels(a, { skipNone: false });
+    return all.join(", ") || "";
+  }
+
+  /**
+   * Short clinical heading from question text or qid.
+   * Prefer a compact phrase a doctor can scan.
+   */
+  function headingFor(qid, questionText) {
+    const q = String(questionText || "").replace(/\s+/g, " ").trim();
+    // Strip common instruction tails
+    let h = q
+      .replace(/\(choose (one|all that apply)\)/gi, "")
+      .replace(/\(or type None\)/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (h.length > 72) h = h.slice(0, 69) + "…";
+
+    // Known qid → crisp clinical labels (override long questions)
+    const QID_HEAD = {
+      chief_complaint: "Chief complaint",
+      primary_complaint: "Chief complaint",
+      health_issue: "Chief complaint",
+      other_complaint_detail: "Complaint detail",
+      symptom_duration: "Duration",
+      symptom_since: "Duration",
+      symptom_trend: "Course / trend",
+      red_flag_symptoms: "Red-flag symptoms now",
+      chronic_conditions: "Ongoing conditions",
+      medical_history: "Medical history",
+      active_medications: "Current medicines",
+      current_medication: "Current medicines",
+      current_medications: "Current medicines",
+      drug_allergies_exist: "Drug allergy",
+      drug_allergy: "Drug allergy",
+      allergies: "Allergy",
+    };
+    if (QID_HEAD[qid]) return QID_HEAD[qid];
+
+    // Pattern-based headings from qid
+    if (/_duration$|duration|_since$|_days$/i.test(qid)) return "Duration";
+    if (/_severity$|severity/i.test(qid)) return "Severity";
+    if (/_character$|_describe$|pattern|appearance|color/i.test(qid)) return "Character / description";
+    if (/_associated$|_along$|_symptoms$|associated/i.test(qid)) return "Associated symptoms";
+    if (/redflag|red_flag|urgent|warning/i.test(qid)) return "Warning signs";
+    if (/_exposure$|exposure/i.test(qid)) return "Exposure / contacts";
+    if (/fever/i.test(qid) && /temp/i.test(qid)) return "Temperature";
+    if (/fever/i.test(qid)) return "Fever details";
+    if (/breath|wheez|dyspnea/i.test(qid)) return "Breathing";
+    if (/cough/i.test(qid)) return "Cough";
+    if (/allergy/i.test(qid)) return "Allergy";
+    if (/medication|medicine|treatment|tried|remedy/i.test(qid)) return "Treatment tried";
+    if (/pregnant|pregnancy|conceive/i.test(qid)) return "Pregnancy / fertility";
+    if (/period|menstru/i.test(qid)) return "Periods";
+    if (/episode|before|previous|similar/i.test(qid)) return "Previous episodes";
+    if (/child|paed|peds/i.test(qid)) return "Child details";
+
+    // Fall back to cleaned question, or prettified qid
+    if (h) return h;
+    return String(qid || "Detail").replace(/_/g, " ");
+  }
+
   // ── Chief complaint ──
   const chiefText = (() => {
     const pc = answers["primary_complaint"];
@@ -55,7 +128,6 @@ export function buildDeterministicContract(session, base) {
       const parts = selectedLabels(hi, { skipNone: false });
       if (parts.length) return parts.join(", ");
     }
-    // free-text detail after "Other"
     const detail = answers["other_complaint_detail"];
     if (detail && detail.message) return detail.message;
     return String(session.patient?.complaint || "").trim();
@@ -102,6 +174,8 @@ export function buildDeterministicContract(session, base) {
     } else if (/more than 7 days|gt_7d/i.test(raw + " " + selectedIds(a).join(" "))) {
       durationStruct = { value: ">7", unit: "days" };
       durationText = durationText || "More than 7 days";
+    } else if (/few hours|a few hours/i.test(raw)) {
+      durationStruct = { value: "few", unit: "hours" };
     }
     break;
   }
@@ -119,7 +193,7 @@ export function buildDeterministicContract(session, base) {
     else if (/intermittent|comes and goes/.test(t)) course = "intermittent";
   }
 
-  // ── Associated symptoms & qualifiers from branch multis ──
+  // ── Associated symptoms & qualifiers (structured fields for contract) ──
   const associated = [];
   const qualifiers = [];
   const SKIP_QIDS = new Set([
@@ -129,11 +203,15 @@ export function buildDeterministicContract(session, base) {
     "current_medication", "medical_history", "red_flag_symptoms", "previous_records",
   ]);
 
+  // Ordered narrative lines for the doctor (question → answer)
+  const detailLines = [];
+
   for (const [qid, a] of Object.entries(answers)) {
     if (SKIP_QIDS.has(qid)) continue;
-    if (/(duration|since)$/i.test(qid)) continue;
+    if (/(duration|since)$/i.test(qid) && qid !== "symptom_duration") {
+      // still include as a detail line if not already in durationText path
+    }
 
-    // Red-flag style branch questions
     if (/redflag|red_flag|urgent/i.test(qid)) {
       for (const label of selectedLabels(a)) {
         redFlags.push({
@@ -143,34 +221,55 @@ export function buildDeterministicContract(session, base) {
           confidence: "high",
         });
       }
+      const val = answerValue(a, { skipNone: true });
+      if (val) {
+        detailLines.push({
+          key: qid,
+          head: headingFor(qid, a.question),
+          value: val,
+          kind: "redflag",
+        });
+      }
       continue;
     }
 
     const labels = selectedLabels(a);
-    if (!labels.length && a.message) {
-      // free-text branch answers
-      if (a.message && !qualifiers.includes(a.message)) qualifiers.push(a.message);
-      continue;
-    }
-    for (const v of labels) {
-      // Character / description questions → qualifiers; symptom lists → associated
-      if (/character|describe|pattern|type|appearance|color|frequency|location|temp/i.test(qid)) {
+    const val = answerValue(a, { skipNone: false });
+    if (!val) continue;
+
+    // Structured buckets
+    if (/character|describe|pattern|type|appearance|color|frequency|location|temp|severity/i.test(qid)) {
+      for (const v of labels) {
         if (!qualifiers.includes(v)) qualifiers.push(v);
-      } else if (/symptom|associated|feel|along|which of these|exposure/i.test(qid) || /_symptoms$/.test(qid)) {
-        if (!associated.includes(v)) associated.push(v);
-      } else {
-        // default: treat as associated detail
+      }
+      if (!labels.length && a.message && !qualifiers.includes(a.message)) qualifiers.push(a.message);
+    } else if (/symptom|associated|feel|along|which of these|exposure/i.test(qid) || /_symptoms$/.test(qid)) {
+      for (const v of labels) {
         if (!associated.includes(v)) associated.push(v);
       }
+    } else {
+      for (const v of labels) {
+        if (!associated.includes(v)) associated.push(v);
+      }
+      if (!labels.length && a.message && !qualifiers.includes(a.message)) qualifiers.push(a.message);
     }
+
+    // Always record labeled line for doctor summary (skip pure duration qids handled in header)
+    if (/(duration|since|days)$/i.test(qid) || qid === "symptom_duration" || qid === "symptom_since") {
+      continue; // shown on chief line
+    }
+
+    detailLines.push({
+      key: qid,
+      head: headingFor(qid, a.question),
+      value: val,
+      kind: "detail",
+    });
   }
 
-  if (durationText && !qualifiers.some((q) => /duration/i.test(q))) {
-    // structured duration preferred; keep text only if structure empty
-  }
   if (trendText) qualifiers.push(`Trend: ${trendText}`);
 
-  // ── Allergies (pack: no/yes; legacy: false/true) ──
+  // ── Allergies ──
   const al = answers["drug_allergies_exist"] || answers["drug_allergy"] || answers["allergies"];
   if (al) {
     const ids = selectedIds(al);
@@ -182,7 +281,9 @@ export function buildDeterministicContract(session, base) {
       allergies.items = [];
     } else if (id0 === "yes" || id0 === "true" || /^yes\b/i.test(labels[0] || "")) {
       allergies.status = "reported";
-      const detail = msg && !/^(yes|no)$/i.test(msg) ? msg : (labels.find((l) => !/^(yes|no)$/i.test(l)) || "Allergy reported (details not given)");
+      const detail = msg && !/^(yes|no)$/i.test(msg)
+        ? msg
+        : (labels.find((l) => !/^(yes|no)$/i.test(l)) || "Allergy reported (details not given)");
       allergies.items = [detail];
     }
   }
@@ -192,7 +293,7 @@ export function buildDeterministicContract(session, base) {
   if (cc) {
     const ids = selectedIds(cc);
     const items = selectedLabels(cc);
-    if (ids.includes("none") || items.length === 0 && /none/i.test(cc.message || "")) {
+    if (ids.includes("none") || (items.length === 0 && /none/i.test(cc.message || ""))) {
       medicalHistory.status = "none_reported";
       medicalHistory.items = [];
     } else if (items.length) {
@@ -201,7 +302,7 @@ export function buildDeterministicContract(session, base) {
     }
   }
 
-  // ── Current medications (text OR multi) ──
+  // ── Current medications ──
   const am = answers["active_medications"] || answers["current_medication"] || answers["current_medications"];
   if (am) {
     const ids = selectedIds(am);
@@ -237,7 +338,7 @@ export function buildDeterministicContract(session, base) {
     });
   }
 
-  // ── Build structured complaint ──
+  // ── Structured complaint ──
   const complaints = [];
   if (chiefText) {
     complaints.push({
@@ -257,27 +358,57 @@ export function buildDeterministicContract(session, base) {
     });
   }
 
-  // ── Multi-line summary (MediLoop prescription / complaint area) ──
+  // ── Doctor-readable multi-line summary (with question context) ──
+  // Example target:
+  //   Chief complaint: Breathing difficulty or wheezing · Duration: A few hours
+  //   Severity: Moderate — on walking / talking
+  //   Breathing signs: Chest pulling in
+  //   Previous episodes: Once before
+  //   Fever: No fever
+  //   Treatment tried: Home remedy
+  //   Drug allergy: No known drug allergy
+  //   Ongoing conditions: Asthma / wheezing
+  //   Current medicines: Yes — I will list them
   const summaryLines = [];
+
   if (chiefText) {
-    const head = [chiefText];
-    if (durationText) head.push(durationText);
-    else if (durationStruct.value != null) head.push(`${durationStruct.value} ${durationStruct.unit}`);
-    if (course !== "unknown") head.push(course);
-    summaryLines.push(head.join(" · "));
+    const headParts = [chiefText];
+    if (durationText) headParts.push(durationText);
+    else if (durationStruct.value != null) headParts.push(`${durationStruct.value} ${durationStruct.unit}`);
+    if (course !== "unknown") headParts.push(course);
+    summaryLines.push("Chief complaint: " + headParts.join(" · "));
   }
-  if (associated.length) summaryLines.push("Associated: " + associated.join(", "));
-  if (qualifiers.length) {
-    const qClean = qualifiers.filter((q) => !/^Trend:/i.test(q));
-    if (qClean.length) summaryLines.push("Details: " + qClean.join(", "));
+
+  // Deduplicate detail lines by heading+value
+  const seen = new Set();
+  for (const line of detailLines) {
+    const key = `${line.head}::${line.value}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    summaryLines.push(`${line.head}: ${line.value}`);
   }
-  if (allergies.status === "none_reported") summaryLines.push("Allergies: no known drug allergy");
-  else if (allergies.items.length) summaryLines.push("Allergies: " + allergies.items.join(", "));
-  if (medicalHistory.items.length) summaryLines.push("Medical history: " + medicalHistory.items.join("; "));
-  else if (medicalHistory.status === "none_reported") summaryLines.push("Medical history: none reported");
-  if (currentMeds.items.length) summaryLines.push("Current medicines: " + currentMeds.items.join(", "));
-  else if (currentMeds.status === "none_reported") summaryLines.push("Current medicines: none");
-  if (redFlags.length) summaryLines.push("Concerning: " + redFlags.map((f) => f.text).join(", "));
+
+  if (allergies.status === "none_reported") {
+    summaryLines.push("Drug allergy: No known drug allergy");
+  } else if (allergies.items.length) {
+    summaryLines.push("Drug allergy: " + allergies.items.join(", "));
+  }
+
+  if (medicalHistory.items.length) {
+    summaryLines.push("Ongoing conditions: " + medicalHistory.items.join("; "));
+  } else if (medicalHistory.status === "none_reported") {
+    summaryLines.push("Ongoing conditions: None reported");
+  }
+
+  if (currentMeds.items.length) {
+    summaryLines.push("Current medicines: " + currentMeds.items.join(", "));
+  } else if (currentMeds.status === "none_reported") {
+    summaryLines.push("Current medicines: None");
+  }
+
+  if (redFlags.length) {
+    summaryLines.push("Concerning / red flags: " + redFlags.map((f) => f.text).join(", "));
+  }
 
   const summary =
     summaryLines.join("\n") ||
@@ -291,6 +422,8 @@ export function buildDeterministicContract(session, base) {
     medical_history: medicalHistory,
     current_medications: currentMeds,
     red_flags: redFlags,
+    // Extra field for UIs that want structured Q&A rows
+    answer_lines: detailLines.map((d) => ({ question: d.head, answer: d.value, qid: d.key })),
     completion: {
       ...base.completion,
       complaints: complaints.length > 0,
@@ -300,6 +433,6 @@ export function buildDeterministicContract(session, base) {
     },
     summary,
     screening_status: redFlags.length ? "urgent" : "completed",
-    data_quality_notes: ["deterministic_cascading_pack"],
+    data_quality_notes: ["deterministic_cascading_pack", "qa_labeled_summary"],
   };
 }
