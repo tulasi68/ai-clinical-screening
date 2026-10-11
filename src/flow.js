@@ -8,6 +8,7 @@
 import { getSpecialtyModule } from "./specialties/index.js";
 import { TX_GM, TX_GM_EXTRA } from "./specialties/general_medicine/i18n.js";
 import { TX_EXTRA } from "./i18n/txExtra.js";
+import { TX_EXTRA2 } from "./i18n/txExtra2.js";
 
 export const MAX_AI_QUESTIONS = 3;
 
@@ -387,7 +388,7 @@ const TX = {
   "Antihistamine": { "hi": "एंटीहिस्टामिन", "ta": "ஆன்டிஹிஸ்டமின்", "te": "యాంటీహిస్టామిన్", "ml": "ആന്റിഹിസ്റ്റാമിൻ", "bn": "অ্যান্টিহিস্টামিন", "mr": "अँटीहिस्टामिन", "ur": "اینٹی ہسٹامن", "or": "ଆଣ୍ଟିହିଷ୍ଟାମିନ", "as": "এণ্টিহিষ্টামিন", "ne": "एन्टिहिस्टामिन" },
 };
 
-Object.assign(TX, TX_GM, TX_GM_EXTRA || {}, TX_EXTRA || {});
+Object.assign(TX, TX_GM, TX_GM_EXTRA || {}, TX_EXTRA || {}, TX_EXTRA2 || {});
 
 const HI_FALLBACK = new Set(["bho", "mai", "mni", "brx"]);
 
