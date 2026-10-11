@@ -542,7 +542,11 @@ export function buildEarContract(session, base) {
 
   const followUps = (session.conversation || [])
     .filter((x) => x.role === "patient" && x.kind === "followup")
-    .map((x) => ({ q: x.question, a: x.message, qid: x.qid }));
+    .map((x) => {
+      const def = EAR_FALLBACKS.find((d) => d.id === x.qid);
+      // Doctor summary always English — use canonical fallback text, not localized UI question
+      return { q: def?.text || x.qid || "Follow-up", a: x.message, qid: x.qid };
+    });
 
   const associated = [];
   if (dischargeTxt) associated.push(`ear discharge (${dischargeTxt})`);
@@ -553,7 +557,7 @@ export function buildEarContract(session, base) {
   if (buds) qualifiers.push(`Ear bud use: ${buds}`);
   const exposures = recent.filter((r) => !/fever/i.test(r));
   if (exposures.length) qualifiers.push(`Recent: ${exposures.map(lc).join(", ")}`);
-  followUps.forEach((f) => qualifiers.push(`${f.q} ${f.a}`));
+  followUps.forEach((f) => qualifiers.push(`${f.q}: ${f.a}`));
 
   const redFlags = [];
   followUps.forEach((f) => {
@@ -600,7 +604,7 @@ export function buildEarContract(session, base) {
     exposures.length ? `Recent: ${exposures.map(lc).join(", ")}` : "",
     allergy ? `Allergies: ${allergies.status === "none_reported" ? "none reported" : allergies.items.join(", ")}` : "",
     conds.length ? `Medical history: ${medical_history.status === "none_reported" ? "none reported" : condItems.join(", ")}` : "",
-    ...followUps.map((f) => `Follow-up — ${f.q} ${f.a}`),
+    ...followUps.map((f) => `Follow-up — ${f.q}: ${f.a}`),
   ].filter(Boolean).join("\n");
 
   return {
@@ -632,7 +636,10 @@ export function buildNoseContract(session, base) {
 
   const followUps = (session.conversation || [])
     .filter((x) => x.role === "patient" && x.kind === "followup")
-    .map((x) => ({ q: x.question, a: x.message, qid: x.qid }));
+    .map((x) => {
+      const def = NOSE_FALLBACKS.find((d) => d.id === x.qid);
+      return { q: def?.text || x.qid || "Follow-up", a: x.message, qid: x.qid };
+    });
 
   const associated = [];
   if (dischargeTxt) associated.push(`nasal discharge (${dischargeTxt})`);
@@ -642,7 +649,7 @@ export function buildNoseContract(session, base) {
   if (days) qualifiers.push(`Duration reported: ${days}`);
   const exposures = recent.filter((r) => !/fever/i.test(r));
   if (exposures.length) qualifiers.push(`Recent: ${exposures.map(lc).join(", ")}`);
-  followUps.forEach((f) => qualifiers.push(`${f.q} ${f.a}`));
+  followUps.forEach((f) => qualifiers.push(`${f.q}: ${f.a}`));
 
   const redFlags = [];
   followUps.forEach((f) => {
@@ -688,7 +695,7 @@ export function buildNoseContract(session, base) {
     exposures.length ? `Recent: ${exposures.map(lc).join(", ")}` : "",
     allergy ? `Allergies: ${allergies.status === "none_reported" ? "none reported" : allergies.items.join(", ")}` : "",
     conds.length ? `Medical history: ${medical_history.status === "none_reported" ? "none reported" : condItems.join(", ")}` : "",
-    ...followUps.map((f) => `Follow-up — ${f.q} ${f.a}`),
+    ...followUps.map((f) => `Follow-up — ${f.q}: ${f.a}`),
   ].filter(Boolean).join("\n");
 
   return {
@@ -716,14 +723,17 @@ export function buildThroatContract(session, base) {
 
   const followUps = (session.conversation || [])
     .filter((x) => x.role === "patient" && x.kind === "followup")
-    .map((x) => ({ q: x.question, a: x.message, qid: x.qid }));
+    .map((x) => {
+      const def = THROAT_FALLBACKS.find((d) => d.id === x.qid);
+      return { q: def?.text || x.qid || "Follow-up", a: x.message, qid: x.qid };
+    });
 
   const associated = [];
   if (feverSel && feverSel.id === "yes") associated.push("fever");
 
   const qualifiers = [];
   if (days) qualifiers.push(`Duration reported: ${days}`);
-  followUps.forEach((f) => qualifiers.push(`${f.q} ${f.a}`));
+  followUps.forEach((f) => qualifiers.push(`${f.q}: ${f.a}`));
 
   const redFlags = [];
   followUps.forEach((f) => {
@@ -766,7 +776,7 @@ export function buildThroatContract(session, base) {
     med && med.id !== "none" ? `Treatment tried: ${complaint.treatment_tried.items.join(", ")}` : "",
     allergy ? `Allergies: ${allergies.status === "none_reported" ? "none reported" : allergies.items.join(", ")}` : "",
     conds.length ? `Medical history: ${medical_history.status === "none_reported" ? "none reported" : condItems.join(", ")}` : "",
-    ...followUps.map((f) => `Follow-up — ${f.q} ${f.a}`),
+    ...followUps.map((f) => `Follow-up — ${f.q}: ${f.a}`),
   ].filter(Boolean).join("\n");
 
   return {
