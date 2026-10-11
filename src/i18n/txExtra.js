@@ -103,16 +103,16 @@ export const TX_EXTRA = {
     mr: "काही औषध घेतले का?", ur: "کیا کوئی دوائی استعمال کی؟", or: "କୌଣସି ଔଷଧ ନେଇଛନ୍ତି କି?", as: "কোনো ঔষধ লৈছে নেকি?", ne: "कुनै औषधि खाएको छ?",
   },
   "Yes - Paracetamol": {
-    hi: "हाँ - पैरासिटामोल", ta: "ஆம் - பாராசிட்டமால்", te: "అవును - పారాసిటమాల్", ml: "അതെ - പാരസെറ്റമോൾ", bn: "হ্যাঁ - প্যারাসিটামল",
-    mr: "होय - पॅरासिटामॉल", ur: "ہاں - پیراسیٹامول", or: "ହଁ - ପ୍ୟାରାସିଟାମଲ", as: "হয় - পেৰাচিটামল", ne: "हो - प्यारासिटामोल",
+    hi: "हाँ - Paracetamol", ta: "ஆம் - Paracetamol", te: "అవును - Paracetamol", ml: "അതെ - Paracetamol", bn: "হ্যাঁ - Paracetamol",
+    mr: "होय - Paracetamol", ur: "ہاں - Paracetamol", or: "ହଁ - Paracetamol", as: "হয় - Paracetamol", ne: "हो - Paracetamol",
   },
   "Yes - Antibiotic": {
-    hi: "हाँ - एंटीबायोटिक", ta: "ஆம் - ஆன்டிபயாடிக்", te: "అవును - యాంటిబయాటిక్", ml: "അതെ - ആന്റിബയോട്ടിക്", bn: "হ্যাঁ - অ্যান্টিবায়োটিক",
-    mr: "होय - अँटिबायोटिक", ur: "ہاں - اینٹی بائیوٹک", or: "ହଁ - ଆଣ୍ଟିବାୟୋଟିକ", as: "হয় - এণ্টিবায়টিক", ne: "हो - एन्टिबायोटिक",
+    hi: "हाँ - Antibiotic", ta: "ஆம் - Antibiotic", te: "అవును - Antibiotic", ml: "അതെ - Antibiotic", bn: "হ্যাঁ - Antibiotic",
+    mr: "होय - Antibiotic", ur: "ہاں - Antibiotic", or: "ହଁ - Antibiotic", as: "হয় - Antibiotic", ne: "हो - Antibiotic",
   },
   "Yes - Antihistamine": {
-    hi: "हाँ - एंटीहिस्टामिन", ta: "ஆம் - ஆன்டிஹிஸ்டமைன்", te: "అవును - యాంటీహిస్టమిన్", ml: "അതെ - ആന്റിഹിസ്റ്റമിൻ", bn: "হ্যাঁ - অ্যান্টিহিস্টামিন",
-    mr: "होय - अँटिहिस्टामिन", ur: "ہاں - اینٹی ہسٹامین", or: "ହଁ - ଆଣ୍ଟିହିଷ୍ଟାମିନ", as: "হয় - এণ্টিহিস্টামিন", ne: "हो - एन्टिहिस्टामिन",
+    hi: "हाँ - Antihistamine", ta: "ஆம் - Antihistamine", te: "అవును - Antihistamine", ml: "അതെ - Antihistamine", bn: "হ্যাঁ - Antihistamine",
+    mr: "होय - Antihistamine", ur: "ہاں - Antihistamine", or: "ହଁ - Antihistamine", as: "হয় - Antihistamine", ne: "हो - Antihistamine",
   },
   "Not tried": {
     hi: "नहीं ली", ta: "முயற்சிக்கவில்லை", te: "ప్రయత్నించలేదు", ml: "ശ്രമിച്ചിട്ടില്ല", bn: "চেষ্টা করিনি",
