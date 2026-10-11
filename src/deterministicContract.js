@@ -36,6 +36,7 @@ export function buildDeterministicContract(session, base) {
     return (a?.selected || []).map((s) => s && s.id).filter(Boolean);
   }
 
+  // ── Chief complaint ──
   const chiefText = (() => {
     const pc = answers["primary_complaint"];
     if (pc) {
@@ -54,11 +55,13 @@ export function buildDeterministicContract(session, base) {
       const parts = selectedLabels(hi, { skipNone: false });
       if (parts.length) return parts.join(", ");
     }
+    // free-text detail after "Other"
     const detail = answers["other_complaint_detail"];
     if (detail && detail.message) return detail.message;
     return String(session.patient?.complaint || "").trim();
   })();
 
+  // ── Duration (any *duration / *since / symptom_duration qid) ──
   let durationText = "";
   let durationStruct = { value: null, unit: "unknown" };
   for (const [qid, a] of Object.entries(answers)) {
@@ -67,34 +70,43 @@ export function buildDeterministicContract(session, base) {
     const raw = labels[0] || a.message || "";
     if (!raw) continue;
     durationText = raw;
-    const blob = String(raw).toLowerCase() + " " + selectedIds(a).join(" ");
-    if (/less than 3 days|lt_3d/.test(blob)) {
+    const m = String(raw).toLowerCase().match(
+      /(?:less than|<\s*)?(\d+)\s*(?:to|-|–)\s*(\d+)\s*(day|days|week|weeks|month|months)?/i
+    ) || String(raw).toLowerCase().match(
+      /(\d+)\s*(day|days|week|weeks|month|months)/i
+    ) || String(raw).toLowerCase().match(
+      /(?:more than|>\s*)(\d+)\s*(day|days|week|weeks|month|months)/i
+    );
+    if (m) {
+      if (m[2] && /^\d+$/.test(m[2])) {
+        durationStruct = { value: `${m[1]}-${m[2]}`, unit: (m[3] || "days").replace(/s$/, "") + "s" };
+      } else if (/more than|>/.test(String(raw).toLowerCase())) {
+        durationStruct = { value: `>${m[1]}`, unit: (m[2] || "days").replace(/s$/, "") + "s" };
+      } else if (/less than|</.test(String(raw).toLowerCase())) {
+        durationStruct = { value: `<${m[1]}`, unit: (m[2] || "days").replace(/s$/, "") + "s" };
+      } else {
+        durationStruct = { value: m[1], unit: (m[2] || "days").replace(/s$/, "") + "s" };
+      }
+    } else if (/less than 3 days|lt_3d/i.test(raw + " " + selectedIds(a).join(" "))) {
       durationStruct = { value: "<3", unit: "days" };
       durationText = durationText || "Less than 3 days";
-    } else if (/1 to 2 weeks|1_2w/.test(blob)) {
+    } else if (/1 to 2 weeks|1_2w/i.test(raw + " " + selectedIds(a).join(" "))) {
       durationStruct = { value: "1-2", unit: "weeks" };
       durationText = durationText || "1 to 2 weeks";
-    } else if (/more than 6 weeks|gt_6w/.test(blob)) {
+    } else if (/more than 6 weeks|gt_6w/i.test(raw + " " + selectedIds(a).join(" "))) {
       durationStruct = { value: ">6", unit: "weeks" };
       durationText = durationText || "More than 6 weeks";
-    } else if (/3 to 7 days|3_7d/.test(blob)) {
+    } else if (/3 to 7 days|3_7d/i.test(raw + " " + selectedIds(a).join(" "))) {
       durationStruct = { value: "3-7", unit: "days" };
       durationText = durationText || "3 to 7 days";
-    } else if (/more than 7 days|gt_7d/.test(blob)) {
+    } else if (/more than 7 days|gt_7d/i.test(raw + " " + selectedIds(a).join(" "))) {
       durationStruct = { value: ">7", unit: "days" };
       durationText = durationText || "More than 7 days";
-    } else if (/1-2 days|d1_2/.test(blob)) {
-      durationStruct = { value: "1-2", unit: "days" };
-    } else if (/3-5 days|d3_5/.test(blob)) {
-      durationStruct = { value: "3-5", unit: "days" };
-    } else if (/5-7 days|d5_7/.test(blob)) {
-      durationStruct = { value: "5-7", unit: "days" };
-    } else if (/6-8 days|d6_8/.test(blob)) {
-      durationStruct = { value: "6-8", unit: "days" };
     }
     break;
   }
 
+  // ── Trend / course ──
   let course = "unknown";
   let trendText = "";
   const trend = answers["symptom_trend"];
@@ -107,6 +119,7 @@ export function buildDeterministicContract(session, base) {
     else if (/intermittent|comes and goes/.test(t)) course = "intermittent";
   }
 
+  // ── Associated symptoms & qualifiers from branch multis ──
   const associated = [];
   const qualifiers = [];
   const SKIP_QIDS = new Set([
@@ -120,6 +133,7 @@ export function buildDeterministicContract(session, base) {
     if (SKIP_QIDS.has(qid)) continue;
     if (/(duration|since)$/i.test(qid)) continue;
 
+    // Red-flag style branch questions
     if (/redflag|red_flag|urgent/i.test(qid)) {
       for (const label of selectedLabels(a)) {
         redFlags.push({
@@ -134,22 +148,29 @@ export function buildDeterministicContract(session, base) {
 
     const labels = selectedLabels(a);
     if (!labels.length && a.message) {
+      // free-text branch answers
       if (a.message && !qualifiers.includes(a.message)) qualifiers.push(a.message);
       continue;
     }
     for (const v of labels) {
+      // Character / description questions → qualifiers; symptom lists → associated
       if (/character|describe|pattern|type|appearance|color|frequency|location|temp/i.test(qid)) {
         if (!qualifiers.includes(v)) qualifiers.push(v);
       } else if (/symptom|associated|feel|along|which of these|exposure/i.test(qid) || /_symptoms$/.test(qid)) {
         if (!associated.includes(v)) associated.push(v);
       } else {
+        // default: treat as associated detail
         if (!associated.includes(v)) associated.push(v);
       }
     }
   }
 
+  if (durationText && !qualifiers.some((q) => /duration/i.test(q))) {
+    // structured duration preferred; keep text only if structure empty
+  }
   if (trendText) qualifiers.push(`Trend: ${trendText}`);
 
+  // ── Allergies (pack: no/yes; legacy: false/true) ──
   const al = answers["drug_allergies_exist"] || answers["drug_allergy"] || answers["allergies"];
   if (al) {
     const ids = selectedIds(al);
@@ -161,18 +182,17 @@ export function buildDeterministicContract(session, base) {
       allergies.items = [];
     } else if (id0 === "yes" || id0 === "true" || /^yes\b/i.test(labels[0] || "")) {
       allergies.status = "reported";
-      const detail = msg && !/^(yes|no)$/i.test(msg)
-        ? msg
-        : (labels.find((l) => !/^(yes|no)$/i.test(l)) || "Allergy reported (details not given)");
+      const detail = msg && !/^(yes|no)$/i.test(msg) ? msg : (labels.find((l) => !/^(yes|no)$/i.test(l)) || "Allergy reported (details not given)");
       allergies.items = [detail];
     }
   }
 
+  // ── Chronic / medical history ──
   const cc = answers["chronic_conditions"] || answers["medical_history"];
   if (cc) {
     const ids = selectedIds(cc);
     const items = selectedLabels(cc);
-    if (ids.includes("none") || (items.length === 0 && /none/i.test(cc.message || ""))) {
+    if (ids.includes("none") || items.length === 0 && /none/i.test(cc.message || "")) {
       medicalHistory.status = "none_reported";
       medicalHistory.items = [];
     } else if (items.length) {
@@ -181,6 +201,7 @@ export function buildDeterministicContract(session, base) {
     }
   }
 
+  // ── Current medications (text OR multi) ──
   const am = answers["active_medications"] || answers["current_medication"] || answers["current_medications"];
   if (am) {
     const ids = selectedIds(am);
@@ -203,6 +224,7 @@ export function buildDeterministicContract(session, base) {
     }
   }
 
+  // ── Shared-tail red flags ──
   const rf = answers["red_flag_symptoms"];
   if (rf) {
     selectedLabels(rf).forEach((label, i) => {
@@ -215,6 +237,7 @@ export function buildDeterministicContract(session, base) {
     });
   }
 
+  // ── Build structured complaint ──
   const complaints = [];
   if (chiefText) {
     complaints.push({
@@ -234,6 +257,7 @@ export function buildDeterministicContract(session, base) {
     });
   }
 
+  // ── Multi-line summary (MediLoop prescription / complaint area) ──
   const summaryLines = [];
   if (chiefText) {
     const head = [chiefText];
