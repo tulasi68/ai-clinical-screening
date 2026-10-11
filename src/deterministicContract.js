@@ -1,8 +1,6 @@
 // Deterministic Contract 1.1 builder for non-ENT (GM / primary_care / specialty packs).
-// Separated so pack-aware consolidation can be updated without touching ENT fixed flows.
-//
-// Doctor-facing summary pairs each answer with its question context
-// (not raw chips alone like "yes", "2 days").
+// Doctor-facing summary is ALWAYS English: headings from qid patterns, never from
+// the localized question text shown to the patient.
 
 export function buildDeterministicContract(session, base) {
   const answers = {};
@@ -27,9 +25,10 @@ export function buildDeterministicContract(session, base) {
     for (const s of a.selected || []) {
       if (!s) continue;
       if (skipNone && (s.id === "none" || s.id === "nothing")) continue;
+      // Prefer English label: option objects may carry label_en or plain label (source English)
       const v = s.id === "other" || s.id === "other_text"
-        ? String(s.text || s.label || "").trim()
-        : String(s.label || s.text || s.id || "").trim();
+        ? String(s.text || s.label || s.label_en || "").trim()
+        : String(s.label_en || s.label || s.text || s.id || "").trim();
       if (v && !out.includes(v)) out.push(v);
     }
     return out;
@@ -39,34 +38,24 @@ export function buildDeterministicContract(session, base) {
     return (a?.selected || []).map((s) => s && s.id).filter(Boolean);
   }
 
-  /** Human-readable answer value for one question. */
   function answerValue(a, { skipNone = true } = {}) {
     if (!a) return "";
     const labels = selectedLabels(a, { skipNone });
     if (labels.length) return labels.join(", ");
     const msg = (a.message || "").trim();
     if (msg) return msg;
-    // include none/nothing when that was the only choice and skipNone was true
     const all = selectedLabels(a, { skipNone: false });
     return all.join(", ") || "";
   }
 
   /**
-   * Short clinical heading from question text or qid.
-   * Prefer a compact phrase a doctor can scan.
+   * English-only clinical heading for the doctor.
+   * NEVER use patient-facing / localized question text.
    */
-  function headingFor(qid, questionText) {
-    const q = String(questionText || "").replace(/\s+/g, " ").trim();
-    // Strip common instruction tails
-    let h = q
-      .replace(/\(choose (one|all that apply)\)/gi, "")
-      .replace(/\(or type None\)/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (h.length > 72) h = h.slice(0, 69) + "…";
+  function headingFor(qid) {
+    const id = String(qid || "");
 
-    // Known qid → crisp clinical labels (override long questions)
-    const QID_HEAD = {
+    const EXACT = {
       chief_complaint: "Chief complaint",
       primary_complaint: "Chief complaint",
       health_issue: "Chief complaint",
@@ -83,30 +72,67 @@ export function buildDeterministicContract(session, base) {
       drug_allergies_exist: "Drug allergy",
       drug_allergy: "Drug allergy",
       allergies: "Allergy",
+      // Pediatrics / fever common
+      fever_duration: "Fever duration",
+      fever_associated: "Associated with fever",
+      fever_temp: "Highest temperature",
+      fever_temperature: "Highest temperature",
+      fever_max_temp: "Highest temperature",
+      fever_grade: "Fever grade",
+      fever_exposure: "Fever contacts / exposure",
+      child_feeding: "Feeding",
+      feeding_normal: "Feeding",
+      urine_output: "Urine output",
+      child_urine: "Urine output",
+      breathing_difficulty: "Breathing",
+      similar_episodes: "Previous similar episodes",
+      treatment_tried: "Treatment tried",
+      medication_tried: "Treatment tried",
+      home_remedy: "Treatment tried",
     };
-    if (QID_HEAD[qid]) return QID_HEAD[qid];
+    if (EXACT[id]) return EXACT[id];
 
-    // Pattern-based headings from qid
-    if (/_duration$|duration|_since$|_days$/i.test(qid)) return "Duration";
-    if (/_severity$|severity/i.test(qid)) return "Severity";
-    if (/_character$|_describe$|pattern|appearance|color/i.test(qid)) return "Character / description";
-    if (/_associated$|_along$|_symptoms$|associated/i.test(qid)) return "Associated symptoms";
-    if (/redflag|red_flag|urgent|warning/i.test(qid)) return "Warning signs";
-    if (/_exposure$|exposure/i.test(qid)) return "Exposure / contacts";
-    if (/fever/i.test(qid) && /temp/i.test(qid)) return "Temperature";
-    if (/fever/i.test(qid)) return "Fever details";
-    if (/breath|wheez|dyspnea/i.test(qid)) return "Breathing";
-    if (/cough/i.test(qid)) return "Cough";
-    if (/allergy/i.test(qid)) return "Allergy";
-    if (/medication|medicine|treatment|tried|remedy/i.test(qid)) return "Treatment tried";
-    if (/pregnant|pregnancy|conceive/i.test(qid)) return "Pregnancy / fertility";
-    if (/period|menstru/i.test(qid)) return "Periods";
-    if (/episode|before|previous|similar/i.test(qid)) return "Previous episodes";
-    if (/child|paed|peds/i.test(qid)) return "Child details";
+    // Pattern-based English headings (order matters — more specific first)
+    if (/max_?temp|highest.*temp|temperature/i.test(id)) return "Highest temperature";
+    if (/fever.*grade|grade.*fever/i.test(id)) return "Fever grade";
+    if (/fever.*duration|duration.*fever/i.test(id)) return "Fever duration";
+    if (/fever.*associat|along.*fever/i.test(id)) return "Associated with fever";
+    if (/fever.*expos|contact.*fever/i.test(id)) return "Fever contacts / exposure";
+    if (/_duration$|duration|_since$|_days$/i.test(id)) return "Duration";
+    if (/_severity$|severity/i.test(id)) return "Severity";
+    if (/feed/i.test(id)) return "Feeding";
+    if (/urine|urinary|wet_diaper/i.test(id)) return "Urine output";
+    if (/breath|wheez|dyspnea|respiratory/i.test(id)) return "Breathing";
+    if (/cough/i.test(id)) return "Cough";
+    if (/rash|skin/i.test(id)) return "Rash / skin";
+    if (/vomit|nausea/i.test(id)) return "Vomiting / nausea";
+    if (/diarr|stool|loose/i.test(id)) return "Stools / diarrhoea";
+    if (/ear/i.test(id)) return "Ear symptoms";
+    if (/nose|nasal|sneeze/i.test(id)) return "Nose / cold";
+    if (/throat/i.test(id)) return "Throat";
+    if (/seizure|fit|convuls/i.test(id)) return "Seizures";
+    if (/develop|milestone|premature|preterm/i.test(id)) return "Development / birth history";
+    if (/episode|before|previous|similar/i.test(id)) return "Previous episodes";
+    if (/character|describe|pattern|type|appearance|color|colour|frequency|location/i.test(id)) {
+      return "Character / description";
+    }
+    if (/redflag|red_flag|urgent|warning/i.test(id)) return "Warning signs";
+    if (/_exposure$|exposure|contact/i.test(id)) return "Exposure / contacts";
+    if (/associat|along|_symptoms$|symptom/i.test(id)) return "Associated symptoms";
+    if (/allergy|allerg/i.test(id)) return "Allergy";
+    if (/medication|medicine|treatment|tried|remedy|drug/i.test(id)) return "Treatment tried";
+    if (/chronic|condition|history|ongoing|comorbid/i.test(id)) return "Ongoing conditions";
+    if (/pregnant|pregnancy|conceive|antenatal/i.test(id)) return "Pregnancy / fertility";
+    if (/period|menstru|menses|pad/i.test(id)) return "Periods";
+    if (/breast|nipple/i.test(id)) return "Breast symptoms";
+    if (/pain/i.test(id)) return "Pain details";
+    if (/child|paed|peds|infant|baby/i.test(id)) return "Child details";
 
-    // Fall back to cleaned question, or prettified qid
-    if (h) return h;
-    return String(qid || "Detail").replace(/_/g, " ");
+    // Last resort: prettify English qid tokens (never use localized question text)
+    return id
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim() || "Detail";
   }
 
   // ── Chief complaint ──
@@ -133,7 +159,7 @@ export function buildDeterministicContract(session, base) {
     return String(session.patient?.complaint || "").trim();
   })();
 
-  // ── Duration (any *duration / *since / symptom_duration qid) ──
+  // ── Duration ──
   let durationText = "";
   let durationStruct = { value: null, unit: "unknown" };
   for (const [qid, a] of Object.entries(answers)) {
@@ -176,6 +202,8 @@ export function buildDeterministicContract(session, base) {
       durationText = durationText || "More than 7 days";
     } else if (/few hours|a few hours/i.test(raw)) {
       durationStruct = { value: "few", unit: "hours" };
+    } else if (/^1 day$/i.test(raw)) {
+      durationStruct = { value: "1", unit: "days" };
     }
     break;
   }
@@ -193,7 +221,6 @@ export function buildDeterministicContract(session, base) {
     else if (/intermittent|comes and goes/.test(t)) course = "intermittent";
   }
 
-  // ── Associated symptoms & qualifiers (structured fields for contract) ──
   const associated = [];
   const qualifiers = [];
   const SKIP_QIDS = new Set([
@@ -203,14 +230,10 @@ export function buildDeterministicContract(session, base) {
     "current_medication", "medical_history", "red_flag_symptoms", "previous_records",
   ]);
 
-  // Ordered narrative lines for the doctor (question → answer)
   const detailLines = [];
 
   for (const [qid, a] of Object.entries(answers)) {
     if (SKIP_QIDS.has(qid)) continue;
-    if (/(duration|since)$/i.test(qid) && qid !== "symptom_duration") {
-      // still include as a detail line if not already in durationText path
-    }
 
     if (/redflag|red_flag|urgent/i.test(qid)) {
       for (const label of selectedLabels(a)) {
@@ -225,7 +248,7 @@ export function buildDeterministicContract(session, base) {
       if (val) {
         detailLines.push({
           key: qid,
-          head: headingFor(qid, a.question),
+          head: headingFor(qid),
           value: val,
           kind: "redflag",
         });
@@ -237,8 +260,7 @@ export function buildDeterministicContract(session, base) {
     const val = answerValue(a, { skipNone: false });
     if (!val) continue;
 
-    // Structured buckets
-    if (/character|describe|pattern|type|appearance|color|frequency|location|temp|severity/i.test(qid)) {
+    if (/character|describe|pattern|type|appearance|color|colour|frequency|location|temp|severity/i.test(qid)) {
       for (const v of labels) {
         if (!qualifiers.includes(v)) qualifiers.push(v);
       }
@@ -254,14 +276,13 @@ export function buildDeterministicContract(session, base) {
       if (!labels.length && a.message && !qualifiers.includes(a.message)) qualifiers.push(a.message);
     }
 
-    // Always record labeled line for doctor summary (skip pure duration qids handled in header)
     if (/(duration|since|days)$/i.test(qid) || qid === "symptom_duration" || qid === "symptom_since") {
-      continue; // shown on chief line
+      continue;
     }
 
     detailLines.push({
       key: qid,
-      head: headingFor(qid, a.question),
+      head: headingFor(qid),
       value: val,
       kind: "detail",
     });
@@ -358,17 +379,7 @@ export function buildDeterministicContract(session, base) {
     });
   }
 
-  // ── Doctor-readable multi-line summary (with question context) ──
-  // Example target:
-  //   Chief complaint: Breathing difficulty or wheezing · Duration: A few hours
-  //   Severity: Moderate — on walking / talking
-  //   Breathing signs: Chest pulling in
-  //   Previous episodes: Once before
-  //   Fever: No fever
-  //   Treatment tried: Home remedy
-  //   Drug allergy: No known drug allergy
-  //   Ongoing conditions: Asthma / wheezing
-  //   Current medicines: Yes — I will list them
+  // ── Doctor summary: English only ──
   const summaryLines = [];
 
   if (chiefText) {
@@ -379,7 +390,6 @@ export function buildDeterministicContract(session, base) {
     summaryLines.push("Chief complaint: " + headParts.join(" · "));
   }
 
-  // Deduplicate detail lines by heading+value
   const seen = new Set();
   for (const line of detailLines) {
     const key = `${line.head}::${line.value}`.toLowerCase();
@@ -422,7 +432,6 @@ export function buildDeterministicContract(session, base) {
     medical_history: medicalHistory,
     current_medications: currentMeds,
     red_flags: redFlags,
-    // Extra field for UIs that want structured Q&A rows
     answer_lines: detailLines.map((d) => ({ question: d.head, answer: d.value, qid: d.key })),
     completion: {
       ...base.completion,
@@ -433,6 +442,6 @@ export function buildDeterministicContract(session, base) {
     },
     summary,
     screening_status: redFlags.length ? "urgent" : "completed",
-    data_quality_notes: ["deterministic_cascading_pack", "qa_labeled_summary"],
+    data_quality_notes: ["deterministic_cascading_pack", "qa_labeled_summary", "doctor_summary_en"],
   };
 }
