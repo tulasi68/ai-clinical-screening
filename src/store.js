@@ -116,6 +116,16 @@ export async function createSession(input) {
   const ui_language = normalizeUiLang(
     input.ui_language || input.language || input.preferred_language || 'en'
   );
+
+  const is_follow_up = Boolean(input.is_follow_up || input.isFollowUp);
+  const prior_summary = input.prior_summary || input.priorSummary || null;
+  const prior_prescription = input.prior_prescription || input.priorPrescription || null;
+  const prior_complaint = input.prior_complaint || input.priorComplaint || null;
+  const prior_screening_id = input.prior_screening_id || input.priorScreeningId || null;
+  const days_since = input.days_since_last_visit != null
+    ? Number(input.days_since_last_visit)
+    : (input.daysSinceLastVisit != null ? Number(input.daysSinceLastVisit) : null);
+
   const session = {
     screening_id, status: 'in_progress', created_at: now, updated_at: now,
     completed_at: null, submitted_at: null,
@@ -125,7 +135,14 @@ export async function createSession(input) {
       clinic_id: input.clinic_id || null,
       queue_token: input.queue_token || null, waiting_ahead: input.waiting_ahead ?? null,
       specialty: normalizeSpecialty(input.specialty),
-      ui_language
+      ui_language,
+      // Follow-up context (stored on patient object inside session)
+      is_follow_up,
+      prior_screening_id: prior_screening_id ? String(prior_screening_id).slice(0, 120) : null,
+      prior_summary: prior_summary ? String(prior_summary).slice(0, 4000) : null,
+      prior_prescription: prior_prescription ? String(prior_prescription).slice(0, 4000) : null,
+      prior_complaint: prior_complaint ? String(prior_complaint).slice(0, 2000) : null,
+      days_since_last_visit: (days_since != null && !Number.isNaN(days_since)) ? days_since : null,
     },
     conversation: [], question_count: 0, last_inbound_message_id: null,
     patient_token_hash: hashPatientToken(token), patient_token_expires_at: expires
