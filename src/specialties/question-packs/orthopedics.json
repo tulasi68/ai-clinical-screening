@@ -1,9 +1,626 @@
 {
   "version": "1.0.0",
   "specialty": "orthopedics",
-  "status": "draft",
-  "description": "Specialization-specific cascading clinical screening questions for orthopedics. Questions will be added and expanded later.",
-  "level1": null,
-  "complaints": {},
-  "shared_tail": []
+  "label": "Orthopedics",
+  "description": "Cascading orthopedic screening: single chief complaint then focused branch only.",
+  "level1": {
+    "id": "primary_complaint",
+    "kind": "fixed",
+    "type": "single",
+    "text": "What is the main bone / joint / muscle problem today? (choose one)",
+    "text_kn": "ಇಂದು ಮೂಳೆ / ಕೀಲು / ಸ್ನಾಯು ಸಂಬಂಧಿ ಮುಖ್ಯ ಸಮಸ್ಯೆ ಯಾವುದು? (ಒಂದನ್ನು ಆಯ್ಕೆ ಮಾಡಿ)",
+    "options": [
+      { "id": "knee_pain", "label": "Knee pain", "label_kn": "ಮೊಣಕಾಲು ನೋವು" },
+      { "id": "back_pain", "label": "Back / spine pain", "label_kn": "ಬೆನ್ನು / ಬೆನ್ನುಮೂಳೆ ನೋವು" },
+      { "id": "neck_pain", "label": "Neck pain", "label_kn": "ಕುತ್ತಿಗೆ ನೋವು" },
+      { "id": "shoulder_pain", "label": "Shoulder pain", "label_kn": "ಭುಜ ನೋವು" },
+      { "id": "hip_pain", "label": "Hip pain", "label_kn": "ಸೊಂಟ / ಹಿಪ್ ನೋವು" },
+      { "id": "ankle_foot", "label": "Ankle / foot pain", "label_kn": "ಕಣಕಾಲು / ಪಾದ ನೋವು" },
+      { "id": "wrist_hand", "label": "Wrist / hand pain", "label_kn": "ಮಣಿಕಟ್ಟು / ಕೈ ನೋವು" },
+      { "id": "elbow_pain", "label": "Elbow pain", "label_kn": "ಮೊಣಕೈ ನೋವು" },
+      { "id": "fracture_injury", "label": "Injury / possible fracture / sprain", "label_kn": "ಗಾಯ / ಮೂಳೆ ಮುರಿತ / ಮಚ್ಚು", "preTriage": "urgent" },
+      { "id": "joint_swelling", "label": "Joint swelling (no clear injury)", "label_kn": "ಕೀಲು ಊತ (ಸ್ಪಷ್ಟ ಗಾಯವಿಲ್ಲ)" },
+      { "id": "other_ortho", "label": "Something else", "label_kn": "ಬೇರೆ ಏನಾದರೂ", "text": "required" }
+    ]
+  },
+  "complaints": {
+    "knee_pain": {
+      "level2": [
+        {
+          "id": "knee_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which knee?",
+          "text_kn": "ಯಾವ ಮೊಣಕಾಲು?",
+          "options": [
+            { "id": "left", "label": "Left", "label_kn": "ಎಡ" },
+            { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+            { "id": "both", "label": "Both", "label_kn": "ಎರಡೂ" }
+          ]
+        },
+        {
+          "id": "knee_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long have you had this knee pain?",
+          "text_kn": "ಈ ಮೊಣಕಾಲು ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "3_14d", "label": "3 days to 2 weeks", "label_kn": "೩ ದಿನದಿಂದ ೨ ವಾರ" },
+            { "id": "2_6w", "label": "2 to 6 weeks", "label_kn": "೨ ರಿಂದ ೬ ವಾರ" },
+            { "id": "gt_6w", "label": "More than 6 weeks", "label_kn": "೬ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "knee_onset",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How did it start?",
+          "text_kn": "ಹೇಗೆ ಪ್ರಾರಂಭವಾಯಿತು?",
+          "options": [
+            { "id": "trauma", "label": "After a fall / twist / sports injury", "label_kn": "ಬೀಳುವಿಕೆ / ತಿರುಗುವಿಕೆ / ಕ್ರೀಡಾ ಗಾಯದ ನಂತರ" },
+            { "id": "gradual", "label": "Gradual, no clear injury", "label_kn": "ನಿಧಾನವಾಗಿ, ಸ್ಪಷ್ಟ ಗಾಯವಿಲ್ಲ" },
+            { "id": "overuse", "label": "After heavy work / walking / climbing", "label_kn": "ಭಾರಿ ಕೆಲಸ / ನಡಿಗೆ / ಏರುವಿಕೆಯ ನಂತರ" }
+          ]
+        },
+        {
+          "id": "knee_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+          "options": [
+            { "id": "swelling", "label": "Swelling", "label_kn": "ಊತ" },
+            { "id": "locking", "label": "Locking (cannot fully straighten or bend)", "label_kn": "ಲಾಕ್ ಆಗುವುದು (ಸಂಪೂರ್ಣ ನೇರ / ಮಡಚಲಾಗದು)" },
+            { "id": "giving_way", "label": "Giving way / instability", "label_kn": "ಕಾಲು ಜಾರುವುದು / ಅಸ್ಥಿರತೆ" },
+            { "id": "clicking", "label": "Clicking / grinding", "label_kn": "ಕ್ಲಿಕ್ / ಘರ್ಷಣೆ ಶಬ್ದ" },
+            { "id": "night_pain", "label": "Pain at night", "label_kn": "ರಾತ್ರಿ ನೋವು" },
+            { "id": "stairs", "label": "Worse on stairs / squatting", "label_kn": "ಮೆಟ್ಟಿಲು / ಕುಳಿತುಕೊಳ್ಳುವಾಗ ಹೆಚ್ಚು" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "knee_redflags",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Any of these serious features?",
+          "text_kn": "ಈ ಗಂಭೀರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "cannot_bear_weight", "label": "Cannot put weight on the leg", "label_kn": "ಕಾಲಿನ ಮೇಲೆ ತೂಕ ಹಾಕಲಾಗುತ್ತಿಲ್ಲ", "urgent": true },
+            { "id": "deformity", "label": "Visible deformity after injury", "label_kn": "ಗಾಯದ ನಂತರ ಗೋಚರ ವಿರೂಪ", "urgent": true },
+            { "id": "numbness", "label": "Numbness or tingling in foot", "label_kn": "ಪಾದದಲ್ಲಿ ಮರಗಟ್ಟುವಿಕೆ / ಜುಮ್ಮು" },
+            { "id": "fever", "label": "Fever with hot swollen joint", "label_kn": "ಬಿಸಿ ಊದಿದ ಕೀಲಿನೊಂದಿಗೆ ಜ್ವರ", "urgent": true },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+
+    "back_pain": {
+      "level2": [
+        {
+          "id": "back_region",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Where is the back pain mainly?",
+          "text_kn": "ಬೆನ್ನು ನೋವು ಮುಖ್ಯವಾಗಿ ಎಲ್ಲಿ?",
+          "options": [
+            { "id": "lower", "label": "Lower back (lumbar)", "label_kn": "ಕೆಳ ಬೆನ್ನು" },
+            { "id": "mid", "label": "Mid back", "label_kn": "ಮಧ್ಯ ಬೆನ್ನು" },
+            { "id": "upper", "label": "Upper back", "label_kn": "ಮೇಲಿನ ಬೆನ್ನು" },
+            { "id": "whole", "label": "Whole spine", "label_kn": "ಇಡೀ ಬೆನ್ನುಮೂಳೆ" }
+          ]
+        },
+        {
+          "id": "back_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long have you had this back pain?",
+          "text_kn": "ಈ ಬೆನ್ನು ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_2w", "label": "1 to 2 weeks", "label_kn": "೧ ರಿಂದ ೨ ವಾರ" },
+            { "id": "2_6w", "label": "2 to 6 weeks", "label_kn": "೨ ರಿಂದ ೬ ವಾರ" },
+            { "id": "gt_6w", "label": "More than 6 weeks", "label_kn": "೬ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "back_character",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "How would you describe it? (choose all that apply)",
+          "text_kn": "ಅದನ್ನು ಹೇಗೆ ವಿವರಿಸುತ್ತೀರಿ? (ಅನ್ವಯವಾಗುವುದನ್ನೆಲ್ಲಾ ಆಯ್ಕೆ ಮಾಡಿ)",
+          "options": [
+            { "id": "sharp", "label": "Sharp / stabbing", "label_kn": "ಚುಚ್ಚುವ ನೋವು" },
+            { "id": "dull", "label": "Dull / aching", "label_kn": "ಮಂದ ನೋವು" },
+            { "id": "radiates_leg", "label": "Radiates to leg / buttock", "label_kn": "ಕಾಲು / ಸೊಂಟಕ್ಕೆ ಹರಡುತ್ತದೆ" },
+            { "id": "stiffness", "label": "Morning stiffness", "label_kn": "ಬೆಳಿಗ್ಗೆ ಬಿಗಿತ" },
+            { "id": "worse_motion", "label": "Worse on movement / bending", "label_kn": "ಚಲನೆ / ಬಾಗುವಿಕೆಯಿಂದ ಹೆಚ್ಚು" },
+            { "id": "better_rest", "label": "Better with rest", "label_kn": "ವಿಶ್ರಾಂತಿಯಿಂದ ಸುಧಾರಿಸುತ್ತದೆ" }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "back_redflags",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Any of these serious features?",
+          "text_kn": "ಈ ಗಂಭೀರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "numbness_groin", "label": "Numbness in groin / inner thighs", "label_kn": "ತೊಡೆ ಸಂದು / ಒಳ ತೊಡೆಯಲ್ಲಿ ಮರಗಟ್ಟುವಿಕೆ", "urgent": true },
+            { "id": "bladder_bowel", "label": "Loss of bladder or bowel control", "label_kn": "ಮೂತ್ರ ಅಥವಾ ಮಲ ನಿಯಂತ್ರಣ ಕಳೆದುಕೊಳ್ಳುವುದು", "urgent": true },
+            { "id": "foot_weakness", "label": "Weakness in one or both feet / legs", "label_kn": "ಒಂದು ಅಥವಾ ಎರಡೂ ಪಾದ / ಕಾಲುಗಳಲ್ಲಿ ದೌರ್ಬಲ್ಯ", "urgent": true },
+            { "id": "trauma", "label": "Significant recent fall / injury", "label_kn": "ಇತ್ತೀಚಿನ ಗಂಭೀರ ಬೀಳುವಿಕೆ / ಗಾಯ" },
+            { "id": "fever_weight", "label": "Fever or unexplained weight loss", "label_kn": "ಜ್ವರ ಅಥವಾ ಕಾರಣವಿಲ್ಲದ ತೂಕ ಕಡಿಮೆ", "urgent": true },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+
+    "neck_pain": {
+      "level2": [
+        {
+          "id": "neck_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long have you had neck pain?",
+          "text_kn": "ಕುತ್ತಿಗೆ ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_2w", "label": "1 to 2 weeks", "label_kn": "೧ ರಿಂದ ೨ ವಾರ" },
+            { "id": "gt_2w", "label": "More than 2 weeks", "label_kn": "೨ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "neck_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "radiates_arm", "label": "Pain / tingling into arm or hand", "label_kn": "ತೋಳು / ಕೈಗೆ ನೋವು ಅಥವಾ ಜುಮ್ಮು" },
+            { "id": "stiffness", "label": "Stiffness — limited turning", "label_kn": "ಬಿಗಿತ — ತಿರುಗಿಸಲು ಕಷ್ಟ" },
+            { "id": "headache", "label": "Headache with neck pain", "label_kn": "ಕುತ್ತಿಗೆ ನೋವಿನೊಂದಿಗೆ ತಲೆನೋವು" },
+            { "id": "after_injury", "label": "Started after injury / accident", "label_kn": "ಗಾಯ / ಅಪಘಾತದ ನಂತರ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "neck_redflags",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Any of these serious features?",
+          "text_kn": "ಈ ಗಂಭೀರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "arm_weakness", "label": "Weakness in arm or hand", "label_kn": "ತೋಳು ಅಥವಾ ಕೈಯಲ್ಲಿ ದೌರ್ಬಲ್ಯ", "urgent": true },
+            { "id": "balance", "label": "Difficulty walking / balance", "label_kn": "ನಡೆಯುವುದು / ಸಮತೋಲನ ಕಷ್ಟ", "urgent": true },
+            { "id": "bladder", "label": "New bladder / bowel problem", "label_kn": "ಹೊಸ ಮೂತ್ರ / ಮಲ ಸಮಸ್ಯೆ", "urgent": true },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+
+    "shoulder_pain": {
+      "level2": [
+        {
+          "id": "shoulder_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which shoulder?",
+          "text_kn": "ಯಾವ ಭುಜ?",
+          "options": [
+            { "id": "left", "label": "Left", "label_kn": "ಎಡ" },
+            { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+            { "id": "both", "label": "Both", "label_kn": "ಎರಡೂ" }
+          ]
+        },
+        {
+          "id": "shoulder_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long have you had shoulder pain?",
+          "text_kn": "ಭುಜ ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_4w", "label": "More than 4 weeks", "label_kn": "೪ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "shoulder_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "overhead", "label": "Pain lifting arm overhead", "label_kn": "ತೋಳು ಮೇಲಕ್ಕೆ ಎತ್ತಿದಾಗ ನೋವು" },
+            { "id": "night", "label": "Night pain / cannot sleep on that side", "label_kn": "ರಾತ್ರಿ ನೋವು / ಆ ಬದಿ ಮಲಗಲಾಗದು" },
+            { "id": "weakness", "label": "Weakness lifting objects", "label_kn": "ವಸ್ತುಗಳನ್ನು ಎತ್ತುವಲ್ಲಿ ದೌರ್ಬಲ್ಯ" },
+            { "id": "trauma", "label": "After fall or sports injury", "label_kn": "ಬೀಳುವಿಕೆ ಅಥವಾ ಕ್ರೀಡಾ ಗಾಯದ ನಂತರ" },
+            { "id": "stiffness", "label": "Stiffness — limited movement", "label_kn": "ಬಿಗಿತ — ಚಲನೆ ನಿರ್ಬಂಧ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+
+    "hip_pain": {
+      "level2": [
+        {
+          "id": "hip_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which hip / side?",
+          "text_kn": "ಯಾವ ಸೊಂಟ / ಬದಿ?",
+          "options": [
+            { "id": "left", "label": "Left", "label_kn": "ಎಡ" },
+            { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+            { "id": "both", "label": "Both", "label_kn": "ಎರಡೂ" }
+          ]
+        },
+        {
+          "id": "hip_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long have you had this pain?",
+          "text_kn": "ಈ ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_4w", "label": "More than 4 weeks", "label_kn": "೪ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "hip_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "groin", "label": "Pain in groin", "label_kn": "ತೊಡೆ ಸಂದಿನಲ್ಲಿ ನೋವು" },
+            { "id": "buttock", "label": "Pain in buttock", "label_kn": "ಸೊಂಟದ ಹಿಂಭಾಗದಲ್ಲಿ ನೋವು" },
+            { "id": "limp", "label": "Limping", "label_kn": "ಕುಂಟುವುದು" },
+            { "id": "stairs", "label": "Worse on stairs / getting up from chair", "label_kn": "ಮೆಟ್ಟಿಲು / ಕುರ್ಚಿಯಿಂದ ಎದ್ದಾಗ ಹೆಚ್ಚು" },
+            { "id": "trauma", "label": "After fall", "label_kn": "ಬೀಳುವಿಕೆಯ ನಂತರ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "hip_redflags",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Any of these serious features?",
+          "text_kn": "ಈ ಗಂಭೀರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "cannot_walk", "label": "Cannot walk or bear weight", "label_kn": "ನಡೆಯಲಾಗದು ಅಥವಾ ತೂಕ ಹಾಕಲಾಗದು", "urgent": true },
+            { "id": "shortening", "label": "Leg looks shorter after fall", "label_kn": "ಬಿದ್ದ ನಂತರ ಕಾಲು ಕಡಿಮೆ ಉದ್ದ ಕಾಣುತ್ತದೆ", "urgent": true },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+
+    "ankle_foot": {
+      "level2": [
+        {
+          "id": "ankle_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which side?",
+          "text_kn": "ಯಾವ ಬದಿ?",
+          "options": [
+            { "id": "left", "label": "Left", "label_kn": "ಎಡ" },
+            { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+            { "id": "both", "label": "Both", "label_kn": "ಎರಡೂ" }
+          ]
+        },
+        {
+          "id": "ankle_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long?",
+          "text_kn": "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_2w", "label": "1 to 2 weeks", "label_kn": "೧ ರಿಂದ ೨ ವಾರ" },
+            { "id": "gt_2w", "label": "More than 2 weeks", "label_kn": "೨ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "ankle_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "swelling", "label": "Swelling", "label_kn": "ಊತ" },
+            { "id": "bruise", "label": "Bruising", "label_kn": "ಗಾಯದ ನೀಲಿ / ಕಂದು" },
+            { "id": "cannot_walk", "label": "Cannot walk normally", "label_kn": "ಸಾಮಾನ್ಯವಾಗಿ ನಡೆಯಲಾಗುತ್ತಿಲ್ಲ" },
+            { "id": "twist", "label": "After a twist / fall", "label_kn": "ತಿರುಗುವಿಕೆ / ಬೀಳುವಿಕೆಯ ನಂತರ" },
+            { "id": "heel", "label": "Heel pain (especially first steps in morning)", "label_kn": "ಹಿಮ್ಮಡಿ ನೋವು (ಬೆಳಿಗ್ಗೆ ಮೊದಲ ಹೆಜ್ಜೆಗಳಲ್ಲಿ)" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+
+    "wrist_hand": {
+      "level2": [
+        {
+          "id": "wrist_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which hand / wrist?",
+          "text_kn": "ಯಾವ ಕೈ / ಮಣಿಕಟ್ಟು?",
+          "options": [
+            { "id": "left", "label": "Left", "label_kn": "ಎಡ" },
+            { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+            { "id": "both", "label": "Both", "label_kn": "ಎರಡೂ" }
+          ]
+        },
+        {
+          "id": "wrist_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long?",
+          "text_kn": "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_4w", "label": "More than 4 weeks", "label_kn": "೪ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "wrist_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "numbness", "label": "Numbness / tingling in fingers", "label_kn": "ಬೆರಳುಗಳಲ್ಲಿ ಮರಗಟ್ಟುವಿಕೆ / ಜುಮ್ಮು" },
+            { "id": "night", "label": "Worse at night", "label_kn": "ರಾತ್ರಿ ಹೆಚ್ಚು" },
+            { "id": "grip", "label": "Weak grip", "label_kn": "ಹಿಡಿತ ದುರ್ಬಲ" },
+            { "id": "trauma", "label": "After fall on outstretched hand", "label_kn": "ಕೈಯನ್ನು ಚಾಚಿ ಬಿದ್ದ ನಂತರ" },
+            { "id": "swelling", "label": "Swelling", "label_kn": "ಊತ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+
+    "elbow_pain": {
+      "level2": [
+        {
+          "id": "elbow_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which elbow?",
+          "text_kn": "ಯಾವ ಮೊಣಕೈ?",
+          "options": [
+            { "id": "left", "label": "Left", "label_kn": "ಎಡ" },
+            { "id": "right", "label": "Right", "label_kn": "ಬಲ" },
+            { "id": "both", "label": "Both", "label_kn": "ಎರಡೂ" }
+          ]
+        },
+        {
+          "id": "elbow_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long?",
+          "text_kn": "ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_4w", "label": "More than 4 weeks", "label_kn": "೪ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "elbow_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "outer", "label": "Pain on outer elbow (tennis elbow type)", "label_kn": "ಹೊರ ಮೊಣಕೈ ನೋವು" },
+            { "id": "inner", "label": "Pain on inner elbow (golfer elbow type)", "label_kn": "ಒಳ ಮೊಣಕೈ ನೋವು" },
+            { "id": "lifting", "label": "Worse on lifting / gripping", "label_kn": "ಎತ್ತುವಾಗ / ಹಿಡಿಯುವಾಗ ಹೆಚ್ಚು" },
+            { "id": "trauma", "label": "After injury", "label_kn": "ಗಾಯದ ನಂತರ" },
+            { "id": "swelling", "label": "Swelling", "label_kn": "ಊತ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+
+    "fracture_injury": {
+      "level2": [
+        {
+          "id": "injury_when",
+          "kind": "fixed",
+          "type": "single",
+          "text": "When did the injury happen?",
+          "text_kn": "ಗಾಯ ಯಾವಾಗ ಆಯಿತು?",
+          "options": [
+            { "id": "today", "label": "Today / last few hours", "label_kn": "ಇಂದು / ಕಳೆದ ಕೆಲವು ಗಂಟೆಗಳಲ್ಲಿ" },
+            { "id": "1_3d", "label": "1 to 3 days ago", "label_kn": "೧ ರಿಂದ ೩ ದಿನಗಳ ಹಿಂದೆ" },
+            { "id": "gt_3d", "label": "More than 3 days ago", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಹಿಂದೆ" }
+          ]
+        },
+        {
+          "id": "injury_site",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which body part was injured?",
+          "text_kn": "ಯಾವ ಭಾಗಕ್ಕೆ ಗಾಯವಾಗಿದೆ?",
+          "options": [
+            { "id": "arm", "label": "Arm / forearm", "label_kn": "ತೋಳು / ಮುಂದೋಳು" },
+            { "id": "wrist_hand", "label": "Wrist / hand", "label_kn": "ಮಣಿಕಟ್ಟು / ಕೈ" },
+            { "id": "leg", "label": "Leg / thigh", "label_kn": "ಕಾಲು / ತೊಡೆ" },
+            { "id": "ankle_foot", "label": "Ankle / foot", "label_kn": "ಕಣಕಾಲು / ಪಾದ" },
+            { "id": "other", "label": "Other", "label_kn": "ಇತರೆ" }
+          ]
+        },
+        {
+          "id": "injury_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "swelling", "label": "Swelling", "label_kn": "ಊತ" },
+            { "id": "deformity", "label": "Looks bent / deformed", "label_kn": "ಬಾಗಿದ / ವಿರೂಪ ಕಾಣುತ್ತದೆ", "urgent": true },
+            { "id": "cannot_move", "label": "Cannot move the part", "label_kn": "ಆ ಭಾಗವನ್ನು ಚಲಿಸಲಾಗುತ್ತಿಲ್ಲ", "urgent": true },
+            { "id": "cannot_bear", "label": "Cannot put weight / use the limb", "label_kn": "ತೂಕ ಹಾಕಲಾಗದು / ಬಳಸಲಾಗದು", "urgent": true },
+            { "id": "open_wound", "label": "Open wound / bone visible", "label_kn": "ತೆರೆದ ಗಾಯ / ಮೂಳೆ ಕಾಣುತ್ತದೆ", "urgent": true },
+            { "id": "numbness", "label": "Numbness beyond the injury", "label_kn": "ಗಾಯದಾಚೆ ಮರಗಟ್ಟುವಿಕೆ" }
+          ]
+        }
+      ],
+      "level3": []
+    },
+
+    "joint_swelling": {
+      "level2": [
+        {
+          "id": "swell_joint",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which joint is mainly swollen?",
+          "text_kn": "ಯಾವ ಕೀಲು ಮುಖ್ಯವಾಗಿ ಊದಿದೆ?",
+          "options": [
+            { "id": "knee", "label": "Knee", "label_kn": "ಮೊಣಕಾಲು" },
+            { "id": "ankle", "label": "Ankle", "label_kn": "ಕಣಕಾಲು" },
+            { "id": "wrist", "label": "Wrist", "label_kn": "ಮಣಿಕಟ್ಟು" },
+            { "id": "finger", "label": "Finger joints", "label_kn": "ಬೆರಳು ಕೀಲುಗಳು" },
+            { "id": "multiple", "label": "Multiple joints", "label_kn": "ಹಲವು ಕೀಲುಗಳು" },
+            { "id": "other", "label": "Other", "label_kn": "ಇತರೆ" }
+          ]
+        },
+        {
+          "id": "swell_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long has the swelling been present?",
+          "text_kn": "ಊತ ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_2w", "label": "1 to 2 weeks", "label_kn": "೧ ರಿಂದ ೨ ವಾರ" },
+            { "id": "gt_2w", "label": "More than 2 weeks", "label_kn": "೨ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "swell_features",
+          "kind": "fixed",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "hot", "label": "Joint feels hot", "label_kn": "ಕೀಲು ಬಿಸಿಯಾಗಿದೆ" },
+            { "id": "red", "label": "Redness over the joint", "label_kn": "ಕೀಲಿನ ಮೇಲೆ ಕೆಂಪು" },
+            { "id": "fever", "label": "Fever", "label_kn": "ಜ್ವರ", "urgent": true },
+            { "id": "morning_stiff", "label": "Morning stiffness > 30 minutes", "label_kn": "ಬೆಳಿಗ್ಗೆ ೩೦ ನಿಮಿಷಕ್ಕಿಂತ ಹೆಚ್ಚು ಬಿಗಿತ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+
+    "other_ortho": {
+      "level2": [
+        {
+          "id": "other_ortho_detail",
+          "kind": "fixed",
+          "type": "text",
+          "text": "Please describe your main bone / joint / muscle problem in a few words.",
+          "text_kn": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಮುಖ್ಯ ಮೂಳೆ / ಕೀಲು / ಸ್ನಾಯು ಸಮಸ್ಯೆಯನ್ನು ಕೆಲವು ಪದಗಳಲ್ಲಿ ವಿವರಿಸಿ."
+        },
+        {
+          "id": "other_ortho_duration",
+          "kind": "fixed",
+          "type": "single",
+          "text": "How long has this been going on?",
+          "text_kn": "ಇದು ಎಷ್ಟು ಸಮಯದಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_2w", "label": "1 to 2 weeks", "label_kn": "೧ ರಿಂದ ೨ ವಾರ" },
+            { "id": "gt_2w", "label": "More than 2 weeks", "label_kn": "೨ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        }
+      ],
+      "level3": []
+    }
+  },
+  "shared_tail": [
+    {
+      "id": "pain_severity",
+      "kind": "fixed",
+      "type": "single",
+      "text": "How severe is the pain right now?",
+      "text_kn": "ಈಗ ನೋವು ಎಷ್ಟು ತೀವ್ರವಾಗಿದೆ?",
+      "options": [
+        { "id": "mild", "label": "Mild — can do most daily activities", "label_kn": "ಸೌಮ್ಯ — ಹೆಚ್ಚಿನ ದೈನಂದಿನ ಕೆಲಸ ಮಾಡಬಹುದು" },
+        { "id": "moderate", "label": "Moderate — limits some activities", "label_kn": "ಮಧ್ಯಮ — ಕೆಲವು ಕೆಲಸಗಳಿಗೆ ಅಡಚಣೆ" },
+        { "id": "severe", "label": "Severe — hard to walk or use the limb", "label_kn": "ತೀವ್ರ — ನಡೆಯಲು / ಬಳಸಲು ಕಷ್ಟ" }
+      ]
+    },
+    {
+      "id": "ortho_red_flag_general",
+      "kind": "fixed",
+      "type": "multi",
+      "text": "Are you experiencing any of these right now?",
+      "text_kn": "ಈಗ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+      "options": [
+        { "id": "cannot_bear_weight", "label": "Cannot put weight on the limb", "label_kn": "ಅಂಗದ ಮೇಲೆ ತೂಕ ಹಾಕಲಾಗುತ್ತಿಲ್ಲ", "urgent": true },
+        { "id": "numbness_weakness", "label": "New numbness or weakness", "label_kn": "ಹೊಸ ಮರಗಟ್ಟುವಿಕೆ ಅಥವಾ ದೌರ್ಬಲ್ಯ", "urgent": true },
+        { "id": "fever", "label": "Fever with joint swelling", "label_kn": "ಕೀಲು ಊತದೊಂದಿಗೆ ಜ್ವರ", "urgent": true },
+        { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    },
+    {
+      "id": "chronic_conditions",
+      "kind": "fixed",
+      "type": "multi",
+      "text": "Do you have any of these ongoing conditions?",
+      "text_kn": "ಈ ನಿರಂತರ ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+      "options": [
+        { "id": "hypertension", "label": "High blood pressure", "label_kn": "ಹೆಚ್ಚು ರಕ್ತದೊತ್ತಡ" },
+        { "id": "diabetes", "label": "Diabetes", "label_kn": "ಮಧುಮೇಹ" },
+        { "id": "osteoporosis", "label": "Osteoporosis / weak bones", "label_kn": "ಅಸ್ಥಿಸಾಂದ್ರತೆ ಕಡಿಮೆ / ದುರ್ಬಲ ಮೂಳೆ" },
+        { "id": "arthritis", "label": "Known arthritis", "label_kn": "ತಿಳಿದಿರುವ ಸಂಧಿವಾತ" },
+        { "id": "none", "label": "None", "label_kn": "ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    },
+    {
+      "id": "active_medications",
+      "kind": "fixed",
+      "type": "text",
+      "text": "What medicines are you currently taking? (or type None)",
+      "text_kn": "ನೀವು ಈಗ ಯಾವ ಔಷಧಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದ್ದೀರಿ? (ಇಲ್ಲವಾದರೆ None ಎಂದು ಬರೆಯಿರಿ)"
+    },
+    {
+      "id": "drug_allergies_exist",
+      "kind": "fixed",
+      "type": "single",
+      "text": "Any medicine allergies?",
+      "text_kn": "ಯಾವುದಾದರೂ ಔಷಧ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+      "options": [
+        { "id": "no", "label": "No", "label_kn": "ಇಲ್ಲ" },
+        { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" }
+      ]
+    }
+  ]
 }

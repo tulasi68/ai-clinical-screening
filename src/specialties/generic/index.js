@@ -4,12 +4,14 @@ import { packCodeForSpecialty } from '../packCodes.js';
 import PRIMARY_CARE_PACK from '../question-packs/primary_care.json';
 import GYNECOLOGY_PACK from '../question-packs/gynecology.json';
 import PEDIATRICS_PACK from '../question-packs/pediatrics.json';
+import ORTHOPEDICS_PACK from '../question-packs/orthopedics.json';
 
 // Static map so the same module works in Node AND Cloudflare Workers VFS.
 const STATIC_PACKS = {
   primary_care: PRIMARY_CARE_PACK,
   gynecology: GYNECOLOGY_PACK,
   pediatrics: PEDIATRICS_PACK,
+  orthopedics: ORTHOPEDICS_PACK,
 };
 
 const packCache = new Map();

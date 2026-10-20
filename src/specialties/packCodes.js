@@ -3,8 +3,8 @@
  *
  * - ENT is handled inline in flow.js (not here).
  * - general_medicine uses the dedicated GM module (not a JSON pack).
- * - gynecology and pediatrics have their own packs.
- * - All other non-ENT specialties share primary_care.json until they get
+ * - gynecology, pediatrics, orthopedics have their own packs.
+ * - Other non-ENT specialties share primary_care.json until they get
  *   their own populated pack.
  */
 const PACK_ALIASES = {
@@ -25,10 +25,13 @@ const PACK_ALIASES = {
   pedia: 'pediatrics',
   paeds: 'pediatrics',
   peds: 'pediatrics',
+  orthopedics: 'orthopedics',
+  orthopaedic: 'orthopedics',
+  orthopaedics: 'orthopedics',
+  ortho: 'orthopedics',
 
   // "Others" still → primary_care cascading pack
   cardiology: 'primary_care',
-  orthopedics: 'primary_care',
   dermatology: 'primary_care',
   ophthalmology: 'primary_care',
   dentistry: 'primary_care',
