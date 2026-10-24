@@ -1,1 +1,590 @@
-{"version":"1.0.0","description":"Cascading primary-care screening: single chief complaint then focused branch only.","level1":{"id":"chief_complaint","kind":"fixed","type":"single","text":"What is the main problem you are facing today? (choose one)","text_kn":"ಇಂದು ನೀವು ಎದುರಿಸುತ್ತಿರುವ ಮುಖ್ಯ ಸಮಸ್ಯೆ ಯಾವುದು? (ಒಂದನ್ನು ಆಯ್ಕೆ ಮಾಡಿ)","options":[{"id":"backache","label":"Backache","label_kn":"ಬೆನ್ನು ನೋವು"},{"id":"depressed_mood","label":"Depressed mood","label_kn":"ಖಿನ್ನತೆ / ಮನಸ್ಸು ಚಿಂತಿತ"},{"id":"heartburn","label":"Heartburn / Acidity","label_kn":"ಎದೆಯುರಿ / ಆಮ್ಲತೆ"},{"id":"tiredness","label":"Tiredness","label_kn":"ಆಯಾಸ"},{"id":"pimple","label":"Pimples / Acne","label_kn":"ಮೊಡವೆ"},{"id":"sneezing","label":"Sneezing","label_kn":"ಸೀನುವುದು"},{"id":"hairloss","label":"Hair loss","label_kn":"ಕೂದಲು ಉದುರುವುದು"},{"id":"fever","label":"Fever","label_kn":"ಜ್ವರ"},{"id":"stomach_pain","label":"Stomach pain","label_kn":"ಹೊಟ್ಟೆ ನೋವು"},{"id":"body_pains","label":"Body pains","label_kn":"ದೇಹ ನೋವು"},{"id":"muscle_pain","label":"Muscle pain","label_kn":"ಸ್ನಾಯು ನೋವು"},{"id":"tooth_ache","label":"Tooth ache","label_kn":"ಹಲ್ಲು ನೋವು"},{"id":"breathing_difficulty","label":"Breathing difficulty","label_kn":"ಉಸಿರಾಟದ ತೊಂದರೆ","preTriage":"urgent"},{"id":"urine_infection","label":"Urine infection","label_kn":"ಮೂತ್ರ ಸೋಂಕು"},{"id":"constipation","label":"Constipation","label_kn":"ಮಲಬದ್ಧತೆ"},{"id":"heart_related","label":"Heart-related","label_kn":"ಹೃದಯ ಸಂಬಂಧಿ","preTriage":"urgent"},{"id":"gastric","label":"Gastric problem","label_kn":"ಜಠರ ಸಮಸ್ಯೆ"},{"id":"other","label":"Other","label_kn":"ಇತರೆ","text":"required"}]},"complaints":{"backache":{"level2":[{"id":"backache_duration","type":"single","text":"How long have you had this back pain?","text_kn":"ಈ ಬೆನ್ನು ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?","options":[{"id":"lt_3d","label":"Less than 3 days","label_kn":"೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ"},{"id":"1_2w","label":"1 to 2 weeks","label_kn":"೧ ರಿಂದ ೨ ವಾರ"},{"id":"gt_6w","label":"More than 6 weeks","label_kn":"೬ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು"}]},{"id":"backache_character","type":"multi","text":"How would you describe it? (choose all that apply)","text_kn":"ಅದನ್ನು ಹೇಗೆ ವಿವರಿಸುತ್ತೀರಿ?","options":[{"id":"sharp","label":"Sharp / stabbing","label_kn":"ಚುಚ್ಚುವ ನೋವು"},{"id":"dull","label":"Dull / aching","label_kn":"ಮಂದ ನೋವು"},{"id":"radiates_leg","label":"Radiates to leg","label_kn":"ಕಾಲಿಗೆ ಹರಡುತ್ತದೆ"},{"id":"stiffness","label":"Stiffness in morning","label_kn":"ಬೆಳಿಗ್ಗೆ ಬಿಗಿತ"},{"id":"worse_motion","label":"Worse on movement","label_kn":"ಚಲನೆಯಿಂದ ಹೆಚ್ಚಾಗುತ್ತದೆ"},{"id":"better_rest","label":"Better with rest","label_kn":"ವಿಶ್ರಾಂತಿಯಿಂದ ಸುಧಾರಿಸುತ್ತದೆ"}]}],"level3":[{"id":"backache_redflags","type":"multi","text":"Any of these serious features? (choose all that apply)","text_kn":"ಈ ಗಂಭೀರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?","showIf":{"question":"backache_character","includes_any":["radiates_leg"]},"options":[{"id":"numbness_groin","label":"Numbness in groin / inner thighs","label_kn":"ತೊಡೆ ಸಂದಿನಲ್ಲಿ ಮರಗಟ್ಟುವಿಕೆ","urgent":true},{"id":"bladder_bowel","label":"Loss of bladder or bowel control","label_kn":"ಮೂತ್ರ ಅಥವಾ ಮಲ ನಿಯಂತ್ರಣ ಕಳೆದುಕೊಳ್ಳುವುದು","urgent":true},{"id":"foot_weakness","label":"Weakness in both feet","label_kn":"ಎರಡೂ ಪಾದಗಳಲ್ಲಿ ದೌರ್ಬಲ್ಯ","urgent":true},{"id":"trauma","label":"Significant recent fall / injury","label_kn":"ಇತ್ತೀಚಿನ ಗಂಭೀರ ಬೀಳುವಿಕೆ / ಗಾಯ"},{"id":"none","label":"None of these","label_kn":"ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ","exclusive":true}]}]},"fever":{"level2":[{"id":"fever_duration","type":"single","text":"How many days of fever?","text_kn":"ಎಷ್ಟು ದಿನಗಳಿಂದ ಜ್ವರ?","options":[{"id":"lt_3d","label":"Less than 3 days","label_kn":"೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ"},{"id":"3_7d","label":"3 to 7 days","label_kn":"೩ ರಿಂದ ೭ ದಿನ"},{"id":"gt_7d","label":"More than 7 days","label_kn":"೭ ದಿನಗಳಿಗಿಂತ ಹೆಚ್ಚು"}]},{"id":"fever_associated","type":"multi","text":"Along with the fever, any of these? (choose all that apply)","text_kn":"ಜ್ವರದ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?","options":[{"id":"chills","label":"Chills or shivering","label_kn":"ಚಳಿ ಅಥವಾ ನಡುಕ"},{"id":"headache_behind_eyes","label":"Severe headache behind eyes","label_kn":"ಕಣ್ಣಿನ ಹಿಂದೆ ತೀವ್ರ ತಲೆನೋವು"},{"id":"body_ache","label":"Severe body / joint ache","label_kn":"ತೀವ್ರ ದೇಹ / ಕೀಲು ನೋವು"},{"id":"rash","label":"Rash or red spots","label_kn":"ದದ್ದು ಅಥವಾ ಕೆಂಪು ಚುಕ್ಕೆ"},{"id":"cough","label":"Cough","label_kn":"ಕೆಮ್ಮು"},{"id":"none","label":"None of these","label_kn":"ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ","exclusive":true}]}],"level3":[{"id":"fever_exposure","type":"single","text":"Anyone at home or work with similar fever recently?","text_kn":"ಮನೆ ಅಥವಾ ಕೆಲಸದಲ್ಲಿ ಇತ್ತೀಚೆಗೆ ಇದೇ ರೀತಿ ಜ್ವರ ಇದ್ದವರು ಇದ್ದಾರೆಯೇ?","options":[{"id":"yes","label":"Yes","label_kn":"ಹೌದು"},{"id":"no","label":"No","label_kn":"ಇಲ್ಲ"},{"id":"unsure","label":"Not sure","label_kn":"ಖಚಿತವಿಲ್ಲ"}]}]},"urine_infection":{"level2":[{"id":"urine_symptoms","type":"multi","text":"Which of these do you have? (choose all that apply)","text_kn":"ಇವುಗಳಲ್ಲಿ ಯಾವುದು ನಿಮಗಿದೆ?","options":[{"id":"burning","label":"Burning while passing urine","label_kn":"ಮೂತ್ರ ವಿಸರ್ಜಿಸುವಾಗ ಉರಿ"},{"id":"frequency","label":"Going more often than usual","label_kn":"ಸಾಮಾನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚು ಬಾರಿ"},{"id":"urgency","label":"Sudden strong urge","label_kn":"ಇದ್ದಕ್ಕಿದ್ದಂತೆ ತೀವ್ರ ಆಸೆ"},{"id":"cloudy","label":"Cloudy or foul-smelling urine","label_kn":"ಮೋಡದಂತೆ ಅಥವಾ ದುರ್ವಾಸನೆ"},{"id":"blood","label":"Blood in urine","label_kn":"ಮೂತ್ರದಲ್ಲಿ ರಕ್ತ"}]}],"level3":[{"id":"urine_redflags","type":"multi","text":"Any of these? (choose all that apply)","text_kn":"ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?","options":[{"id":"flank_pain","label":"Pain in the side / flank","label_kn":"ಬದಿ / ಸೊಂಟ ನೋವು"},{"id":"fever_with_urine","label":"Fever with urine symptoms","label_kn":"ಮೂತ್ರ ಲಕ್ಷಣಗಳೊಂದಿಗೆ ಜ್ವರ"},{"id":"vomiting","label":"Vomiting","label_kn":"ವಾಂತಿ"},{"id":"none","label":"None of these","label_kn":"ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ","exclusive":true}]}]},"other":{"level2":[{"id":"other_complaint_detail","type":"text","text":"Please describe your main problem in a few words.","text_kn":"ದಯವಿಟ್ಟು ನಿಮ್ಮ ಮುಖ್ಯ ಸಮಸ್ಯೆಯನ್ನು ಕೆಲವು ಪದಗಳಲ್ಲಿ ವಿವರಿಸಿ."}],"level3":[]}},"shared_tail":[{"id":"red_flag_symptoms","type":"multi","text":"Are you experiencing any of these severe symptoms right now?","text_kn":"ಈ ಕಠಿಣ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಈಗ ಇದೆಯೇ?","options":[{"id":"dyspnea","label":"Shortness of breath","label_kn":"ಉಸಿರಾಟದ ತೊಂದರೆ"},{"id":"chest_pain","label":"Chest pain or pressure","label_kn":"ಎದೆ ನೋವು ಅಥವಾ ಒತ್ತಡ"},{"id":"fainting","label":"Fainting or severe dizziness","label_kn":"ಮೂರ್ಛೆ ಅಥವಾ ತೀವ್ರ ತಲೆಸುತ್ತು"},{"id":"none","label":"None of these","label_kn":"ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ","exclusive":true}]},{"id":"chronic_conditions","type":"multi","text":"Do you have any of these ongoing conditions?","text_kn":"ಈ ನಿರಂತರ ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?","options":[{"id":"hypertension","label":"High blood pressure","label_kn":"ಹೆಚ್ಚು ರಕ್ತದೊತ್ತಡ"},{"id":"diabetes","label":"Diabetes","label_kn":"ಮಧುಮೇಹ"},{"id":"asthma","label":"Asthma / lung disease","label_kn":"ಆಸ್ತಮಾ / ಶ್ವಾಸಕೋಶ ರೋಗ"},{"id":"none","label":"None","label_kn":"ಯಾವುದೂ ಇಲ್ಲ","exclusive":true}]},{"id":"active_medications","type":"text","text":"What medicines are you currently taking? (or type None)","text_kn":"ನೀವು ಈಗ ಯಾವ ಔಷಧಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದ್ದೀರಿ? (ಇಲ್ಲವಾದರೆ None ಎಂದು ಬರೆಯಿರಿ)"},{"id":"drug_allergies_exist","type":"single","text":"Any medicine allergies?","text_kn":"ಯಾವುದಾದರೂ ಔಷಧ ಅಲರ್ಜಿ ಇದೆಯೇ?","options":[{"id":"no","label":"No","label_kn":"ಇಲ್ಲ"},{"id":"yes","label":"Yes","label_kn":"ಹೌದು"}]}]}
+{
+  "version": "1.1.0",
+  "description": "Enhanced primary-care cascading pack. Adds high-yield branches for multi-system / infiltrative / paraneoplastic presentations derived from CPC training cases (amyloid, pheo, Whipple, anti-NMDA, intravascular lymphoma). Flow remains: level1 (single chief complaint) → selected branch only → shared_tail.",
+  "level1": {
+    "id": "chief_complaint",
+    "kind": "fixed",
+    "type": "single",
+    "text": "What is the main problem you are facing today? (choose one)",
+    "text_kn": "ಇಂದು ನೀವು ಎದುರಿಸುತ್ತಿರುವ ಮುಖ್ಯ ಸಮಸ್ಯೆ ಯಾವುದು? (ಒಂದನ್ನು ಆಯ್ಕೆ ಮಾಡಿ)",
+    "options": [
+      { "id": "backache", "label": "Backache", "label_kn": "ಬೆನ್ನು ನೋವು" },
+      { "id": "depressed_mood", "label": "Depressed mood / Anxiety / Behavioral change", "label_kn": "ಖಿನ್ನತೆ / ಆತಂಕ / ವರ್ತನೆ ಬದಲಾವಣೆ" },
+      { "id": "heartburn", "label": "Heartburn / Acidity", "label_kn": "ಎದೆಯುರಿ / ಆಮ್ಲತೆ" },
+      { "id": "tiredness", "label": "Tiredness / Fatigue / Weakness", "label_kn": "ಆಯಾಸ / ದೌರ್ಬಲ್ಯ" },
+      { "id": "pimple", "label": "Pimples / Acne", "label_kn": "ಮೊಡವೆ" },
+      { "id": "sneezing", "label": "Sneezing / Cold / Allergy", "label_kn": "ಸೀನುವುದು / ಶೀತ" },
+      { "id": "hairloss", "label": "Hair loss", "label_kn": "ಕೂದಲು ಉದುರುವುದು" },
+      { "id": "fever", "label": "Fever", "label_kn": "ಜ್ವರ" },
+      { "id": "stomach_pain", "label": "Stomach pain", "label_kn": "ಹೊಟ್ಟೆ ನೋವು" },
+      { "id": "body_pains", "label": "Body / Joint pains", "label_kn": "ದೇಹ / ಕೀಲು ನೋವು" },
+      { "id": "muscle_pain", "label": "Muscle pain", "label_kn": "ಸ್ನಾಯು ನೋವು" },
+      { "id": "tooth_ache", "label": "Tooth ache", "label_kn": "ಹಲ್ಲು ನೋವು" },
+      { "id": "breathing_difficulty", "label": "Breathing difficulty / Swelling of legs", "label_kn": "ಉಸಿರಾಟದ ತೊಂದರೆ / ಕಾಲು ಊತ", "preTriage": "urgent" },
+      { "id": "urine_infection", "label": "Urine problems", "label_kn": "ಮೂತ್ರ ಸಮಸ್ಯೆ" },
+      { "id": "constipation", "label": "Constipation / Diarrhea / Loose stools", "label_kn": "ಮಲಬದ್ಧತೆ / ಅತಿಸಾರ" },
+      { "id": "heart_related", "label": "Heart-related (palpitations / chest pain / BP spells)", "label_kn": "ಹೃದಯ ಸಂಬಂಧಿ", "preTriage": "urgent" },
+      { "id": "gastric", "label": "Gastric problem", "label_kn": "ಜಠರ ಸಮಸ್ಯೆ" },
+      { "id": "headache_spells", "label": "Headache spells with sweating / palpitations", "label_kn": "ತಲೆನೋವು + ಬೆವರು / ಹೃದಯ ಬಡಿತ" },
+      { "id": "confusion_memory", "label": "Confusion / Memory problems / Behavioral change", "label_kn": "ಗೊಂದಲ / ನೆನಪು ಸಮಸ್ಯೆ / ವರ್ತನೆ ಬದಲಾವಣೆ" },
+      { "id": "other", "label": "Other", "label_kn": "ಇತರೆ", "text": "required" }
+    ]
+  },
+  "complaints": {
+    "backache": {
+      "level2": [
+        {
+          "id": "backache_duration",
+          "type": "single",
+          "text": "How long have you had this back pain?",
+          "text_kn": "ಈ ಬೆನ್ನು ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ ಇದೆ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_2w", "label": "1 to 2 weeks", "label_kn": "೧ ರಿಂದ ೨ ವಾರ" },
+            { "id": "gt_6w", "label": "More than 6 weeks", "label_kn": "೬ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "backache_character",
+          "type": "multi",
+          "text": "How would you describe it? (choose all that apply)",
+          "text_kn": "ಅದನ್ನು ಹೇಗೆ ವಿವರಿಸುತ್ತೀರಿ?",
+          "options": [
+            { "id": "sharp", "label": "Sharp / stabbing", "label_kn": "ಚುಚ್ಚುವ ನೋವು" },
+            { "id": "dull", "label": "Dull / aching", "label_kn": "ಮಂದ ನೋವು" },
+            { "id": "radiates_leg", "label": "Radiates to leg", "label_kn": "ಕಾಲಿಗೆ ಹರಡುತ್ತದೆ" },
+            { "id": "stiffness", "label": "Stiffness in morning", "label_kn": "ಬೆಳಿಗ್ಗೆ ಬಿಗಿತ" },
+            { "id": "worse_motion", "label": "Worse on movement", "label_kn": "ಚಲನೆಯಿಂದ ಹೆಚ್ಚಾಗುತ್ತದೆ" },
+            { "id": "better_rest", "label": "Better with rest", "label_kn": "ವಿಶ್ರಾಂತಿಯಿಂದ ಸುಧಾರಿಸುತ್ತದೆ" }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "backache_redflags",
+          "type": "multi",
+          "text": "Any of these serious features? (choose all that apply)",
+          "text_kn": "ಈ ಗಂಭೀರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "showIf": { "qid": "backache_character", "includes_any": ["radiates_leg"] },
+          "options": [
+            { "id": "numbness_groin", "label": "Numbness in groin / inner thighs", "label_kn": "ತೊಡೆ ಸಂದಿನಲ್ಲಿ ಮರಗಟ್ಟುವಿಕೆ", "urgent": true },
+            { "id": "bladder_bowel", "label": "Loss of bladder or bowel control", "label_kn": "ಮೂತ್ರ ಅಥವಾ ಮಲ ನಿಯಂತ್ರಣ ಕಳೆದುಕೊಳ್ಳುವುದು", "urgent": true },
+            { "id": "foot_weakness", "label": "Weakness in both feet", "label_kn": "ಎರಡೂ ಪಾದಗಳಲ್ಲಿ ದೌರ್ಬಲ್ಯ", "urgent": true },
+            { "id": "trauma", "label": "Significant recent fall / injury", "label_kn": "ಇತ್ತೀಚಿನ ಗಂಭೀರ ಬೀಳುವಿಕೆ / ಗಾಯ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "fever": {
+      "level2": [
+        {
+          "id": "fever_duration",
+          "type": "single",
+          "text": "How many days of fever?",
+          "text_kn": "ಎಷ್ಟು ದಿನಗಳಿಂದ ಜ್ವರ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "3_7d", "label": "3 to 7 days", "label_kn": "೩ ರಿಂದ ೭ ದಿನ" },
+            { "id": "gt_7d", "label": "More than 7 days / recurring for weeks", "label_kn": "೭ ದಿನಗಳಿಗಿಂತ ಹೆಚ್ಚು / ವಾರಗಳಿಂದ ಮರುಕಳಿಸುತ್ತಿದೆ" }
+          ]
+        },
+        {
+          "id": "fever_associated",
+          "type": "multi",
+          "text": "Along with the fever, any of these? (choose all that apply)",
+          "text_kn": "ಜ್ವರದ ಜೊತೆಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "chills", "label": "Chills or shivering", "label_kn": "ಚಳಿ ಅಥವಾ ನಡುಕ" },
+            { "id": "night_sweats", "label": "Drenching night sweats (change clothes/sheets)", "label_kn": "ರಾತ್ರಿ ತೀವ್ರ ಬೆವರು (ಬಟ್ಟೆ / ಹಾಸಿಗೆ ಬದಲಾಯಿಸಬೇಕು)" },
+            { "id": "weight_loss", "label": "Unintentional weight loss", "label_kn": "ಉದ್ದೇಶವಿಲ್ಲದ ತೂಕ ಇಳಿಕೆ" },
+            { "id": "headache_behind_eyes", "label": "Severe headache behind eyes", "label_kn": "ಕಣ್ಣಿನ ಹಿಂದೆ ತೀವ್ರ ತಲೆನೋವು" },
+            { "id": "body_ache", "label": "Severe body / joint ache", "label_kn": "ತೀವ್ರ ದೇಹ / ಕೀಲು ನೋವು" },
+            { "id": "rash", "label": "Rash or red spots", "label_kn": "ದದ್ದು ಅಥವಾ ಕೆಂಪು ಚುಕ್ಕೆ" },
+            { "id": "cough", "label": "Cough", "label_kn": "ಕೆಮ್ಮು" },
+            { "id": "confusion", "label": "Confusion or memory problems", "label_kn": "ಗೊಂದಲ ಅಥವಾ ನೆನಪು ಸಮಸ್ಯೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "fever_skin_neuro",
+          "type": "multi",
+          "text": "Any of these skin or neurologic features?",
+          "text_kn": "ಈ ಚರ್ಮ ಅಥವಾ ನರ ಸಂಬಂಧಿ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "showIf": {
+            "any": [
+              { "qid": "fever_associated", "includes_any": ["night_sweats", "weight_loss", "confusion"] },
+              { "qid": "fever_duration", "equals": "gt_7d" }
+            ]
+          },
+          "options": [
+            { "id": "livedo", "label": "Mottled / net-like reddish-purple skin on thighs or arms", "label_kn": "ತೊಡೆ ಅಥವಾ ತೋಳುಗಳಲ್ಲಿ ಮೋಡದಂತೆ ಕೆಂಪು-ನೇರಳೆ ಚರ್ಮ" },
+            { "id": "transient_weakness", "label": "Temporary weakness, speech difficulty or clumsiness of one side", "label_kn": "ತಾತ್ಕಾಲಿಕ ದೌರ್ಬಲ್ಯ, ಮಾತಿನ ತೊಂದರೆ ಅಥವಾ ಒಂದು ಬದಿ ಹೆಪ್ಪುಗಟ್ಟುವಿಕೆ" },
+            { "id": "easy_bruising", "label": "Easy bruising or low blood counts known previously", "label_kn": "ಸುಲಭವಾಗಿ ಮೂಗೇರುವುದು ಅಥವಾ ಹಿಂದೆ ರಕ್ತಕಣಗಳು ಕಡಿಮೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        },
+        {
+          "id": "fever_exposure",
+          "type": "single",
+          "text": "Anyone at home or work with similar fever recently?",
+          "text_kn": "ಮನೆ ಅಥವಾ ಕೆಲಸದಲ್ಲಿ ಇತ್ತೀಚೆಗೆ ಇದೇ ರೀತಿ ಜ್ವರ ಇದ್ದವರು ಇದ್ದಾರೆಯೇ?",
+          "options": [
+            { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" },
+            { "id": "no", "label": "No", "label_kn": "ಇಲ್ಲ" },
+            { "id": "unsure", "label": "Not sure", "label_kn": "ಖಚಿತವಿಲ್ಲ" }
+          ]
+        }
+      ]
+    },
+    "breathing_difficulty": {
+      "level2": [
+        {
+          "id": "dyspnea_duration",
+          "type": "single",
+          "text": "How long have you had breathing difficulty or leg swelling?",
+          "text_kn": "ಉಸಿರಾಟದ ತೊಂದರೆ ಅಥವಾ ಕಾಲು ಊತ ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_1w", "label": "Less than 1 week", "label_kn": "೧ ವಾರಕ್ಕಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_1m", "label": "More than 1 month / progressive over months", "label_kn": "೧ ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು / ತಿಂಗಳುಗಳಿಂದ ಹೆಚ್ಚಾಗುತ್ತಿದೆ" }
+          ]
+        },
+        {
+          "id": "dyspnea_features",
+          "type": "multi",
+          "text": "Which of these apply? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "orthopnea", "label": "Need extra pillows to sleep / wake up breathless", "label_kn": "ಹೆಚ್ಚು ದಿಂಬುಗಳು ಬೇಕು / ನಿದ್ರೆಯಲ್ಲಿ ಉಸಿರು ಕಟ್ಟುತ್ತದೆ" },
+            { "id": "leg_swelling", "label": "Swelling of both legs / ankles / scrotum", "label_kn": "ಎರಡೂ ಕಾಲು / ಪಾದ / ವೃಷಣ ಊತ" },
+            { "id": "foamy_urine", "label": "Foamy or frothy urine", "label_kn": "ನೊರೆಯಂತೆ ಮೂತ್ರ" },
+            { "id": "easy_bruising", "label": "Easy bruising", "label_kn": "ಸುಲಭವಾಗಿ ಮೂಗೇರುವುದು" },
+            { "id": "periorbital", "label": "Dark rings / purple discoloration around eyes after coughing or straining", "label_kn": "ಕೆಮ್ಮಿದಾಗ ಅಥವಾ ಒತ್ತಿದಾಗ ಕಣ್ಣುಗಳ ಸುತ್ತ ನೇರಳೆ ಬಣ್ಣ" },
+            { "id": "tongue_voice", "label": "Tongue feels larger / voice has become hoarse or soft", "label_kn": "ನಾಲಿಗೆ ದೊಡ್ಡದಾಗಿದೆ / ಧ್ವನಿ ಬದಲಾಗಿದೆ" },
+            { "id": "carpal_tunnel", "label": "Had surgery or symptoms of carpal tunnel (both wrists) in past years", "label_kn": "ಹಿಂದೆ ಎರಡೂ ಮಣಿಕಟ್ಟುಗಳಲ್ಲಿ ಕಾರ್ಪಲ್ ಟನಲ್ ಸಮಸ್ಯೆ / ಶಸ್ತ್ರಚಿಕಿತ್ಸೆ" },
+            { "id": "lost_hypertension", "label": "Previously high BP but now readings are low / medicines stopped", "label_kn": "ಹಿಂದೆ ರಕ್ತದೊತ್ತಡ ಹೆಚ್ಚಿತ್ತು, ಈಗ ಕಡಿಮೆ / ಔಷಧ ನಿಲ್ಲಿಸಲಾಗಿದೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "dyspnea_neuro",
+          "type": "multi",
+          "text": "Any of these additional features?",
+          "text_kn": "ಈ ಹೆಚ್ಚುವರಿ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "showIf": {
+            "qid": "dyspnea_features",
+            "includes_any": ["easy_bruising", "periorbital", "tongue_voice", "carpal_tunnel", "lost_hypertension"]
+          },
+          "options": [
+            { "id": "foot_numbness", "label": "Numbness or tingling in both feet ascending upward", "label_kn": "ಎರಡೂ ಪಾದಗಳಲ್ಲಿ ಮರಗಟ್ಟುವಿಕೆ ಮೇಲಕ್ಕೆ ಹರಡುತ್ತಿದೆ" },
+            { "id": "lightheaded_stand", "label": "Light-headed or nearly fainting on standing quickly", "label_kn": "ಬೇಗನೆ ಎದ್ದಾಗ ತಲೆ ಸುತ್ತು / ಬೀಳುವಂತೆ" },
+            { "id": "early_satiety", "label": "Feel full after few mouthfuls / unintentional weight loss", "label_kn": "ಕೆಲವು ತುತ್ತುಗಳ ನಂತರ ಹೊಟ್ಟೆ ತುಂಬಿದಂತೆ / ತೂಕ ಇಳಿಕೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "heart_related": {
+      "level2": [
+        {
+          "id": "heart_spell_character",
+          "type": "multi",
+          "text": "During the spells, which of these occur? (choose all that apply)",
+          "text_kn": "ಎಪಿಸೋಡ್‌ಗಳ ಸಮಯದಲ್ಲಿ ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಸಂಭವಿಸುತ್ತದೆ?",
+          "options": [
+            { "id": "pounding_headache", "label": "Pounding headache", "label_kn": "ಬಡಿಯುವ ತಲೆನೋವು" },
+            { "id": "palpitations", "label": "Forceful palpitations / hammering in chest", "label_kn": "ಬಲವಾದ ಹೃದಯ ಬಡಿತ" },
+            { "id": "drenching_sweat", "label": "Profuse / drenching sweating", "label_kn": "ತೀವ್ರ ಬೆವರು" },
+            { "id": "pallor", "label": "Skin becomes pale and cold (not flushed)", "label_kn": "ಚರ್ಮ ಬಿಳಿ ಮತ್ತು ತಣ್ಣಗಾಗುತ್ತದೆ (ಕೆಂಪಾಗುವುದಿಲ್ಲ)" },
+            { "id": "tremor", "label": "Tremor of hands", "label_kn": "ಕೈ ನಡುಕ" },
+            { "id": "sense_doom", "label": "Sense of apprehension or impending doom", "label_kn": "ಭಯ / ಅಪಾಯದ ಭಾವನೆ" },
+            { "id": "flushing", "label": "Flushing / redness of face", "label_kn": "ಮುಖ ಕೆಂಪಾಗುವುದು" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        },
+        {
+          "id": "heart_triggers",
+          "type": "multi",
+          "text": "What tends to trigger the spells? (choose all that apply)",
+          "text_kn": "ಎಪಿಸೋಡ್‌ಗಳನ್ನು ಏನು ಪ್ರಚೋದಿಸುತ್ತದೆ?",
+          "options": [
+            { "id": "exertion", "label": "Physical exertion / climbing stairs", "label_kn": "ದೈಹಿಕ ಶ್ರಮ / ಮೆಟ್ಟಿಲು ಹತ್ತುವುದು" },
+            { "id": "bending", "label": "Bending forward or straining", "label_kn": "ಮುಂದಕ್ಕೆ ಬಗ್ಗುವುದು ಅಥವಾ ಒತ್ತುವುದು" },
+            { "id": "micturition", "label": "Passing urine", "label_kn": "ಮೂತ್ರ ವಿಸರ್ಜನೆ" },
+            { "id": "spontaneous", "label": "Come without any clear trigger / even at night", "label_kn": "ಯಾವುದೇ ಕಾರಣವಿಲ್ಲದೆ / ರಾತ್ರಿಯಲ್ಲೂ" },
+            { "id": "none", "label": "No clear pattern", "label_kn": "ಸ್ಪಷ್ಟ ಮಾದರಿ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "heart_associated",
+          "type": "multi",
+          "text": "Any of these other features?",
+          "text_kn": "ಈ ಇತರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "weight_loss", "label": "Unintentional weight loss despite good appetite", "label_kn": "ಹಸಿವಿದ್ದರೂ ತೂಕ ಇಳಿಕೆ" },
+            { "id": "new_diabetes", "label": "Recently told blood sugar is high / new diabetes", "label_kn": "ಇತ್ತೀಚೆಗೆ ಸಕ್ಕರೆ ಹೆಚ್ಚು / ಹೊಸ ಮಧುಮೇಹ" },
+            { "id": "constipation", "label": "New constipation", "label_kn": "ಹೊಸ ಮಲಬದ್ಧತೆ" },
+            { "id": "family_thyroid_adrenal", "label": "Family history of thyroid cancer or adrenal / kidney-region tumor", "label_kn": "ಕುಟುಂಬದಲ್ಲಿ ಥೈರಾಯ್ಡ್ ಕ್ಯಾನ್ಸರ್ ಅಥವಾ ಅಡ್ರಿನಲ್ / ಮೂತ್ರಪಿಂಡ ಪ್ರದೇಶದ ಗೆಡ್ಡೆ" },
+            { "id": "labile_bp", "label": "Blood pressure is very high during spells and sometimes near normal between them", "label_kn": "ಎಪಿಸೋಡ್‌ನಲ್ಲಿ ರಕ್ತದೊತ್ತಡ ತುಂಬಾ ಹೆಚ್ಚು, ನಡುವೆ ಸಾಮಾನ್ಯ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "constipation": {
+      "level2": [
+        {
+          "id": "stool_type",
+          "type": "single",
+          "text": "What best describes your stools?",
+          "text_kn": "ನಿಮ್ಮ ಮಲವನ್ನು ಹೇಗೆ ವಿವರಿಸುತ್ತೀರಿ?",
+          "options": [
+            { "id": "hard_infrequent", "label": "Hard, infrequent (constipation)", "label_kn": "ಗಟ್ಟಿ, ಅಪರೂಪ (ಮಲಬದ್ಧತೆ)" },
+            { "id": "loose_watery", "label": "Loose / watery", "label_kn": "ಸಡಿಲ / ನೀರಿನಂತೆ" },
+            { "id": "bulky_greasy", "label": "Bulky, pale, greasy, foul-smelling, hard to flush", "label_kn": "ದೊಡ್ಡ, ಬಿಳಿ, ಜಿಡ್ಡು, ದುರ್ವಾಸನೆ, ಫ್ಲಶ್ ಮಾಡಲು ಕಷ್ಟ" },
+            { "id": "mixed", "label": "Mixed / variable", "label_kn": "ಮಿಶ್ರ / ಬದಲಾಗುತ್ತದೆ" }
+          ]
+        },
+        {
+          "id": "gi_duration_weight",
+          "type": "multi",
+          "text": "Which of these apply?",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಅನ್ವಯವಾಗುತ್ತದೆ?",
+          "options": [
+            { "id": "gt_1m", "label": "Symptoms for more than 1 month", "label_kn": "೧ ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು ಕಾಲ" },
+            { "id": "weight_loss", "label": "Unintentional weight loss", "label_kn": "ಉದ್ದೇಶವಿಲ್ಲದ ತೂಕ ಇಳಿಕೆ" },
+            { "id": "bloating", "label": "Abdominal bloating / cramping after meals", "label_kn": "ಊಟದ ನಂತರ ಹೊಟ್ಟೆ ಉಬ್ಬರ / ನೋವು" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "gi_systemic",
+          "type": "multi",
+          "text": "Any of these other features? (especially important if stools are greasy or weight loss is present)",
+          "text_kn": "ಈ ಇತರ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "showIf": {
+            "any": [
+              { "qid": "stool_type", "equals": "bulky_greasy" },
+              { "qid": "gi_duration_weight", "includes_any": ["weight_loss", "gt_1m"] }
+            ]
+          },
+          "options": [
+            { "id": "migratory_arthritis", "label": "Years of joint pain that moves from joint to joint (knees, wrists, ankles)", "label_kn": "ವರ್ಷಗಳಿಂದ ಕೀಲು ನೋವು ಒಂದರಿಂದ ಇನ್ನೊಂದಕ್ಕೆ ಸ್ಥಳಾಂತರ" },
+            { "id": "farm_exposure", "label": "Work with soil, livestock, manure, or septic systems / farm work", "label_kn": "ಮಣ್ಣು, ಜಾನುವಾರು, ಗೊಬ್ಬರ ಅಥವಾ ಸೆಪ್ಟಿಕ್ ಸಿಸ್ಟಮ್ / ಕೃಷಿ ಕೆಲಸ" },
+            { "id": "prior_tnf", "label": "Previously treated with strong immune medicines (e.g. adalimumab / anti-TNF) or long steroids", "label_kn": "ಹಿಂದೆ ಬಲವಾದ ರೋಗನಿರೋಧಕ ಔಷಧ (ಆಂಟಿ-TNF) ಅಥವಾ ದೀರ್ಘಕಾಲ ಸ್ಟೀರಾಯ್ಡ್" },
+            { "id": "skin_darkening", "label": "Skin has become darker (face, neck, arms, creases)", "label_kn": "ಚರ್ಮ ಗಾಢವಾಗಿದೆ (ಮುಖ, ಕುತ್ತಿಗೆ, ತೋಳು)" },
+            { "id": "cognitive_slowing", "label": "Family notices you are more forgetful or slower in conversation", "label_kn": "ಕುಟುಂಬದವರು ಮರೆತುಬಿಡುವುದು / ನಿಧಾನವಾಗಿ ಮಾತನಾಡುವುದು ಗಮನಿಸಿದ್ದಾರೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "depressed_mood": {
+      "level2": [
+        {
+          "id": "psych_onset",
+          "type": "single",
+          "text": "How long have the behavioral or mood changes been present?",
+          "text_kn": "ವರ್ತನೆ ಅಥವಾ ಮನೋಭಾವದ ಬದಲಾವಣೆಗಳು ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_1w", "label": "Less than 1 week", "label_kn": "೧ ವಾರಕ್ಕಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks (subacute)", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_1m", "label": "More than 1 month", "label_kn": "೧ ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "psych_features",
+          "type": "multi",
+          "text": "Which of these are present? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಇದೆ?",
+          "options": [
+            { "id": "paranoia_hallucinations", "label": "Suspicious thoughts, hearing voices, or seeing things", "label_kn": "ಸಂದೇಹ, ಧ್ವನಿ ಕೇಳುವುದು, ವಸ್ತುಗಳನ್ನು ನೋಡುವುದು" },
+            { "id": "memory_loss", "label": "Short-term memory loss / repeating questions / not recognizing familiar people", "label_kn": "ಅಲ್ಪಾವಧಿ ನೆನಪು ನಷ್ಟ / ಪ್ರಶ್ನೆಗಳನ್ನು ಪುನರಾವರ್ತಿಸುವುದು" },
+            { "id": "speech_change", "label": "Speech reduced, mutism, or repeating others’ words", "label_kn": "ಮಾತು ಕಡಿಮೆ, ಮೌನ, ಅಥವಾ ಇತರರ ಮಾತುಗಳನ್ನು ಪುನರಾವರ್ತಿಸುವುದು" },
+            { "id": "seizures", "label": "Seizures or blank staring spells", "label_kn": "ಮೂರ್ಛೆ ಅಥವಾ ಖಾಲಿ ನೋಡುವ ಎಪಿಸೋಡ್‌ಗಳು" },
+            { "id": "face_mouth_movements", "label": "Continuous unusual movements of lips, tongue, chewing, or eye deviation", "label_kn": "ತುಟಿ, ನಾಲಿಗೆ, ಅಗಿಯುವುದು ಅಥವಾ ಕಣ್ಣು ವಿಪಥನದ ನಿರಂತರ ಅಸಹಜ ಚಲನೆಗಳು" },
+            { "id": "viral_prodrome", "label": "Had a fever / viral-like illness in the days or weeks before this started", "label_kn": "ಇದಕ್ಕೆ ಮುನ್ನ ಜ್ವರ / ವೈರಲ್ ರೋಗಲಕ್ಷಣಗಳು ಇದ್ದವು" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "psych_autonomic",
+          "type": "multi",
+          "text": "Any of these additional features?",
+          "text_kn": "ಈ ಹೆಚ್ಚುವರಿ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "showIf": {
+            "qid": "psych_features",
+            "includes_any": ["paranoia_hallucinations", "memory_loss", "seizures", "face_mouth_movements"]
+          },
+          "options": [
+            { "id": "autonomic_swings", "label": "Blood pressure or heart rate swinging high and low, or unexplained high fever", "label_kn": "ರಕ್ತದೊತ್ತಡ / ಹೃದಯ ಬಡಿತ ಏರಿಳಿತ ಅಥವಾ ಕಾರಣವಿಲ್ಲದ ಜ್ವರ" },
+            { "id": "breathing_irregular", "label": "Irregular or shallow breathing / needing help to breathe", "label_kn": "ಅನಿಯಮಿತ ಅಥವಾ ಆಳವಿಲ್ಲದ ಉಸಿರಾಟ" },
+            { "id": "neuroleptic_reaction", "label": "Became very rigid / high fever after psychiatric medicines", "label_kn": "ಮನೋರೋಗ ಔಷಧಗಳ ನಂತರ ತೀವ್ರ ಬಿಗಿತ / ಜ್ವರ" },
+            { "id": "young_female", "label": "Patient is a young woman (relevant for certain autoimmune encephalitides)", "label_kn": "ರೋಗಿ ಯುವ ಮಹಿಳೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "confusion_memory": {
+      "level2": [
+        {
+          "id": "confusion_duration",
+          "type": "single",
+          "text": "How long have the confusion or memory problems been present?",
+          "text_kn": "ಗೊಂದಲ ಅಥವಾ ನೆನಪು ಸಮಸ್ಯೆಗಳು ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_1w", "label": "Less than 1 week", "label_kn": "೧ ವಾರಕ್ಕಿಂತ ಕಡಿಮೆ" },
+            { "id": "1_4w", "label": "1 to 4 weeks", "label_kn": "೧ ರಿಂದ ೪ ವಾರ" },
+            { "id": "gt_1m", "label": "More than 1 month", "label_kn": "೧ ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "confusion_features",
+          "type": "multi",
+          "text": "Which of these are present?",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ಇದೆ?",
+          "options": [
+            { "id": "fever_with_confusion", "label": "Fever along with the confusion", "label_kn": "ಗೊಂದಲದೊಂದಿಗೆ ಜ್ವರ" },
+            { "id": "night_sweats_wtloss", "label": "Night sweats or weight loss", "label_kn": "ರಾತ್ರಿ ಬೆವರು ಅಥವಾ ತೂಕ ಇಳಿಕೆ" },
+            { "id": "transient_neuro", "label": "Temporary weakness, speech difficulty or visual change that resolved", "label_kn": "ತಾತ್ಕಾಲಿಕ ದೌರ್ಬಲ್ಯ / ಮಾತು / ದೃಷ್ಟಿ ಬದಲಾವಣೆ" },
+            { "id": "livedo", "label": "Mottled or net-like skin discoloration on limbs", "label_kn": "ಕಾಲುಗಳಲ್ಲಿ ಮೋಡದಂತೆ ಚರ್ಮ ಬಣ್ಣ" },
+            { "id": "seizures", "label": "Seizures", "label_kn": "ಮೂರ್ಛೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+    "headache_spells": {
+      "level2": [
+        {
+          "id": "headache_spell_character",
+          "type": "multi",
+          "text": "During the headache spells, which occur?",
+          "text_kn": "ತಲೆನೋವು ಎಪಿಸೋಡ್‌ಗಳಲ್ಲಿ ಯಾವುದು ಸಂಭವಿಸುತ್ತದೆ?",
+          "options": [
+            { "id": "palpitations", "label": "Palpitations", "label_kn": "ಹೃದಯ ಬಡಿತ" },
+            { "id": "sweating", "label": "Heavy sweating", "label_kn": "ತೀವ್ರ ಬೆವರು" },
+            { "id": "pallor", "label": "Becomes pale", "label_kn": "ಬಿಳಿ ಬಣ್ಣಕ್ಕೆ ತಿರುಗುತ್ತದೆ" },
+            { "id": "tremor", "label": "Tremor", "label_kn": "ನಡುಕ" },
+            { "id": "sense_doom", "label": "Sense of doom / severe anxiety", "label_kn": "ಭಯ / ತೀವ್ರ ಆತಂಕ" },
+            { "id": "high_bp_documented", "label": "Very high blood pressure recorded during a spell", "label_kn": "ಎಪಿಸೋಡ್‌ನಲ್ಲಿ ತುಂಬಾ ಹೆಚ್ಚು ರಕ್ತದೊತ್ತಡ ದಾಖಲಾಗಿದೆ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "headache_triggers_family",
+          "type": "multi",
+          "text": "Any of these?",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "micturition_trigger", "label": "Sometimes triggered by passing urine", "label_kn": "ಮೂತ್ರ ವಿಸರ್ಜನೆಯಿಂದ ಪ್ರಚೋದಿತ" },
+            { "id": "family_endocrine", "label": "Family history of thyroid or adrenal tumors", "label_kn": "ಕುಟುಂಬದಲ್ಲಿ ಥೈರಾಯ್ಡ್ ಅಥವಾ ಅಡ್ರಿನಲ್ ಗೆಡ್ಡೆ" },
+            { "id": "weight_loss_hyperglycemia", "label": "Weight loss or new high blood sugar", "label_kn": "ತೂಕ ಇಳಿಕೆ ಅಥವಾ ಹೊಸ ಸಕ್ಕರೆ ಹೆಚ್ಚಳ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "urine_infection": {
+      "level2": [
+        {
+          "id": "urine_symptoms",
+          "type": "multi",
+          "text": "Which of these do you have? (choose all that apply)",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದು ನಿಮಗಿದೆ?",
+          "options": [
+            { "id": "burning", "label": "Burning while passing urine", "label_kn": "ಮೂತ್ರ ವಿಸರ್ಜಿಸುವಾಗ ಉರಿ" },
+            { "id": "frequency", "label": "Going more often than usual", "label_kn": "ಸಾಮಾನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚು ಬಾರಿ" },
+            { "id": "urgency", "label": "Sudden strong urge", "label_kn": "ಇದ್ದಕ್ಕಿದ್ದಂತೆ ತೀವ್ರ ಆಸೆ" },
+            { "id": "cloudy", "label": "Cloudy or foul-smelling urine", "label_kn": "ಮೋಡದಂತೆ ಅಥವಾ ದುರ್ವಾಸನೆ" },
+            { "id": "blood", "label": "Blood in urine", "label_kn": "ಮೂತ್ರದಲ್ಲಿ ರಕ್ತ" },
+            { "id": "foamy", "label": "Foamy / frothy urine", "label_kn": "ನೊರೆಯಂತೆ ಮೂತ್ರ" }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "urine_redflags",
+          "type": "multi",
+          "text": "Any of these?",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "flank_pain", "label": "Pain in the side / flank", "label_kn": "ಬದಿ / ಸೊಂಟ ನೋವು" },
+            { "id": "fever_with_urine", "label": "Fever with urine symptoms", "label_kn": "ಮೂತ್ರ ಲಕ್ಷಣಗಳೊಂದಿಗೆ ಜ್ವರ" },
+            { "id": "vomiting", "label": "Vomiting", "label_kn": "ವಾಂತಿ" },
+            { "id": "leg_swelling", "label": "Swelling of legs / face", "label_kn": "ಕಾಲು / ಮುಖ ಊತ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "body_pains": {
+      "level2": [
+        {
+          "id": "joint_pattern",
+          "type": "multi",
+          "text": "Which best describes the joint / body pain?",
+          "text_kn": "ಕೀಲು / ದೇಹ ನೋವನ್ನು ಹೇಗೆ ವಿವರಿಸುತ್ತೀರಿ?",
+          "options": [
+            { "id": "migratory", "label": "Pain moves from one joint to another over days/weeks", "label_kn": "ನೋವು ಒಂದು ಕೀಲಿನಿಂದ ಇನ್ನೊಂದಕ್ಕೆ ಸ್ಥಳಾಂತರ" },
+            { "id": "symmetric", "label": "Same joints on both sides", "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಒಂದೇ ಕೀಲುಗಳು" },
+            { "id": "large_joints", "label": "Mainly large joints (knees, ankles, wrists, shoulders)", "label_kn": "ಮುಖ್ಯವಾಗಿ ದೊಡ್ಡ ಕೀಲುಗಳು" },
+            { "id": "small_joints", "label": "Mainly small joints of hands/feet", "label_kn": "ಮುಖ್ಯವಾಗಿ ಕೈ/ಪಾದದ ಸಣ್ಣ ಕೀಲುಗಳು" },
+            { "id": "none", "label": "None of these patterns", "label_kn": "ಈ ಮಾದರಿಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": [
+        {
+          "id": "joint_systemic",
+          "type": "multi",
+          "text": "Any of these?",
+          "text_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "showIf": { "qid": "joint_pattern", "includes_any": ["migratory", "large_joints"] },
+          "options": [
+            { "id": "years_before_gi", "label": "Joint pains started years before any stomach / diarrhea problems", "label_kn": "ಕೀಲು ನೋವು ಹೊಟ್ಟೆ / ಅತಿಸಾರ ಸಮಸ್ಯೆಗಳಿಗಿಂತ ವರ್ಷಗಳ ಮುನ್ನ ಪ್ರಾರಂಭ" },
+            { "id": "no_deformity", "label": "Joints swell but do not become permanently deformed", "label_kn": "ಕೀಲುಗಳು ಊದುತ್ತವೆ ಆದರೆ ಶಾಶ್ವತವಾಗಿ ವಿರೂಪಗೊಳ್ಳುವುದಿಲ್ಲ" },
+            { "id": "seronegative_known", "label": "Tests for rheumatoid factor were negative", "label_kn": "ರುಮಟಾಯ್ಡ್ ಅಂಶ ಪರೀಕ್ಷೆ ನೆಗೆಟಿವ್" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ]
+    },
+    "other": {
+      "level2": [
+        {
+          "id": "other_complaint_detail",
+          "type": "text",
+          "text": "Please describe your main problem in a few words.",
+          "text_kn": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಮುಖ್ಯ ಸಮಸ್ಯೆಯನ್ನು ಕೆಲವು ಪದಗಳಲ್ಲಿ ವಿವರಿಸಿ."
+        }
+      ],
+      "level3": []
+    },
+    "tiredness": {
+      "level2": [
+        {
+          "id": "fatigue_duration",
+          "type": "single",
+          "text": "How long have you felt this tiredness / weakness?",
+          "text_kn": "ಈ ಆಯಾಸ / ದೌರ್ಬಲ್ಯ ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_2w", "label": "Less than 2 weeks", "label_kn": "೨ ವಾರಕ್ಕಿಂತ ಕಡಿಮೆ" },
+            { "id": "2_8w", "label": "2 to 8 weeks", "label_kn": "೨ ರಿಂದ ೮ ವಾರ" },
+            { "id": "gt_2m", "label": "More than 2 months", "label_kn": "೨ ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        },
+        {
+          "id": "fatigue_associated",
+          "type": "multi",
+          "text": "Any of these along with the tiredness?",
+          "text_kn": "ಆಯಾಸದೊಂದಿಗೆ ಇವುಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+          "options": [
+            { "id": "weight_loss", "label": "Weight loss", "label_kn": "ತೂಕ ಇಳಿಕೆ" },
+            { "id": "fever_sweats", "label": "Fever or night sweats", "label_kn": "ಜ್ವರ ಅಥವಾ ರಾತ್ರಿ ಬೆವರು" },
+            { "id": "breathlessness", "label": "Breathlessness or leg swelling", "label_kn": "ಉಸಿರಾಟದ ತೊಂದರೆ ಅಥವಾ ಕಾಲು ಊತ" },
+            { "id": "foamy_urine", "label": "Foamy urine", "label_kn": "ನೊರೆಯಂತೆ ಮೂತ್ರ" },
+            { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+          ]
+        }
+      ],
+      "level3": []
+    },
+    "stomach_pain": {
+      "level2": [
+        {
+          "id": "stomach_duration",
+          "type": "single",
+          "text": "How long have you had stomach pain?",
+          "text_kn": "ಹೊಟ್ಟೆ ನೋವು ಎಷ್ಟು ದಿನಗಳಿಂದ?",
+          "options": [
+            { "id": "lt_3d", "label": "Less than 3 days", "label_kn": "೩ ದಿನಗಳಿಗಿಂತ ಕಡಿಮೆ" },
+            { "id": "3_14d", "label": "3 to 14 days", "label_kn": "೩ ರಿಂದ ೧೪ ದಿನ" },
+            { "id": "gt_2w", "label": "More than 2 weeks", "label_kn": "೨ ವಾರಗಳಿಗಿಂತ ಹೆಚ್ಚು" }
+          ]
+        }
+      ],
+      "level3": []
+    },
+    "heartburn": { "level2": [], "level3": [] },
+    "pimple": { "level2": [], "level3": [] },
+    "sneezing": { "level2": [], "level3": [] },
+    "hairloss": { "level2": [], "level3": [] },
+    "muscle_pain": { "level2": [], "level3": [] },
+    "tooth_ache": { "level2": [], "level3": [] },
+    "gastric": { "level2": [], "level3": [] }
+  },
+  "shared_tail": [
+    {
+      "id": "red_flag_symptoms",
+      "type": "multi",
+      "text": "Are you experiencing any of these severe symptoms right now?",
+      "text_kn": "ಈ ಕಠಿಣ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಈಗ ಇದೆಯೇ?",
+      "options": [
+        { "id": "dyspnea", "label": "Shortness of breath", "label_kn": "ಉಸಿರಾಟದ ತೊಂದರೆ" },
+        { "id": "chest_pain", "label": "Chest pain or pressure", "label_kn": "ಎದೆ ನೋವು ಅಥವಾ ಒತ್ತಡ" },
+        { "id": "fainting", "label": "Fainting or severe dizziness", "label_kn": "ಮೂರ್ಛೆ ಅಥವಾ ತೀವ್ರ ತಲೆಸುತ್ತು" },
+        { "id": "confusion", "label": "New confusion or inability to stay awake", "label_kn": "ಹೊಸ ಗೊಂದಲ ಅಥವಾ ಎಚ್ಚರವಿರಲು ಅಸಮರ್ಥತೆ" },
+        { "id": "seizure", "label": "Seizure", "label_kn": "ಮೂರ್ಛೆ / ಸೆಳೆತ" },
+        { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    },
+    {
+      "id": "chronic_conditions",
+      "type": "multi",
+      "text": "Do you have any of these ongoing conditions?",
+      "text_kn": "ಈ ನಿರಂತರ ಪರಿಸ್ಥಿತಿಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+      "options": [
+        { "id": "hypertension", "label": "High blood pressure", "label_kn": "ಹೆಚ್ಚು ರಕ್ತದೊತ್ತಡ" },
+        { "id": "diabetes", "label": "Diabetes", "label_kn": "ಮಧುಮೇಹ" },
+        { "id": "asthma", "label": "Asthma / lung disease", "label_kn": "ಆಸ್ತಮಾ / ಶ್ವಾಸಕೋಶ ರೋಗ" },
+        { "id": "heart_disease", "label": "Known heart disease / heart failure", "label_kn": "ಹೃದಯ ರೋಗ / ಹೃದಯ ವೈಫಲ್ಯ" },
+        { "id": "kidney_disease", "label": "Kidney disease", "label_kn": "ಮೂತ್ರಪಿಂಡ ರೋಗ" },
+        { "id": "none", "label": "None", "label_kn": "ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    },
+    {
+      "id": "active_medications",
+      "type": "text",
+      "text": "What medicines are you currently taking? (or type None)",
+      "text_kn": "ನೀವು ಈಗ ಯಾವ ಔಷಧಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳುತ್ತಿದ್ದೀರಿ? (ಇಲ್ಲವಾದರೆ None ಎಂದು ಬರೆಯಿರಿ)"
+    },
+    {
+      "id": "drug_allergies_exist",
+      "type": "single",
+      "text": "Any medicine allergies?",
+      "text_kn": "ಯಾವುದಾದರೂ ಔಷಧ ಅಲರ್ಜಿ ಇದೆಯೇ?",
+      "options": [
+        { "id": "no", "label": "No", "label_kn": "ಇಲ್ಲ" },
+        { "id": "yes", "label": "Yes", "label_kn": "ಹೌದು" }
+      ]
+    },
+    {
+      "id": "occupational_exposure",
+      "type": "multi",
+      "text": "Any of these exposures or background features?",
+      "text_kn": "ಈ ಮಾನ್ಯತೆಗಳು ಅಥವಾ ಹಿನ್ನೆಲೆ ಲಕ್ಷಣಗಳಲ್ಲಿ ಯಾವುದಾದರೂ ಇದೆಯೇ?",
+      "options": [
+        { "id": "farm_soil", "label": "Farm work / regular contact with soil, livestock or sewage", "label_kn": "ಕೃಷಿ / ಮಣ್ಣು, ಜಾನುವಾರು ಅಥವಾ ಒಳಚರಂಡಿ ಸಂಪರ್ಕ" },
+        { "id": "prior_immunosuppression", "label": "Previously received strong immune-suppressing medicines (anti-TNF, long steroids, chemotherapy)", "label_kn": "ಹಿಂದೆ ಬಲವಾದ ರೋಗನಿರೋಧಕ ಔಷಧಗಳು" },
+        { "id": "family_endocrine_tumors", "label": "Close relative with thyroid cancer or adrenal / pheochromocytoma-type tumor", "label_kn": "ನಿಕಟ ಸಂಬಂಧಿಯಲ್ಲಿ ಥೈರಾಯ್ಡ್ ಕ್ಯಾನ್ಸರ್ ಅಥವಾ ಅಡ್ರಿನಲ್ ಗೆಡ್ಡೆ" },
+        { "id": "none", "label": "None of these", "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ", "exclusive": true }
+      ]
+    }
+  ]
+}
