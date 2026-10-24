@@ -770,10 +770,17 @@ function renderSubmitted(queue){
   const poll=async()=>{
     const base=state&&state.queue_status_url;
     const clinicId=state&&state.patient&&state.patient.clinic_id;
-    if(!base||!clinicId||!initialToken)return;
+    const screeningId=state&&state.screening_id;
+    if(!base||!clinicId||!initialToken||!screeningId)return;
     try{
       const sep=base.includes('?')?'&':'?';
-      const d=await fetch(base+sep+'clinicId='+encodeURIComponent(clinicId)+'&token='+encodeURIComponent(initialToken),{cache:'no-store'}).then(r=>r.ok?r.json():null);
+      const d=await fetch(
+        base+sep+
+        'clinicId='+encodeURIComponent(clinicId)+
+        '&token='+encodeURIComponent(initialToken)+
+        '&screeningId='+encodeURIComponent(screeningId),
+        {cache:'no-store'}
+      ).then(r=>r.ok?r.json():null);
       if(d&&d.ok){latestQueue=d;draw();}
     }catch{}
   };
