@@ -406,10 +406,29 @@ function editableOutput(input, current) {
 
 function validServerApiKey(req) {
   const expected = String(process.env.SCREENING_API_KEY || "").trim();
-  if (!expected) return process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1";
+  // Treat any of these as "deployed" so an empty key never silently opens
+  // the /api/screenings* endpoints on a managed runtime.
+  const onManagedRuntime = Boolean(
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL === "1" ||
+    process.env.CF_PAGES ||
+    globalThis.Cloudflare ||
+    globalThis.__WORKER__
+  );
+  if (!expected) {
+    if (onManagedRuntime) {
+      console.error(
+        "[security] SCREENING_API_KEY is not set but this appears to be a deployed environment. " +
+        "Rejecting all /api/screenings* requests until it is configured."
+      );
+      return false;
+    }
+    return true; // local dev only
+  }
   const suppliedKey = String(req.headers["x-api-key"] || "").trim();
   const authorization = String(req.headers.authorization || "").trim();
   const bearerKey = authorization.replace(/^Bearer\s+/i, "").trim();
+  if (!suppliedKey && !bearerKey) return false;
   return suppliedKey === expected || bearerKey === expected;
 }
 
