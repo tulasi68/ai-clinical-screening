@@ -439,7 +439,7 @@ function patientUrl(req, token) {
 
 function queueStatusUrl() {
   const configured = String(process.env.MEDILOOP_QUEUE_STATUS_URL || '').trim();
-  return configured || 'https://mediloop-ai.netlify.app/api/public/queue-status';
+  return configured || 'https://mediloop-ai.tulasianand6.workers.dev/api/patient-queue';
 }
 
 async function getPatientContext(token, res) {
