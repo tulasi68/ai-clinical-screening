@@ -781,7 +781,7 @@ function renderSubmitted(queue){
         '&screeningId='+encodeURIComponent(screeningId),
         {cache:'no-store'}
       ).then(r=>r.ok?r.json():null);
-      if(d&&d.ok){latestQueue=d;draw();}
+      if(d&&d.ok){latestQueue={...d,waiting_ahead:d.waiting_ahead??d.waitingAhead??null,token:d.token??d.yourToken??initialToken,status:d.status??null};draw();}
     }catch{}
   };
   poll();
