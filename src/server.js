@@ -438,8 +438,9 @@ function patientUrl(req, token) {
 }
 
 function queueStatusUrl() {
-  const configured = String(process.env.MEDILOOP_QUEUE_STATUS_URL || '').trim();
-  return configured || 'https://mediloop-ai.tulasianand6.workers.dev/api/patient-queue';
+  // Use the live MediLoop queue endpoint. An old MEDILOOP_QUEUE_STATUS_URL
+  // deployment variable can silently send patient pages to a stale API.
+  return 'https://mediloop-ai.tulasianand6.workers.dev/api/patient-queue';
 }
 
 async function getPatientContext(token, res) {
