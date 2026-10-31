@@ -23,7 +23,16 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // All API responses may contain patient or clinical information, including
+  // service-to-service screening reads. Never permit intermediary/browser caching.
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
   if (req.path.startsWith('/api/patient/') || req.path.startsWith('/s/')) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
