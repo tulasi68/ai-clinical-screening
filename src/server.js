@@ -18,6 +18,21 @@ import { getSpecialtyModule } from './specialties/index.js';
 const app = express();
 app.use(express.json({ limit: '256kb' }));
 
+// Patient screening pages and APIs contain health information and bearer tokens.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  if (req.path.startsWith('/api/patient/') || req.path.startsWith('/s/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 // Resolve public assets from several possible roots (Node, Vercel, CF Workers VFS).
 const publicRoots = [
   path.join(process.cwd(), 'public'),
@@ -542,6 +557,10 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
     if (!s) return;
     if (s.status !== 'in_progress') {
       return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
+    }
+    if (s.patient?.screening_consent?.granted !== true ||
+        s.patient?.screening_consent?.notice_version !== 'screening-notice-2026-10-v1') {
+      return res.status(403).json({ error: 'Patient consent is required before answers can be processed.', consent_required: true });
     }
 
     applyLanguage(s, req.body);
