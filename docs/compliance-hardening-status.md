@@ -14,7 +14,7 @@ This is an engineering status record, not a legal compliance certificate. MediLo
 - The browser sends the notice version; its client-supplied consent timestamp has been removed.
 
 ## P0/P1 items still open
-- The patient URL remains a bearer credential. Add immediate revocation, one-time URL redemption into a secure HttpOnly session, distributed rate limiting and token redaction from logs/analytics.
+- The patient URL remains a bearer credential until revoked. Immediate revocation is now implemented; one-time URL redemption into a secure HttpOnly session, distributed rate limiting and token redaction from logs/analytics remain open.
 - Verify tenant and doctor authorization on every service API and every database operation.
 - Review Supabase service-role access. It bypasses RLS; server-side tenant checks must be enforced and tested.
 - Add retention, deletion propagation, backup expiry and legal-hold workflows across sessions, outputs, logs and processors.
