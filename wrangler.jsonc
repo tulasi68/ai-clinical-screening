@@ -11,6 +11,14 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/health", "/webhooks/*"]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ai-clinical-screening-db",
+      "database_id": "4d7939af-ef29-4f02-be88-779e9395d1b8",
+      "migrations_dir": "migrations"
+    }
+  ],
   "vars": {
     "PATIENT_APP_URL": "https://ai-clinical-screening.tulasianand6.workers.dev",
     "MAX_QUESTIONS": "14",
