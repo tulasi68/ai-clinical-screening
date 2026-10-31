@@ -8,7 +8,9 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test:security": "node --test test/security-store.test.js",
+    "check": "node --check src/server.js && node --check src/store.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
