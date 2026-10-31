@@ -4,7 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {
   createSession, getSession, saveSession, saveOutput, getOutput,
-  getSessionByPatientToken
+  getSessionByPatientToken, revokePatientToken
 } from './store.js';
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
 import {
@@ -719,6 +719,22 @@ app.get('/api/screenings/:id', async (req, res) => {
   } catch (e) {
     console.error('screening get error', e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/screenings/:id/revoke-token', async (req, res) => {
+  try {
+    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
+    const s = await getSession(req.params.id);
+    if (!s || !serviceClinicMatches(req, s)) {
+      return res.status(404).json({ error: 'Screening not found.' });
+    }
+    const revoked = await revokePatientToken(req.params.id);
+    if (!revoked) return res.status(404).json({ error: 'Screening not found.' });
+    res.json({ ok: true, token_revoked: true });
+  } catch (e) {
+    console.error('patient token revocation failed', e);
+    res.status(500).json({ error: 'Unable to revoke patient screening link.' });
   }
 });
 
