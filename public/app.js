@@ -636,6 +636,11 @@ async function load(){
       localStorage.setItem('screening_lang', lang);
     }
     if(state.status==='submitted'){renderSubmitted();return;}
+    if(state.status==='consent_withdrawn'){
+      app.innerHTML=langSelectHtml()+'<div class="center"><h1>Consent withdrawn</h1><p class="muted">Further screening has been stopped. You may close this page.</p></div>';
+      bindLang();
+      return;
+    }
     if(state.status==='awaiting_review'||state.output){renderReview(state.output);return;}
     renderWelcome();
   }catch(e){app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(t('invalid'))+'</p></div>';bindLang();}
