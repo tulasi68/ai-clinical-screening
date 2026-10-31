@@ -43,7 +43,7 @@ function fakeD1() {
         },
         async all() {
           if(sql.includes("FROM screening_consent_events")) {
-            return {results:events.filter(x=>x.screening_id===args[0]&&x.purpose===args[1]).sort((a,b)=>a.occurred_at.localeCompare(b.occurred_at)||a.id.localeCompare(b.id))};
+            return {results:events.filter(x=>x.screening_id===args[0]&&x.purpose===args[1])};
           }
           if(sql.includes("FROM screening_sessions")) return {results:[...sessions.values()].filter(x=>x.status==="in_progress").sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,50)};
           return {results:[]};
