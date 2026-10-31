@@ -146,7 +146,7 @@ export async function appendConsentEvent(event) {
 
 export async function getConsentEvents(screeningId, purpose) {
   const result = await db().prepare(`SELECT event_type,purpose,notice_version,occurred_at,language,method,channel,actor_type
-    FROM screening_consent_events WHERE screening_id=? AND purpose=? ORDER BY occurred_at ASC, id ASC`)
+    FROM screening_consent_events WHERE screening_id=? AND purpose=? ORDER BY rowid ASC`)
     .bind(String(screeningId),String(purpose)).all();
   return Array.isArray(result?.results) ? result.results : [];
 }
