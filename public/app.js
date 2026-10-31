@@ -800,8 +800,9 @@ function renderSubmitted(queue){
         (w===null||w===undefined?'':'<div class="ahead">'+(w===0?esc(t('nextInLine')):'<b>'+esc(w)+'</b> '+esc(t('ahead', w).replace(String(w)+' ','')) )+'</div><div id="queueUpdated" class="small">'+esc(t('updating'))+'</div>'))+
       '</div>';
     }
-    app.innerHTML=langSelectHtml()+'<div class="center"><div class="eyebrow">'+esc(t('submitted'))+'</div><h1>'+esc(t('thanks'))+'</h1><p class="muted start-note">'+esc(t('sent'))+'</p>'+box+'<p class="small">'+esc(t('close'))+'</p></div>';
+    app.innerHTML=langSelectHtml()+'<div class="center"><div class="eyebrow">'+esc(t('submitted'))+'</div><h1>'+esc(t('thanks'))+'</h1><p class="muted start-note">'+esc(t('sent'))+'</p>'+box+'<p class="small">'+esc(t('close'))+'</p>'+withdrawalControlHtml()+'</div>';
     bindLang();
+    bindWithdrawal();
   };
   draw();
   const poll=async()=>{
