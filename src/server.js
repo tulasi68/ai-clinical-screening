@@ -18,6 +18,21 @@ import { getSpecialtyModule } from './specialties/index.js';
 const app = express();
 app.use(express.json({ limit: '256kb' }));
 
+// Patient screening pages and APIs contain health information and bearer tokens.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  if (req.path.startsWith('/api/patient/') || req.path.startsWith('/s/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 // Resolve public assets from several possible roots (Node, Vercel, CF Workers VFS).
 const publicRoots = [
   path.join(process.cwd(), 'public'),
@@ -482,18 +497,34 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
 
+    // Consent is a server-enforced precondition, not a client-side UI hint.
+    // Existing sessions may change language only after a valid consent record exists.
+    const consentVersion = 'screening-notice-2026-10-v1';
+    const alreadyConsented = s.patient?.screening_consent?.granted === true &&
+      s.patient?.screening_consent?.notice_version === consentVersion;
+    const isNewConsent = req.body?.patient_consent === true &&
+      req.body?.consent_version === consentVersion;
+    if (s.status === 'in_progress' && !alreadyConsented && !isNewConsent) {
+      return res.status(403).json({
+        error: 'Patient consent is required before screening can begin.',
+        consent_required: true,
+        consent_version: consentVersion,
+      });
+    }
     const { changed, lang } = applyLanguage(s, req.body);
-    if (req.body?.patient_consent) {
+    if (isNewConsent && !alreadyConsented) {
       if (!s.patient) s.patient = {};
       s.patient.screening_consent = {
         granted: true,
-        at: req.body.consent_at || new Date().toISOString(),
+        at: new Date().toISOString(),
+        notice_version: consentVersion,
         language: lang,
-        method: 'checkbox_timestamp',
+        method: 'affirmative_checkbox',
         channel: 'patient_screening_app',
+        purpose: 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic',
       };
     }
-    if (changed || req.body?.patient_consent) await saveSession(s);
+    if (changed || (isNewConsent && !alreadyConsented)) await saveSession(s);
 
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
       return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
@@ -526,6 +557,10 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
     if (!s) return;
     if (s.status !== 'in_progress') {
       return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
+    }
+    if (s.patient?.screening_consent?.granted !== true ||
+        s.patient?.screening_consent?.notice_version !== 'screening-notice-2026-10-v1') {
+      return res.status(403).json({ error: 'Patient consent is required before answers can be processed.', consent_required: true });
     }
 
     applyLanguage(s, req.body);
@@ -592,6 +627,10 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
   try {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
+    if (s.patient?.screening_consent?.granted !== true ||
+        s.patient?.screening_consent?.notice_version !== 'screening-notice-2026-10-v1') {
+      return res.status(403).json({ error: 'A valid patient consent record is required before submission.' });
+    }
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The screening is not ready to submit.' });
     const output = await getOutput(s.screening_id);
     if (!output) return res.status(404).json({ error: 'Summary not found.' });
