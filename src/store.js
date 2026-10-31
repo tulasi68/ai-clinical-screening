@@ -164,6 +164,15 @@ export async function saveSession(s) {
   });
   return s;
 }
+export async function revokePatientToken(screeningId) {
+  const s = await getSession(screeningId);
+  if (!s) return false;
+  s.patient_token_hash = null;
+  s.patient_token_expires_at = new Date().toISOString();
+  await saveSession(s);
+  return true;
+}
+
 export async function getSessionByPatientToken(token) {
   if (!token) return null;
   const hash = hashPatientToken(token);
