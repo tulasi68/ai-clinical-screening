@@ -641,6 +641,27 @@ async function load(){
   }catch(e){app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(t('invalid'))+'</p></div>';bindLang();}
 }
 
+function withdrawalControlHtml(){
+  return '<p class="small" style="margin-top:20px"><button type="button" id="withdrawConsent" class="secondary">Withdraw consent and stop further screening</button></p>';
+}
+function bindWithdrawal(){
+  const button=document.getElementById('withdrawConsent');
+  if(!button)return;
+  button.onclick=async()=>{
+    if(!window.confirm('Withdraw consent and stop further screening? Your answers will no longer be processed.'))return;
+    button.disabled=true;
+    try{
+      await api('/api/patient/s/'+encodeURIComponent(token)+'/withdraw',{method:'POST',body:'{}'});
+      if(queueTimer){clearInterval(queueTimer);queueTimer=null;}
+      app.innerHTML=langSelectHtml()+'<div class="center"><h1>Consent withdrawn</h1><p class="muted">Further screening has been stopped. You may close this page.</p></div>';
+      bindLang();
+    }catch(e){
+      button.disabled=false;
+      const error=document.getElementById('error');
+      if(error){error.textContent=e.message||'Unable to withdraw consent.';error.classList.remove('hidden');}
+    }
+  };
+}
 function renderWelcome(){
   const p=state.patient;
   app.innerHTML=langSelectHtml()+'<div class="center"><div class="eyebrow">'+esc(t('private'))+'</div><h1>'+esc(t('title'))+'</h1>'+
@@ -697,8 +718,9 @@ function drawQuestion(){
   }
   // Show English subtitle under Kannada question when bilingual fixed question has both
   const sub = (lang!=='en' && q.text_en && q.text_en!==q.text) ? '<span class="q-sub">'+esc(q.text_en)+'</span>' : '';
-  app.innerHTML=langSelectHtml()+head+'<h2>'+esc(q.text)+sub+'</h2>'+body+'<div class="actions"><button id="next" class="primary" disabled>'+esc(t('next'))+'</button></div><div id="error" class="error hidden"></div>';
+  app.innerHTML=langSelectHtml()+head+'<h2>'+esc(q.text)+sub+'</h2>'+body+'<div class="actions"><button id="next" class="primary" disabled>'+esc(t('next'))+'</button></div><div id="error" class="error hidden"></div>'+withdrawalControlHtml();
   bindLang();
+  bindWithdrawal();
   app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>pick(b.dataset.id));
   app.querySelectorAll('.radio input').forEach(i=>i.onchange=()=>pick(i.dataset.id));
   app.querySelectorAll('[data-text]').forEach(i=>i.oninput=()=>{picks[i.dataset.text]=i.value;refreshNext();});
@@ -737,9 +759,10 @@ function renderReview(output){
   '<p class="muted">'+esc(t('checkInfo'))+'</p>'+
   '<div id="summary" class="summary-grid">'+summaryFields(output)+'</div>'+
   '<div class="actions">'+btn(t('send'),'primary','submit')+'</div>'+
-  '<div id="error" class="error hidden"></div><p class="small" style="margin-top:18px">'+esc(t('sendNote'))+'</p>';
+  '<div id="error" class="error hidden"></div><p class="small" style="margin-top:18px">'+esc(t('sendNote'))+'</p>'+withdrawalControlHtml();
   bindLang();
   document.getElementById('submit').onclick=submitSummary;
+  bindWithdrawal();
 }
 function summaryFields(o){
   return '<div class="field"><label>'+esc(t('yourAnswers'))+'</label><textarea data-key="summary" style="min-height:220px">'+esc(o.summary||'')+'</textarea></div>';
