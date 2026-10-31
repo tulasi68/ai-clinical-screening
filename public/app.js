@@ -662,7 +662,7 @@ async function startChat(){
   if(!box || !box.checked){showError(t('consentRequired'));return;}
   document.getElementById('start').disabled=true;
   try{
-    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang, patient_consent: true, consent_at: new Date().toISOString()})});
+    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang, patient_consent: true, consent_version: 'screening-notice-2026-10-v1'})});
     if(d.type==='review')renderReview(d.output);else renderQuestion(d);
   }
   catch(e){document.getElementById('start').disabled=false;showError(e.message);}
