@@ -456,6 +456,16 @@ function validServerApiKey(req) {
   return suppliedKey === expected || bearerKey === expected;
 }
 
+function requestClinicId(req) {
+  return String(req.headers['x-clinic-id'] || '').trim().slice(0, 120);
+}
+
+function serviceClinicMatches(req, session) {
+  const requestedClinicId = requestClinicId(req);
+  const storedClinicId = String(session?.patient?.clinic_id || '').trim();
+  return Boolean(requestedClinicId && storedClinicId && requestedClinicId === storedClinicId);
+}
+
 function patientUrl(req, token) {
   const base = String(process.env.PATIENT_APP_URL || (req.protocol + '://' + req.get('host'))).replace(/\/$/, '');
   return base + '/s/' + encodeURIComponent(token);
@@ -679,6 +689,9 @@ app.post('/api/screenings', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input JSON. Required: patient_name, age, gender, complaint, phone.' });
     }
     const clinic_id = String(req.body.clinic_id || '').trim().slice(0, 120) || null;
+    if (!clinic_id || requestClinicId(req) !== clinic_id) {
+      return res.status(403).json({ error: 'Authenticated clinic scope is required and must match the screening clinic.' });
+    }
     const qt = String(req.body.queue_token || '').trim().slice(0, 20);
     const wa = Number.isInteger(req.body.waiting_ahead) && req.body.waiting_ahead >= 0 && req.body.waiting_ahead < 1000 ? req.body.waiting_ahead : null;
     const specialty = normalizeSpecialty(req.body.specialty);
@@ -701,6 +714,7 @@ app.get('/api/screenings/:id', async (req, res) => {
     if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
     const s = await getSession(req.params.id);
     if (!s) return res.status(404).json({ error: 'Screening not found.' });
+    if (!serviceClinicMatches(req, s)) return res.status(404).json({ error: 'Screening not found.' });
     res.json(publicSession(s));
   } catch (e) {
     console.error('screening get error', e);
@@ -713,6 +727,7 @@ app.get('/api/screenings/:id/output', async (req, res) => {
     if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
     const s = await getSession(req.params.id);
     if (!s) return res.status(404).json({ error: 'Screening not found.' });
+    if (!serviceClinicMatches(req, s)) return res.status(404).json({ error: 'Screening not found.' });
     const output = await getOutput(req.params.id);
     if (!output) {
       return res.json({
