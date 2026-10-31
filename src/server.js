@@ -627,6 +627,10 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
   try {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
+    if (s.patient?.screening_consent?.granted !== true ||
+        s.patient?.screening_consent?.notice_version !== 'screening-notice-2026-10-v1') {
+      return res.status(403).json({ error: 'A valid patient consent record is required before submission.' });
+    }
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The screening is not ready to submit.' });
     const output = await getOutput(s.screening_id);
     if (!output) return res.status(404).json({ error: 'Summary not found.' });
