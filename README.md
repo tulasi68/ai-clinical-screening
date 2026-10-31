@@ -4,7 +4,7 @@
 **Branch:** `main`  
 **Version:** `1.0.0`  
 **Runtime:** Node.js 24.x · Express 5  
-**Persistence:** Supabase  
+**Persistence:** Cloudflare D1  
 **Deploy:** Vercel / Cloudflare Workers–compatible Node service
 
 Separate application from **`tulasi68/mediloop-ai`**. MediLoop creates sessions and polls submitted output over authenticated HTTP. Keep the two repos independent.
@@ -33,7 +33,7 @@ MediLoop
   │  POST /api/screenings  (x-api-key)
   ▼
 AI Clinical Screening (Express)
-  │  → Supabase (sessions + outputs)
+  │  → Cloudflare D1 (sessions + outputs + consent ledger)
   │  → patient_url
   ▼
 Patient browser  (/s/<token>)
@@ -237,12 +237,12 @@ Mismatch → `401` from this service.
 
 ## Persistence
 
-`src/store.js` — Supabase REST with service role.
+`src/store.js` — Cloudflare D1 binding (`DB`); no Supabase dependency.
 
 | Table | Role |
 |-------|------|
 | `screening_sessions` | IDs, status, conversation, token hash, expiry, patient context |
-| `screening_outputs` | Structured Contract output |
+| `screening_outputs` | Structured Contract output |\n| `screening_consent_events` | Append-only consent grants and withdrawals |
 
 No local JSON as durable production state.
 
@@ -256,7 +256,7 @@ No local JSON as durable production state.
 | `src/flow.js` | ENT fixed trees + specialty next-question wiring |
 | `src/ai.js` | Sarvam consolidation / limited AI helpers |
 | `src/deterministicContract.js` | Contract shaping from answers |
-| `src/store.js` | Supabase sessions/outputs/tokens |
+| `src/store.js` | Cloudflare D1 sessions/outputs/tokens/consent events |
 | `src/specialties/**` | GM + cascading packs |
 | `public/index.html`, `app.js`, `screening.css` | Patient UI |
 | `docs/clinical-screening-contract-v1.md` | Contract semantics |
@@ -287,7 +287,7 @@ POST /api/screenings → open patient_url → answer → submit
 - [ ] `PATIENT_APP_URL` is the public screening origin (not localhost in prod)
 - [ ] `SCREENING_API_KEY` set and matches MediLoop
 - [ ] `SARVAM_*` set if consolidation is enabled
-- [ ] Supabase URL + service role + tables present
+- [ ] Cloudflare D1 binding `DB` configured and migrations applied
 - [ ] `/health` OK
 - [ ] Create screening → patient UI → submit → MediLoop can read output
 
@@ -334,6 +334,6 @@ Neither codebase should embed the other.
 
 **Pre-consultation history collection service — not an autonomous clinician.**
 
-Preserve: simple patient UX · one question at a time · structured Contract 1.1 · explicit patient approval · authenticated MediLoop integration · secure tokens · durable Supabase state · clinician owns diagnosis and prescribing.
+Preserve: simple patient UX · one question at a time · structured Contract 1.1 · explicit patient approval · authenticated MediLoop integration · secure tokens · durable Cloudflare D1 state · clinician owns diagnosis and prescribing.
 
 When changing behaviour, start at `src/server.js`, then `src/flow.js` / `src/specialties/`, then `src/ai.js` and `src/store.js`.
