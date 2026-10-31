@@ -5,7 +5,7 @@
 **Version:** `1.0.0`  
 **Runtime:** Node.js 24.x · Express 5  
 **Persistence:** Cloudflare D1  
-**Deploy:** Vercel / Cloudflare Workers–compatible Node service
+**Deploy:** Cloudflare Workers (Node.js compatibility)
 
 Separate application from **`tulasi68/mediloop-ai`**. MediLoop creates sessions and polls submitted output over authenticated HTTP. Keep the two repos independent.
 
@@ -206,8 +206,6 @@ SARVAM_MODEL=sarvam-105b
 SCREENING_API_KEY=                 # must match MediLoop CLINICAL_SCREENING_API_KEY
 PATIENT_APP_URL=https://your-domain
 
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=         # never in browser code
 
 PORT=3000
 MAX_QUESTIONS=12
@@ -298,7 +296,7 @@ POST /api/screenings → open patient_url → answer → submit
 - History only — no diagnosis, no prescriptions, no invented allergies/meds/findings.
 - Patient must explicitly submit before the clinic treats the output as final.
 - Clinician remains responsible for all clinical decisions.
-- Never expose `SUPABASE_SERVICE_ROLE_KEY` or `SARVAM_API_KEY` to the browser.
+- Never expose `SARVAM_API_KEY` or `SCREENING_API_KEY` to the browser.
 - Prefer hashed tokens; keep TTL; do not log raw tokens.
 
 ---
