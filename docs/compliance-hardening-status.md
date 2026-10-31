@@ -16,8 +16,7 @@ This is an engineering status record, not a legal compliance certificate. MediLo
 ## P0/P1 items still open
 - The patient URL remains a bearer credential until revoked. Immediate revocation is now implemented; one-time URL redemption into a secure HttpOnly session, distributed rate limiting and token redaction from logs/analytics remain open.
 - Verify tenant and doctor authorization on every service API and every database operation.
-- Review Supabase service-role access. It bypasses RLS; server-side tenant checks must be enforced and tested.
-- **Migration required before deployment:** `supabase/migrations/20261031_screening_consent_event_ledger.sql` creates the append-only table, denies UPDATE/DELETE via trigger, restricts access to service role and backfills existing affirmative consent snapshots. It has been committed but not applied to the live Supabase project. Until applied, consent ledger reads/writes fail closed and patient screening cannot proceed.
+- Screening persistence has been moved in code to Cloudflare D1. The dedicated `ai-clinical-screening-db` is created in APAC and its initial schema is applied. Production deployment and end-to-end verification remain pending; no patient records have been copied from the former Supabase project.
 - Add retention, deletion propagation, backup expiry and legal-hold workflows across sessions, outputs, logs and processors.
 - Inventory all processors, outbound data transfers, telemetry and error logging; prove clinical data is not sent to unapproved services.
 - Existing in-progress sessions without the new versioned consent record will be blocked until the patient re-affirms consent. Test this behavior before rollout.
@@ -34,3 +33,10 @@ Maintain a processing inventory, data-flow diagram, processor register, retentio
 
 ## Regulatory scope to validate
 Assess DPDP Act 2023 and DPDP Rules 2025 according to the Gazette commencement schedule provision-by-provision; IT Act 2000, applicable SPDI Rules 2011 during transition and CERT-In directions; ABDM Health Data Management Policy, HIE/Consent Manager specifications and ABHA onboarding requirements; and clinical establishment, record-retention and medical-device/software obligations as applicable. Obtain legal review. Code changes or an ABDM label do not establish compliance.
+
+## Persistence migration (2026-10-31)
+
+- Production store: Cloudflare D1 binding `DB`; sessions, outputs and append-only consent events are stored in dedicated `ai-clinical-screening-db`.
+- D1 migration: `migrations/0001_initial.sql` (applied to the new D1 database; `d1_migrations` records `0001_initial.sql`).
+- Supabase credentials are no longer required by runtime code. The old Supabase project has not been modified or deleted and should be retained until any required data export/reconciliation is complete.
+- Worker deployment has intentionally not been performed. Do not treat the application as migrated in production until Worker binding, migration state, live create/start/answer/withdraw/submit/output flows and MediLoop integration are verified.
