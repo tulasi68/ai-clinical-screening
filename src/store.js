@@ -164,6 +164,45 @@ export async function saveSession(s) {
   });
   return s;
 }
+export async function appendConsentEvent(event) {
+  const row = {
+    screening_id: String(event?.screening_id || "").slice(0, 120),
+    event_type: event?.event_type,
+    purpose: String(event?.purpose || "").slice(0, 160),
+    notice_version: String(event?.notice_version || "").slice(0, 80),
+    occurred_at: event?.occurred_at || new Date().toISOString(),
+    language: String(event?.language || "en").slice(0, 12),
+    method: String(event?.method || "affirmative_checkbox").slice(0, 80),
+    channel: String(event?.channel || "patient_screening_app").slice(0, 80),
+    actor_type: String(event?.actor_type || "patient").slice(0, 40),
+    evidence: event?.evidence && typeof event.evidence === "object" ? event.evidence : {}
+  };
+  if (!row.screening_id || !["granted", "withdrawn"].includes(row.event_type) ||
+      !row.purpose || !row.notice_version) {
+    throw new Error("A complete consent event is required.");
+  }
+  await request("screening_consent_events", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(row)
+  });
+  return row;
+}
+
+export async function getConsentEvents(screeningId, purpose) {
+  const rows = await request(
+    `screening_consent_events?screening_id=eq.${encodeURIComponent(screeningId)}&purpose=eq.${encodeURIComponent(purpose)}&select=event_type,purpose,notice_version,occurred_at,language,method,channel,actor_type&order=occurred_at.asc,id.asc`
+  );
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function hasActiveConsent(screeningId, purpose, noticeVersion) {
+  const events = await getConsentEvents(screeningId, purpose);
+  const latest = events[events.length - 1];
+  return Boolean(latest && latest.event_type === "granted" &&
+    (!noticeVersion || latest.notice_version === noticeVersion));
+}
+
 export async function revokePatientToken(screeningId) {
   const s = await getSession(screeningId);
   if (!s) return false;
