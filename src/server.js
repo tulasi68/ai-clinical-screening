@@ -483,7 +483,17 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     if (!s) return;
 
     const { changed, lang } = applyLanguage(s, req.body);
-    if (changed) await saveSession(s);
+    if (req.body?.patient_consent) {
+      if (!s.patient) s.patient = {};
+      s.patient.screening_consent = {
+        granted: true,
+        at: req.body.consent_at || new Date().toISOString(),
+        language: lang,
+        method: 'checkbox_timestamp',
+        channel: 'patient_screening_app',
+      };
+    }
+    if (changed || req.body?.patient_consent) await saveSession(s);
 
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
       return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
