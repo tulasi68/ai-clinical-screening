@@ -482,18 +482,34 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
 
+    // Consent is a server-enforced precondition, not a client-side UI hint.
+    // Existing sessions may change language only after a valid consent record exists.
+    const consentVersion = 'screening-notice-2026-10-v1';
+    const alreadyConsented = s.patient?.screening_consent?.granted === true &&
+      s.patient?.screening_consent?.notice_version === consentVersion;
+    const isNewConsent = req.body?.patient_consent === true &&
+      req.body?.consent_version === consentVersion;
+    if (s.status === 'in_progress' && !alreadyConsented && !isNewConsent) {
+      return res.status(403).json({
+        error: 'Patient consent is required before screening can begin.',
+        consent_required: true,
+        consent_version: consentVersion,
+      });
+    }
     const { changed, lang } = applyLanguage(s, req.body);
-    if (req.body?.patient_consent) {
+    if (isNewConsent && !alreadyConsented) {
       if (!s.patient) s.patient = {};
       s.patient.screening_consent = {
         granted: true,
-        at: req.body.consent_at || new Date().toISOString(),
+        at: new Date().toISOString(),
+        notice_version: consentVersion,
         language: lang,
-        method: 'checkbox_timestamp',
+        method: 'affirmative_checkbox',
         channel: 'patient_screening_app',
+        purpose: 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic',
       };
     }
-    if (changed || req.body?.patient_consent) await saveSession(s);
+    if (changed || (isNewConsent && !alreadyConsented)) await saveSession(s);
 
     if (s.status === 'awaiting_review' || s.status === 'submitted') {
       return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
