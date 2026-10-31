@@ -4,7 +4,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {
   createSession, getSession, saveSession, saveOutput, getOutput,
-  getSessionByPatientToken, revokePatientToken
+  getSessionByPatientToken, revokePatientToken,
+  appendConsentEvent, hasActiveConsent
 } from './store.js';
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
 import {
@@ -519,8 +520,8 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     // Consent is a server-enforced precondition, not a client-side UI hint.
     // Existing sessions may change language only after a valid consent record exists.
     const consentVersion = 'screening-notice-2026-10-v1';
-    const alreadyConsented = s.patient?.screening_consent?.granted === true &&
-      s.patient?.screening_consent?.notice_version === consentVersion;
+    const consentPurpose = 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic';
+    const alreadyConsented = await hasActiveConsent(s.screening_id, consentPurpose, consentVersion);
     const isNewConsent = req.body?.patient_consent === true &&
       req.body?.consent_version === consentVersion;
     if (s.status === 'in_progress' && !alreadyConsented && !isNewConsent) {
@@ -532,15 +533,28 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     }
     const { changed, lang } = applyLanguage(s, req.body);
     if (isNewConsent && !alreadyConsented) {
+      const consentAt = new Date().toISOString();
+      await appendConsentEvent({
+        screening_id: s.screening_id,
+        event_type: 'granted',
+        purpose: consentPurpose,
+        notice_version: consentVersion,
+        occurred_at: consentAt,
+        language: lang,
+        method: 'affirmative_checkbox',
+        channel: 'patient_screening_app',
+        actor_type: 'patient',
+        evidence: { consent_ui: 'patient_screening_app' },
+      });
       if (!s.patient) s.patient = {};
       s.patient.screening_consent = {
         granted: true,
-        at: new Date().toISOString(),
+        at: consentAt,
         notice_version: consentVersion,
         language: lang,
         method: 'affirmative_checkbox',
         channel: 'patient_screening_app',
-        purpose: 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic',
+        purpose: consentPurpose,
       };
     }
     if (changed || (isNewConsent && !alreadyConsented)) await saveSession(s);
@@ -570,6 +584,38 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
   }
 });
 
+app.post('/api/patient/s/:token/withdraw', async (req, res) => {
+  try {
+    const s = await getPatientContext(req.params.token, res);
+    if (!s) return;
+    const purpose = 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic';
+    const noticeVersion = 'screening-notice-2026-10-v1';
+    const active = await hasActiveConsent(s.screening_id, purpose);
+    if (!active) return res.json({ ok: true, consent_withdrawn: true, already_withdrawn: true });
+
+    const withdrawnAt = new Date().toISOString();
+    await appendConsentEvent({
+      screening_id: s.screening_id,
+      event_type: 'withdrawn',
+      purpose,
+      notice_version: noticeVersion,
+      occurred_at: withdrawnAt,
+      language: normalizeUiLang(s.patient?.ui_language || 'en'),
+      method: 'patient_withdrawal_request',
+      channel: 'patient_screening_app',
+      actor_type: 'patient',
+      evidence: { endpoint: 'patient_consent_withdrawal' },
+    });
+    s.status = 'consent_withdrawn';
+    s.updated_at = withdrawnAt;
+    await saveSession(s);
+    return res.json({ ok: true, consent_withdrawn: true, withdrawn_at: withdrawnAt });
+  } catch (e) {
+    console.error('patient consent withdrawal failed', e);
+    return res.status(500).json({ error: 'Unable to record consent withdrawal.' });
+  }
+});
+
 app.post('/api/patient/s/:token/message', async (req, res) => {
   try {
     const s = await getPatientContext(req.params.token, res);
@@ -577,8 +623,7 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
     if (s.status !== 'in_progress') {
       return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
     }
-    if (s.patient?.screening_consent?.granted !== true ||
-        s.patient?.screening_consent?.notice_version !== 'screening-notice-2026-10-v1') {
+    if (!(await hasActiveConsent(s.screening_id, 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic', 'screening-notice-2026-10-v1'))) {
       return res.status(403).json({ error: 'Patient consent is required before answers can be processed.', consent_required: true });
     }
 
@@ -630,6 +675,9 @@ app.put('/api/patient/s/:token/summary', async (req, res) => {
   try {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
+    if (!(await hasActiveConsent(s.screening_id, 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic', 'screening-notice-2026-10-v1'))) {
+      return res.status(403).json({ error: 'Active patient consent is required to edit this summary.' });
+    }
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The summary cannot be edited now.' });
     const current = await getOutput(s.screening_id);
     if (!current) return res.status(404).json({ error: 'Summary not found.' });
@@ -646,8 +694,7 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
   try {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
-    if (s.patient?.screening_consent?.granted !== true ||
-        s.patient?.screening_consent?.notice_version !== 'screening-notice-2026-10-v1') {
+    if (!(await hasActiveConsent(s.screening_id, 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic', 'screening-notice-2026-10-v1'))) {
       return res.status(403).json({ error: 'A valid patient consent record is required before submission.' });
     }
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The screening is not ready to submit.' });
