@@ -516,6 +516,9 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
   try {
     const s = await getPatientContext(req.params.token, res);
     if (!s) return;
+    if (s.status === 'consent_withdrawn') {
+      return res.status(409).json({ error: 'Consent was withdrawn. Start a new screening if you wish to participate again.' });
+    }
 
     // Consent is a server-enforced precondition, not a client-side UI hint.
     // Existing sessions may change language only after a valid consent record exists.
