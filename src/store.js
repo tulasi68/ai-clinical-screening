@@ -18,7 +18,7 @@ export function hashPatientToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 export function normalizePhone(phone) {
-  let d = String(phone || '').replace(/\\D/g, '');
+  let d = String(phone || '').replace(/\D/g, '');
   if (!d) return '';
   if (d.length === 10) d = '91' + d;
   if (d.length === 11 && d.startsWith('0')) d = '91' + d.slice(1);
@@ -26,7 +26,7 @@ export function normalizePhone(phone) {
 }
 
 function normalizeSpecialty(value) {
-  const s = String(value || '').toLowerCase().trim().replace(/\\s+/g, '_').slice(0, 40);
+  const s = String(value || '').toLowerCase().trim().replace(/\s+/g, '_').slice(0, 40);
   return s || 'ent';
 }
 const SUPPORTED_UI_LANGS = new Set(['en','kn','hi','ta','te','ml','bn','or','as','mr','ur','bho','mai','ne','mni','brx']);
