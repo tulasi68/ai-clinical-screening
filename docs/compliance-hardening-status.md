@@ -22,8 +22,10 @@ This is an engineering status record, not a legal compliance certificate. MediLo
 - Patient summary reads are gated by active consent; service reads of session/output are also gated by active consent.
 - Added tenant credential helper tests and patient token/consent tests. The tests currently exercise helper/store behavior with a fake D1 adapter; they are not a substitute for live D1 concurrency and HTTP integration tests.
 
+- Invalid, expired, revoked or replayed URL tokens now fail closed instead of falling back to whichever patient session cookie is present in the browser. This prevents a stale link from accidentally selecting a different patient's active session. The same rule applies to the redemption endpoint; successful redemption is followed by URL cleanup in the client.
+
 ## P0/P1 items still open
-- One-time URL redemption is implemented in code, but must be verified against the actual Cloudflare D1 runtime and deployment. Distributed rate limiting and token redaction from platform/access logs and analytics remain open.
+- One-time URL redemption and cross-session fallback denial are implemented in code, but must be verified with HTTP-level tests against the actual Cloudflare D1 runtime and deployment. Distributed rate limiting and token redaction from platform/access logs and analytics remain open.
 - MediLoop's signed-session doctor ownership is checked on the reviewed create/status/revoke paths. The Screening service has clinic-level scope, but no per-doctor identity is propagated to it; doctor isolation therefore depends on MediLoop authorization and needs full HTTP integration tests across all patient/service routes and all database access paths.
 - Screening persistence has been moved in code to Cloudflare D1. The dedicated `ai-clinical-screening-db` is created in APAC and its initial schema is applied. Production deployment and end-to-end verification remain pending; no patient records have been copied from the former Supabase project.
 - Add retention, deletion propagation, backup expiry and legal-hold workflows across sessions, outputs, logs and processors.
@@ -78,3 +80,10 @@ Assess DPDP Act 2023 and DPDP Rules 2025 according to the Gazette commencement s
 - Existing sessions without an active versioned consent event are not allowed to expose previous answers/output. They must re-affirm consent before the UI returns to the review flow; test this against real legacy records before rollout.
 - The D1 fake verifies conditional update behavior but is not a concurrency test against real D1. Verify atomic replay denial, D1 schema, expiry, cookie attributes, withdrawal and all patient/service routes in a staging Worker before production.
 - Distributed rate limiting, platform/log redaction, retention/deletion propagation, backup expiry and legal-hold workflows remain open. The prior Supabase project and data have not been modified or deleted; D1 deployment and any required export/reconciliation remain pending.
+
+
+## Latest review — patient-session isolation
+
+- Commit `2ce2833dc90c150e4091c51393c6ced66787e38f` prevents a failed URL-token redemption from falling through to an unrelated browser cookie session.
+- Regression tests still needed: valid token A with cookie session B, revoked token A with cookie B, replayed token A with cookie B, and a cookie-only request after successful URL cleanup.
+- These route-level cases were not executable through the repository file connector in this session. No test run or production verification is claimed.
