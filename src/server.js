@@ -108,7 +108,7 @@ function serveStaticAsset(name, contentType) {
 }
 
 const SCREENING_CONSENT_PURPOSE = 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic';
-const SCREENING_CONSENT_VERSION = 'screening-notice-2026-10-v1';
+const SCREENING_CONSENT_VERSION = 'screening-notice-2026-11-v2';
 const PATIENT_SESSION_COOKIE = 'screening_session';
 
 const port = Number(process.env.PORT || 3000);
