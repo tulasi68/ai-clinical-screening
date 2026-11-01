@@ -127,7 +127,8 @@ export async function appendConsentEvent(event) {
     event_type: event?.event_type,
     purpose: String(event?.purpose || '').slice(0, 160),
     notice_version: String(event?.notice_version || '').slice(0, 80),
-    occurred_at: event?.occurred_at || new Date().toISOString(),
+    // The ledger timestamp is server-owned; ignore caller-supplied time.
+    occurred_at: new Date().toISOString(),
     language: String(event?.language || 'en').slice(0, 12),
     method: String(event?.method || 'affirmative_checkbox').slice(0, 80),
     channel: String(event?.channel || 'patient_screening_app').slice(0, 80),
@@ -157,12 +158,36 @@ export async function hasActiveConsent(screeningId, purpose, noticeVersion) {
 }
 
 export async function revokePatientToken(screeningId) {
-  const s = await getSession(screeningId);
-  if (!s) return false;
-  s.patient_token_hash = null;
-  s.patient_token_expires_at = new Date().toISOString();
-  await saveSession(s);
-  return true;
+  // Update credential columns only; do not overwrite the full mutable session
+  // document and race with a concurrent answer or consent event.
+  const now = new Date().toISOString();
+  const result = await db().prepare(`UPDATE screening_sessions
+    SET patient_token_hash=NULL,patient_token_expires_at=?,updated_at=?
+    WHERE screening_id=?`)
+    .bind(now,now,String(screeningId)).run();
+  return Number(result?.meta?.changes || 0) > 0;
+}
+
+/**
+ * Atomically exchange a single-use URL bearer token for a short-lived session
+ * credential. The conditional UPDATE is the replay guard. Session content,
+ * status, conversation and consent history are preserved for in-progress users.
+ */
+export async function redeemPatientToken(token) {
+  const candidate = String(token || '').trim();
+  if (!/^[A-Za-z0-9_-]{40,80}$/.test(candidate)) return null;
+  const now = new Date().toISOString();
+  const configuredTtl = Number(process.env.PATIENT_SESSION_TTL_HOURS || 12);
+  const ttlHours = Number.isFinite(configuredTtl) ? Math.min(Math.max(configuredTtl, 1), 24) : 12;
+  const expiresAt = new Date(Date.now() + ttlHours * 3600000).toISOString();
+  const sessionToken = createPatientToken();
+  const row = await db().prepare(`UPDATE screening_sessions
+    SET patient_token_hash=?,patient_token_expires_at=?,updated_at=?
+    WHERE patient_token_hash=? AND patient_token_expires_at > ?
+    RETURNING *`)
+    .bind(hashPatientToken(sessionToken),expiresAt,now,hashPatientToken(candidate),now).first();
+  if (!row) return null;
+  return { session: fromRow(row), token: sessionToken, expiresAt };
 }
 export async function getSessionByPatientToken(token) {
   if (!token) return null;
