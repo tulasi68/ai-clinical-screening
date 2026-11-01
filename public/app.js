@@ -39,7 +39,7 @@ const I18N = {
     notDx: 'This is not a diagnosis or prescription.',
     start: 'Start Chat',
     consentTitle: 'Before you begin',
-    consentBody: 'This screening collects symptom and health information for your doctor at the clinic. Data is used only for your care. You can stop at any time. The hospital is responsible for your data under applicable law.',
+    consentBody: 'This screening collects your name, age, gender, contact number, symptoms and answers to health questions so the clinic that sent you this link can prepare for your consultation. Your answers and screening summary are shared with that clinic’s authorised care team. The clinic decides how your clinical record is retained. The screening service and its hosting provider process information to operate this service for the clinic. You can stop and withdraw consent; this stops further screening, but information already lawfully processed or included in a clinical record may need to be retained by the clinic. For privacy questions or requests, contact the clinic that sent you this link.',
     consentCheck: 'I understand and agree to share my answers with the clinic for my consultation.',
     consentRequired: 'Please tick the consent box to continue.',
     incomplete: 'This link is incomplete.',
@@ -76,6 +76,10 @@ const I18N = {
     hello: (name) => 'ನಮಸ್ಕಾರ, ' + name + '. ನಿಮ್ಮ ಸಮಾಲೋಚನೆಗೂ ಮುನ್ನ ಆರೋಗ್ಯ ಸಮಸ್ಯೆಯ ಬಗ್ಗೆ ಕೆಲವು ಪ್ರಶ್ನೆಗಳನ್ನು ಕೇಳುತ್ತೇನೆ.',
     notDx: 'ಇದು ರೋಗ ನಿರ್ಣಯ ಅಥವಾ ಔಷಧ ನಿರ್ದೇಶನವಲ್ಲ.',
     start: 'ಚಾಟ್ ಪ್ರಾರಂಭಿಸಿ',
+    consentTitle: 'ಮುಂದುವರಿಯುವ ಮೊದಲು',
+    consentBody: 'ಈ ಸ್ಕ್ರೀನಿಂಗ್ ನಿಮ್ಮ ಹೆಸರು, ವಯಸ್ಸು, ಲಿಂಗ, ಸಂಪರ್ಕ ಸಂಖ್ಯೆ, ಲಕ್ಷಣಗಳು ಮತ್ತು ಆರೋಗ್ಯ ಪ್ರಶ್ನೆಗಳಿಗೆ ನಿಮ್ಮ ಉತ್ತರಗಳನ್ನು ಸಂಗ್ರಹಿಸುತ್ತದೆ. ನೀವು ಈ ಲಿಂಕ್ ಪಡೆದ ಕ್ಲಿನಿಕ್‌ನ ಅಧಿಕೃತ ಆರೈಕೆ ತಂಡದೊಂದಿಗೆ ನಿಮ್ಮ ಉತ್ತರಗಳು ಮತ್ತು ಸ್ಕ್ರೀನಿಂಗ್ ಸಾರಾಂಶ ಹಂಚಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ವೈದ್ಯಕೀಯ ದಾಖಲೆಯನ್ನು ಎಷ್ಟು ಕಾಲ ಉಳಿಸಬೇಕು ಎಂಬುದನ್ನು ಕ್ಲಿನಿಕ್ ನಿರ್ಧರಿಸುತ್ತದೆ. ಕ್ಲಿನಿಕ್ ಪರವಾಗಿ ಸ್ಕ್ರೀನಿಂಗ್ ಸೇವೆ ಮತ್ತು ಅದರ ಹೋಸ್ಟಿಂಗ್ ಪೂರೈಕೆದಾರರು ಮಾಹಿತಿಯನ್ನು ಸಂಸ್ಕರಿಸುತ್ತಾರೆ. ನೀವು ನಿಲ್ಲಿಸಿ ಸಮ್ಮತಿಯನ್ನು ಹಿಂಪಡೆಯಬಹುದು; ಇದರಿಂದ ಮುಂದಿನ ಸ್ಕ್ರೀನಿಂಗ್ ನಿಲ್ಲುತ್ತದೆ. ಆದರೆ ಕಾನೂನುಬದ್ಧವಾಗಿ ಸಂಸ್ಕರಿಸಿದ ಅಥವಾ ವೈದ್ಯಕೀಯ ದಾಖಲೆಯಲ್ಲಿ ಸೇರಿಸಿದ ಮಾಹಿತಿಯನ್ನು ಕ್ಲಿನಿಕ್ ಉಳಿಸಬೇಕಾಗಬಹುದು. ಗೌಪ್ಯತೆ ಪ್ರಶ್ನೆಗಳು ಅಥವಾ ವಿನಂತಿಗಳಿಗಾಗಿ ಈ ಲಿಂಕ್ ಕಳುಹಿಸಿದ ಕ್ಲಿನಿಕ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+    consentCheck: 'ನನ್ನ ಸಮಾಲೋಚನೆಗಾಗಿ ನನ್ನ ಉತ್ತರಗಳನ್ನು ಕ್ಲಿನಿಕ್‌ನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಲು ನಾನು ಒಪ್ಪುತ್ತೇನೆ.',
+    consentRequired: 'ಮುಂದುವರಿಯಲು ದಯವಿಟ್ಟು ಸಮ್ಮತಿ ಪೆಟ್ಟಿಗೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
     incomplete: 'ಈ ಲಿಂಕ್ ಅಪೂರ್ಣವಾಗಿದೆ.',
     invalid: 'ಈ ಸ್ಕ್ರೀನಿಂಗ್ ಲಿಂಕ್ ಅಮಾನ್ಯ ಅಥವಾ ಅವಧಿ ಮುಗಿದಿದೆ.',
     clinical: 'ಕ್ಲಿನಿಕಲ್ ಸ್ಕ್ರೀನಿಂಗ್',
@@ -110,6 +114,10 @@ const I18N = {
     hello: (name) => 'नमस्ते, ' + name + '। परामर्श से पहले आपके स्वास्थ्य संबंधी कुछ प्रश्न पूछे जाएंगे।',
     notDx: 'यह निदान या नुस्खा नहीं है।',
     start: 'चैट शुरू करें',
+    consentTitle: 'आगे बढ़ने से पहले',
+    consentBody: 'यह स्क्रीनिंग आपका नाम, आयु, लिंग, संपर्क नंबर, लक्षण और स्वास्थ्य प्रश्नों के उत्तर एकत्र करती है ताकि यह लिंक भेजने वाला क्लिनिक आपके परामर्श की तैयारी कर सके। आपके उत्तर और स्क्रीनिंग सारांश उस क्लिनिक की अधिकृत देखभाल टीम के साथ साझा किए जाएंगे। आपके चिकित्सकीय रिकॉर्ड को कितने समय तक रखना है, यह क्लिनिक तय करता है। स्क्रीनिंग सेवा और उसका होस्टिंग प्रदाता क्लिनिक के लिए जानकारी संसाधित करते हैं। आप स्क्रीनिंग रोक सकते हैं और सहमति वापस ले सकते हैं; इससे आगे की स्क्रीनिंग रुक जाएगी, लेकिन पहले से वैध रूप से संसाधित या चिकित्सकीय रिकॉर्ड में शामिल जानकारी क्लिनिक को रखनी पड़ सकती है। गोपनीयता संबंधी प्रश्नों या अनुरोधों के लिए यह लिंक भेजने वाले क्लिनिक से संपर्क करें।',
+    consentCheck: 'मैं अपने परामर्श के लिए अपने उत्तर क्लिनिक के साथ साझा करने पर सहमत हूँ।',
+    consentRequired: 'जारी रखने के लिए कृपया सहमति बॉक्स चुनें.',
     incomplete: 'यह लिंक अधूरा है।',
     invalid: 'यह स्क्रीनिंग लिंक अमान्य है या समाप्त हो गया है।',
     clinical: 'क्लिनिकल स्क्रीनिंग',
@@ -703,7 +711,7 @@ async function startChat(){
   if(!box || !box.checked){showError(t('consentRequired'));return;}
   document.getElementById('start').disabled=true;
   try{
-    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang, patient_consent: true, consent_version: 'screening-notice-2026-10-v1'})});
+    const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang, patient_consent: true, consent_version: 'screening-notice-2026-11-v2'})});
     if(d.type==='submitted'){state={...state,status:'submitted',output:d.output};renderSubmitted();}
     else if(d.type==='review')renderReview(d.output);else renderQuestion(d);
   }
