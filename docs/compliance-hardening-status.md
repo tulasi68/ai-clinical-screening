@@ -114,3 +114,12 @@ These findings were source-reviewed only; no runtime tests, D1 migration, deploy
 - Apply and verify migration `0002_preserve_consent_evidence.sql` after backup and legal/retention review.
 - Run `npm run check` and `npm run test:security`, then add/execute route-level tests for valid/revoked/replayed patient token plus a different existing cookie, consent withdrawal during in-flight processing, and cross-clinic service reads.
 - The host-origin and normalization fixes are code changes, not proof of production behavior. Automatic deployment may be triggered by commits to `main`; no manual deployment was performed.
+
+## Compliance programme documents added — 2026-11-01
+
+- Added the six-phase compliance implementation pack and a legal-to-control-to-test traceability matrix under `docs/compliance/`.
+- For Screening, the patient-facing notice text was expanded in English, Kannada and Hindi and versioned to `screening-notice-2026-11-v2`. The server now requires that exact version before starting a screening session. Existing sessions relying on the prior notice version may be asked to re-consent; verify this in staging before production rollout.
+- The documents distinguish source-observed controls from controls requiring clinic, vendor, operational or legal confirmation.
+- No production secrets, live D1 data, Redis data, migrations or deployment settings were changed. Automated tests and runtime integration tests have not been run as part of this work.
+- Open blockers include a server-side append-only consent ledger and non-mutable rights case workflow in MediLoop; rights-request processor endpoints and deletion propagation in Screening; distributed rate limiting; log redaction and retention verification; vendor/processor agreements; approved clinic-specific notices and retention periods; and staged integration/backup tests.
+- DPDP commencement is phased: the main processing duties are scheduled for 13 May 2027 under G.S.R. 843(E), with the limited one-year provisions scheduled for 13 November 2026. Apply the schedule provision-by-provision and have counsel confirm applicability. IT Act/SPDI and CERT-In duties must be assessed separately.
