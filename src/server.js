@@ -231,6 +231,7 @@ function publicSession(s) {
       gender: s.patient.gender,
       complaint: s.patient.complaint,
       clinic_id: s.patient.clinic_id || null,
+      clinic_name: s.patient.clinic_name || '',
       queue_token: s.patient.queue_token || null,
       waiting_ahead: s.patient.waiting_ahead ?? null,
       ui_language: s.patient.ui_language || 'en',
