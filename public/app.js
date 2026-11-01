@@ -1,4 +1,5 @@
 const token = decodeURIComponent(location.pathname.split('/s/')[1] || '');
+let sessionReady = false;
 const app = document.getElementById('app');
 let state = null;
 let queueTimer = null;
@@ -595,7 +596,7 @@ function setLang(next) {
   if (state.status === 'submitted') { renderSubmitted(latestQueue); return; }
   if (state.status === 'awaiting_review' || state.output) { renderReview(state.output); return; }
   // During active screening, ask server to re-localize the current question
-  if (token && state.status === 'in_progress') {
+  if (state && state.status === 'in_progress') {
     api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang})})
       .then((d)=>{ if(d.type==='review') renderReview(d.output); else if(d.question) renderQuestion(d); else renderWelcome(); })
       .catch(()=>{ if (q) drawQuestion(); else renderWelcome(); });
@@ -621,16 +622,25 @@ function clearError(){let e=document.getElementById('error');if(e)e.classList.ad
 function btn(text,cls='primary',id=''){return '<button id="'+id+'" class="'+cls+'">'+esc(text)+'</button>';}
 
 async function api(path,opts={}){
-  const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});
+  if(sessionReady){
+    const legacyPrefix='/api/patient/s/'+encodeURIComponent(token);
+    if(path.startsWith(legacyPrefix)) path='/api/patient/session'+path.slice(legacyPrefix.length);
+  }
+  const r=await fetch(path,{...opts,credentials:'same-origin',headers:{'Content-Type':'application/json',...(opts.headers||{})}});
   const d=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(d.error||t('wentWrong'));
   return d;
 }
 
 async function load(){
-  if(!token){app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(t('incomplete'))+'</p></div>';bindLang();return;}
   try{
-    state=await api('/api/patient/s/'+encodeURIComponent(token));
+    if(token){
+      state=await api('/api/patient/redeem',{method:'POST',body:JSON.stringify({token})});
+      history.replaceState(null,'','/');
+    }else{
+      state=await api('/api/patient/session');
+    }
+    sessionReady=true;
     if(state.patient && state.patient.ui_language){
       lang = normalizeLang(state.patient.ui_language);
       localStorage.setItem('screening_lang', lang);
@@ -643,7 +653,12 @@ async function load(){
     }
     if(state.status==='awaiting_review'||state.output){renderReview(state.output);return;}
     renderWelcome();
-  }catch(e){app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(t('invalid'))+'</p></div>';bindLang();}
+  }catch(e){
+    sessionReady=false;
+    const message=token?t('invalid'):t('incomplete');
+    app.innerHTML=langSelectHtml()+'<div class="center"><h1>'+esc(t('title'))+'</h1><p class="muted">'+esc(message)+'</p></div>';
+    bindLang();
+  }
 }
 
 function withdrawalControlHtml(){
@@ -689,7 +704,8 @@ async function startChat(){
   document.getElementById('start').disabled=true;
   try{
     const d=await api('/api/patient/s/'+encodeURIComponent(token)+'/start',{method:'POST',body:JSON.stringify({language: lang, patient_consent: true, consent_version: 'screening-notice-2026-10-v1'})});
-    if(d.type==='review')renderReview(d.output);else renderQuestion(d);
+    if(d.type==='submitted'){state={...state,status:'submitted',output:d.output};renderSubmitted();}
+    else if(d.type==='review')renderReview(d.output);else renderQuestion(d);
   }
   catch(e){document.getElementById('start').disabled=false;showError(e.message);}
 }
