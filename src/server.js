@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { isValidServiceCredential } from './security.js';
+import { isValidServiceCredential, buildPatientUrl } from './security.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import {
@@ -466,26 +466,9 @@ function serviceClinicMatches(req, session) {
 }
 
 function patientUrl(req, token) {
-  // Patient URLs are bearer credentials. Never derive their destination from
-  // an incoming Host / forwarded-host header.
-  const configured = String(process.env.PATIENT_APP_URL || '').trim();
-  if (!configured) {
-    throw new Error('PATIENT_APP_URL must be configured to a trusted HTTPS origin before patient links can be issued.');
-  }
-  let parsed;
-  try { parsed = new URL(configured); } catch {
-    throw new Error('PATIENT_APP_URL must be a valid absolute URL.');
-  }
-  const localDevelopment = process.env.NODE_ENV !== 'production' &&
-    ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
-  if ((parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) ||
-      parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error('PATIENT_APP_URL must use HTTPS and must not contain credentials, query parameters or fragments.');
-  }
-  const base = parsed.toString().replace(/\/$/, '');
-  return base + '/s/' + encodeURIComponent(token);
+  // req intentionally unused: host headers must never select the bearer-link origin.
+  return buildPatientUrl(process.env.PATIENT_APP_URL, token, process.env.NODE_ENV);
 }
-
 function queueStatusUrl() {
   // Use the live MediLoop queue endpoint. An old MEDILOOP_QUEUE_STATUS_URL
   // deployment variable can silently send patient pages to a stale API.
