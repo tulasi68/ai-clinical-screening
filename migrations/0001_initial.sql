@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS screening_outputs (
 
 CREATE TABLE IF NOT EXISTS screening_consent_events (
   id TEXT PRIMARY KEY,
-  screening_id TEXT NOT NULL REFERENCES screening_sessions(screening_id) ON DELETE CASCADE,
+  -- Intentionally no FK: minimal consent evidence may outlive clinical payload deletion.
+  screening_id TEXT NOT NULL,
   event_type TEXT NOT NULL CHECK (event_type IN ('granted', 'withdrawn')),
   purpose TEXT NOT NULL,
   notice_version TEXT NOT NULL,
