@@ -507,6 +507,10 @@ async function getPatientContext(req, res, linkToken) {
       setPatientSessionCookie(req, res, redeemed.token, redeemed.expiresAt);
       return redeemed.session;
     }
+    // Do not let an invalid/revoked URL token silently select whatever patient
+    // session happens to be in this browser's cookie jar.
+    res.status(404).json({ error: 'This screening link is invalid, expired or already used.' });
+    return null;
   }
   const cookieToken = readCookie(req, PATIENT_SESSION_COOKIE);
   const session = cookieToken ? await getSessionByPatientToken(cookieToken) : null;
@@ -557,8 +561,13 @@ app.post('/api/patient/redeem', async (req, res) => {
       return res.json(await patientSessionPayload(redeemed.session));
     }
     const cookieToken = readCookie(req, PATIENT_SESSION_COOKIE);
-    const existing = cookieToken ? await getSessionByPatientToken(cookieToken) : null;
-    if (existing) return res.json(await patientSessionPayload(existing));
+    // A supplied URL token that failed redemption must never fall back to an
+    // unrelated session cookie. The browser removes a successfully redeemed
+    // token from the URL, so retries with a bearer token fail closed.
+    if (!token) {
+      const existing = cookieToken ? await getSessionByPatientToken(cookieToken) : null;
+      if (existing) return res.json(await patientSessionPayload(existing));
+    }
     return res.status(404).json({ error: 'This screening link is invalid, expired or already used.' });
   } catch (e) {
     console.error('patient link redemption failed');
