@@ -98,3 +98,19 @@ Two additional release blockers were identified during review and are intentiona
 - **Normalization regression candidate:** source inspection found the store's phone/specialty normalization regexes appear double-escaped (`/\\\\D/` and `/\\\\s+/` in source text). Confirm in a local Node test and correct alongside tests for punctuation in phone numbers and whitespace in specialty names before release.
 
 These findings were source-reviewed only; no runtime tests, D1 migration, deployment, or production configuration change was performed in this follow-up.
+
+
+## Follow-up fixes on main (2026-11-01)
+
+- **Patient link origin:** `src/security.js` now exposes `buildPatientUrl()` and `src/server.js` uses it. Patient links require `PATIENT_APP_URL` to be explicitly configured; managed/production URLs must use HTTPS and cannot contain credentials, query parameters or fragments. Request `Host` / forwarded-host headers are no longer used to build patient bearer links. Local HTTP is allowed only for localhost during non-production development.
+- **Normalization:** corrected the double-escaped phone and specialty regular expressions in `src/store.js`. Phone punctuation and repeated specialty whitespace regression coverage has been added.
+- **Consent retention migration:** added `migrations/0002_preserve_consent_evidence.sql`. It copies existing consent events into a table without a cascading session foreign key and recreates the append-only update/delete triggers, allowing minimal consent evidence to remain after clinical session deletion. The existing `0001_initial.sql` migration was preserved unchanged. **The new migration has not been applied to D1**; back up the database, review the retained fields and retention/legal basis, then apply through the normal migration release process.
+- Added unit tests for trusted patient-link URL validation and normalization. **These tests have not been run in this chat.** No build, D1 migration, live HTTP integration test, or production configuration change was performed.
+
+## Remaining blockers after these fixes
+
+- Configure and verify `PATIENT_APP_URL` in each deployment; this code fails closed when it is missing, so patient-link issuance will fail until configured.
+- Provision and verify tenant-specific `SCREENING_CLINIC_API_KEYS_JSON` credentials and decide the shared-key migration window. No secret values were inspected or changed.
+- Apply and verify migration `0002_preserve_consent_evidence.sql` after backup and legal/retention review.
+- Run `npm run check` and `npm run test:security`, then add/execute route-level tests for valid/revoked/replayed patient token plus a different existing cookie, consent withdrawal during in-flight processing, and cross-clinic service reads.
+- The host-origin and normalization fixes are code changes, not proof of production behavior. Automatic deployment may be triggered by commits to `main`; no manual deployment was performed.
