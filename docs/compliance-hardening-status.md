@@ -87,3 +87,14 @@ Assess DPDP Act 2023 and DPDP Rules 2025 according to the Gazette commencement s
 - Commit `2ce2833dc90c150e4091c51393c6ced66787e38f` prevents a failed URL-token redemption from falling through to an unrelated browser cookie session.
 - Regression tests still needed: valid token A with cookie session B, revoked token A with cookie B, replayed token A with cookie B, and a cookie-only request after successful URL cleanup.
 - These route-level cases were not executable through the repository file connector in this session. No test run or production verification is claimed.
+
+
+## Follow-up source audit (2026-11-01)
+
+Two additional release blockers were identified during review and are intentionally not represented as fixed:
+
+- **Patient-link host trust:** `patientUrl()` falls back to the request `Host` header when `PATIENT_APP_URL` is unset. Before sending patient links, configure a canonical HTTPS patient-app origin and reject untrusted/missing origins in managed deployments. Verify proxy host validation and add tests for hostile Host / forwarded-host values. Do not rely on request-derived host values for bearer-link destinations.
+- **Deletion vs append-only consent conflict:** `screening_consent_events.screening_id` references sessions with `ON DELETE CASCADE`, while a trigger rejects every consent-event DELETE. A session deletion that cascades to consent rows will therefore be blocked. Define a legally reviewed retention/deletion design (for example, separately retained minimal audit evidence with a documented lawful basis and expiry, plus deletion of clinical payloads) and implement a migration + tests before enabling deletion workflows. Do not remove the append-only triggers or alter retention policy without that decision.
+- **Normalization regression candidate:** source inspection found the store's phone/specialty normalization regexes appear double-escaped (`/\\\\D/` and `/\\\\s+/` in source text). Confirm in a local Node test and correct alongside tests for punctuation in phone numbers and whitespace in specialty names before release.
+
+These findings were source-reviewed only; no runtime tests, D1 migration, deployment, or production configuration change was performed in this follow-up.
