@@ -88,7 +88,7 @@ export async function createSession(input) {
     patient: {
       patient_name: input.patient_name, age: input.age, gender: input.gender,
       complaint: input.complaint, phone: normalizePhone(input.phone),
-      clinic_id: input.clinic_id || null, queue_token: input.queue_token || null,
+      clinic_id: input.clinic_id || null, clinic_name: String(input.clinic_name || '').slice(0, 160), queue_token: input.queue_token || null,
       waiting_ahead: input.waiting_ahead ?? null, specialty: normalizeSpecialty(input.specialty),
       ui_language, is_follow_up,
       prior_screening_id: prior_screening_id ? String(prior_screening_id).slice(0, 120) : null,
