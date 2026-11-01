@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
+import { isValidServiceCredential } from './security.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import {
   createSession, getSession, saveSession, saveOutput, getOutput,
-  getSessionByPatientToken, revokePatientToken,
+  getSessionByPatientToken, revokePatientToken, redeemPatientToken,
   appendConsentEvent, hasActiveConsent
 } from './store.js';
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
@@ -105,6 +106,10 @@ function serveStaticAsset(name, contentType) {
     res.status(404).type('text').send('Not Found');
   };
 }
+
+const SCREENING_CONSENT_PURPOSE = 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic';
+const SCREENING_CONSENT_VERSION = 'screening-notice-2026-10-v1';
+const PATIENT_SESSION_COOKIE = 'screening_session';
 
 const port = Number(process.env.PORT || 3000);
 const maxQuestions = () => Number(process.env.MAX_QUESTIONS || 12);
@@ -430,31 +435,24 @@ function editableOutput(input, current) {
 }
 
 function validServerApiKey(req) {
-  const expected = String(process.env.SCREENING_API_KEY || "").trim();
-  // Treat any of these as "deployed" so an empty key never silently opens
-  // the /api/screenings* endpoints on a managed runtime.
-  const onManagedRuntime = Boolean(
-    process.env.NODE_ENV === "production" ||
-    process.env.VERCEL === "1" ||
+  const authorization = String(req.headers.authorization || '').trim();
+  const bearerKey = authorization.replace(/^Bearer\s+/i, '').trim();
+  const suppliedKey = String(req.headers['x-api-key'] || bearerKey).trim();
+  const managedRuntime = Boolean(
+    process.env.NODE_ENV === 'production' ||
+    process.env.VERCEL === '1' ||
     process.env.CF_PAGES ||
     globalThis.Cloudflare ||
     globalThis.__WORKER__
   );
-  if (!expected) {
-    if (onManagedRuntime) {
-      console.error(
-        "[security] SCREENING_API_KEY is not set but this appears to be a deployed environment. " +
-        "Rejecting all /api/screenings* requests until it is configured."
-      );
-      return false;
-    }
-    return true; // local dev only
-  }
-  const suppliedKey = String(req.headers["x-api-key"] || "").trim();
-  const authorization = String(req.headers.authorization || "").trim();
-  const bearerKey = authorization.replace(/^Bearer\s+/i, "").trim();
-  if (!suppliedKey && !bearerKey) return false;
-  return suppliedKey === expected || bearerKey === expected;
+  return isValidServiceCredential({
+    clinicId: requestClinicId(req),
+    suppliedKey,
+    tenantKeysJson: process.env.SCREENING_CLINIC_API_KEYS_JSON,
+    sharedKey: process.env.SCREENING_API_KEY,
+    allowSharedKey: String(process.env.SCREENING_ALLOW_SHARED_API_KEY || '').toLowerCase() === 'true',
+    managedRuntime,
+  });
 }
 
 function requestClinicId(req) {
@@ -478,13 +476,63 @@ function queueStatusUrl() {
   return 'https://mediloop-ai.tulasianand6.workers.dev/api/patient-queue';
 }
 
-async function getPatientContext(token, res) {
-  const s = await getSessionByPatientToken(token);
-  if (!s) {
-    res.status(404).json({ error: 'This screening link is invalid or has expired.' });
+function readCookie(req, name) {
+  const header = String(req.headers.cookie || '');
+  for (const part of header.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0 || part.slice(0, i).trim() !== name) continue;
+    try { return decodeURIComponent(part.slice(i + 1).trim()); } catch { return ''; }
+  }
+  return '';
+}
+
+function setPatientSessionCookie(req, res, token, expiresAt) {
+  const maxAge = Math.max(0, Math.floor((Date.parse(expiresAt) - Date.now()) / 1000));
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = process.env.NODE_ENV === 'production' || Boolean(process.env.CF_PAGES) ||
+    Boolean(globalThis.Cloudflare) || Boolean(globalThis.__WORKER__) ||
+    req.secure === true || forwardedProto === 'https';
+  res.setHeader('Set-Cookie', `${PATIENT_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`);
+}
+
+function clearPatientSessionCookie(res) {
+  res.setHeader('Set-Cookie', `${PATIENT_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Secure`);
+}
+
+async function getPatientContext(req, res, linkToken) {
+  const candidate = String(linkToken || '').trim();
+  if (candidate) {
+    const redeemed = await redeemPatientToken(candidate);
+    if (redeemed) {
+      setPatientSessionCookie(req, res, redeemed.token, redeemed.expiresAt);
+      return redeemed.session;
+    }
+  }
+  const cookieToken = readCookie(req, PATIENT_SESSION_COOKIE);
+  const session = cookieToken ? await getSessionByPatientToken(cookieToken) : null;
+  if (!session) {
+    if (cookieToken) clearPatientSessionCookie(res);
+    res.status(404).json({ error: 'This screening link or session is invalid or has expired.' });
     return null;
   }
-  return s;
+  return session;
+}
+
+async function patientSessionPayload(s) {
+  const active = await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION);
+  const view = publicSession(s);
+  if (!active) {
+    view.patient = {
+      patient_name: s.patient?.patient_name || '',
+      queue_token: s.patient?.queue_token || null,
+      waiting_ahead: s.patient?.waiting_ahead ?? null,
+      ui_language: s.patient?.ui_language || 'en',
+    };
+    view.conversation = [];
+    if (s.status !== 'consent_withdrawn') view.status = 'in_progress';
+    return { ...view, output: null };
+  }
+  return { ...view, output: publicOutput(await getOutput(s.screening_id)) };
 }
 
 function applyLanguage(s, body) {
@@ -500,21 +548,41 @@ app.get('/s/:token', servePatientPage);
 app.get('/app.js', serveStaticAsset('app.js', 'application/javascript'));
 app.get('/screening.css', serveStaticAsset('screening.css', 'text/css'));
 
-app.get('/api/patient/s/:token', async (req, res) => {
+app.post('/api/patient/redeem', async (req, res) => {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const token = String(req.body?.token || '').trim();
+    const redeemed = await redeemPatientToken(token);
+    if (redeemed) {
+      setPatientSessionCookie(req, res, redeemed.token, redeemed.expiresAt);
+      return res.json(await patientSessionPayload(redeemed.session));
+    }
+    const cookieToken = readCookie(req, PATIENT_SESSION_COOKIE);
+    const existing = cookieToken ? await getSessionByPatientToken(cookieToken) : null;
+    if (existing) return res.json(await patientSessionPayload(existing));
+    return res.status(404).json({ error: 'This screening link is invalid, expired or already used.' });
+  } catch (e) {
+    console.error('patient link redemption failed');
+    return res.status(500).json({ error: 'Unable to open this screening link.' });
+  }
+});
+
+async function handlePatientSessionGet(req, res, linkToken) {
+  try {
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
-    const output = await getOutput(s.screening_id);
-    res.json({ ...publicSession(s), output: publicOutput(output) });
+    res.json(await patientSessionPayload(s));
   } catch (e) {
     console.error('patient session error', e);
     res.status(500).json({ error: 'Unable to load screening.' });
   }
-});
+}
 
-app.post('/api/patient/s/:token/start', async (req, res) => {
+app.get('/api/patient/s/:token', (req, res) => handlePatientSessionGet(req, res, req.params.token));
+app.get('/api/patient/session', (req, res) => handlePatientSessionGet(req, res));
+
+async function handlePatientSessionStart(req, res, linkToken) {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
     if (s.status === 'consent_withdrawn') {
       return res.status(409).json({ error: 'Consent was withdrawn. Start a new screening if you wish to participate again.' });
@@ -522,12 +590,12 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
 
     // Consent is a server-enforced precondition, not a client-side UI hint.
     // Existing sessions may change language only after a valid consent record exists.
-    const consentVersion = 'screening-notice-2026-10-v1';
-    const consentPurpose = 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic';
+    const consentVersion = SCREENING_CONSENT_VERSION;
+    const consentPurpose = SCREENING_CONSENT_PURPOSE;
     const alreadyConsented = await hasActiveConsent(s.screening_id, consentPurpose, consentVersion);
     const isNewConsent = req.body?.patient_consent === true &&
       req.body?.consent_version === consentVersion;
-    if (s.status === 'in_progress' && !alreadyConsented && !isNewConsent) {
+    if (!alreadyConsented && !isNewConsent) {
       return res.status(403).json({
         error: 'Patient consent is required before screening can begin.',
         consent_required: true,
@@ -536,8 +604,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     }
     const { changed, lang } = applyLanguage(s, req.body);
     if (isNewConsent && !alreadyConsented) {
-      const consentAt = new Date().toISOString();
-      await appendConsentEvent({
+      const consentEvent = await appendConsentEvent({
         screening_id: s.screening_id,
         event_type: 'granted',
         purpose: consentPurpose,
@@ -549,6 +616,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
         actor_type: 'patient',
         evidence: { consent_ui: 'patient_screening_app' },
       });
+      const consentAt = consentEvent.occurred_at;
       if (!s.patient) s.patient = {};
       s.patient.screening_consent = {
         granted: true,
@@ -562,7 +630,10 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     }
     if (changed || (isNewConsent && !alreadyConsented)) await saveSession(s);
 
-    if (s.status === 'awaiting_review' || s.status === 'submitted') {
+    if (s.status === 'submitted') {
+      return res.json({ type: 'submitted', output: publicOutput(await getOutput(s.screening_id)) });
+    }
+    if (s.status === 'awaiting_review') {
       return res.json({ type: 'review', output: publicOutput(await getOutput(s.screening_id)) });
     }
     if (s.status !== 'in_progress') return res.status(409).json({ error: 'Screening is not available.' });
@@ -585,19 +656,25 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
     console.error('patient start error', e);
     res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
   }
-});
+}
 
-app.post('/api/patient/s/:token/withdraw', async (req, res) => {
+app.post('/api/patient/s/:token/start', (req, res) => handlePatientSessionStart(req, res, req.params.token));
+app.post('/api/patient/session/start', (req, res) => handlePatientSessionStart(req, res));
+
+async function handlePatientSessionWithdraw(req, res, linkToken) {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
-    const purpose = 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic';
-    const noticeVersion = 'screening-notice-2026-10-v1';
-    const active = await hasActiveConsent(s.screening_id, purpose);
-    if (!active) return res.json({ ok: true, consent_withdrawn: true, already_withdrawn: true });
+    const purpose = SCREENING_CONSENT_PURPOSE;
+    const noticeVersion = SCREENING_CONSENT_VERSION;
+    const active = await hasActiveConsent(s.screening_id, purpose, noticeVersion);
+    if (!active) {
+      await revokePatientToken(s.screening_id);
+      clearPatientSessionCookie(res);
+      return res.json({ ok: true, consent_withdrawn: true, already_withdrawn: true });
+    }
 
-    const withdrawnAt = new Date().toISOString();
-    await appendConsentEvent({
+    const consentEvent = await appendConsentEvent({
       screening_id: s.screening_id,
       event_type: 'withdrawn',
       purpose,
@@ -609,24 +686,30 @@ app.post('/api/patient/s/:token/withdraw', async (req, res) => {
       actor_type: 'patient',
       evidence: { endpoint: 'patient_consent_withdrawal' },
     });
+    const withdrawnAt = consentEvent.occurred_at;
     s.status = 'consent_withdrawn';
     s.updated_at = withdrawnAt;
     await saveSession(s);
+    await revokePatientToken(s.screening_id);
+    clearPatientSessionCookie(res);
     return res.json({ ok: true, consent_withdrawn: true, withdrawn_at: withdrawnAt });
   } catch (e) {
     console.error('patient consent withdrawal failed', e);
     return res.status(500).json({ error: 'Unable to record consent withdrawal.' });
   }
-});
+}
 
-app.post('/api/patient/s/:token/message', async (req, res) => {
+app.post('/api/patient/s/:token/withdraw', (req, res) => handlePatientSessionWithdraw(req, res, req.params.token));
+app.post('/api/patient/session/withdraw', (req, res) => handlePatientSessionWithdraw(req, res));
+
+async function handlePatientSessionMessage(req, res, linkToken) {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
     if (s.status !== 'in_progress') {
       return res.status(409).json({ error: 'This screening is no longer accepting answers.' });
     }
-    if (!(await hasActiveConsent(s.screening_id, 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic', 'screening-notice-2026-10-v1'))) {
+    if (!(await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION))) {
       return res.status(403).json({ error: 'Patient consent is required before answers can be processed.', consent_required: true });
     }
 
@@ -659,12 +742,19 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
     console.error('patient message error', e);
     res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
   }
-});
+}
 
-app.get('/api/patient/s/:token/summary', async (req, res) => {
+app.post('/api/patient/s/:token/message', (req, res) => handlePatientSessionMessage(req, res, req.params.token));
+app.post('/api/patient/session/message', (req, res) => handlePatientSessionMessage(req, res));
+
+async function handlePatientSessionSummaryGet(req, res, linkToken) {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
+    if (!(await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION))) {
+      return res.status(403).json({ error: 'Active patient consent is required to access this summary.' });
+    }
+    if (s.status === 'consent_withdrawn') return res.status(403).json({ error: 'Consent has been withdrawn.' });
     const output = await getOutput(s.screening_id);
     if (!output) return res.status(409).json({ error: 'The screening is still in progress.' });
     res.json({ output: publicOutput(output) });
@@ -672,13 +762,16 @@ app.get('/api/patient/s/:token/summary', async (req, res) => {
     console.error('patient summary error', e);
     res.status(500).json({ error: 'Unable to load screening summary.' });
   }
-});
+}
 
-app.put('/api/patient/s/:token/summary', async (req, res) => {
+app.get('/api/patient/s/:token/summary', (req, res) => handlePatientSessionSummaryGet(req, res, req.params.token));
+app.get('/api/patient/session/summary', (req, res) => handlePatientSessionSummaryGet(req, res));
+
+async function handlePatientSessionSummaryPut(req, res, linkToken) {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
-    if (!(await hasActiveConsent(s.screening_id, 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic', 'screening-notice-2026-10-v1'))) {
+    if (!(await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION))) {
       return res.status(403).json({ error: 'Active patient consent is required to edit this summary.' });
     }
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The summary cannot be edited now.' });
@@ -691,13 +784,16 @@ app.put('/api/patient/s/:token/summary', async (req, res) => {
     console.error('patient summary update error', e);
     res.status(500).json({ error: 'Unable to save your changes.' });
   }
-});
+}
 
-app.post('/api/patient/s/:token/submit', async (req, res) => {
+app.put('/api/patient/s/:token/summary', (req, res) => handlePatientSessionSummaryPut(req, res, req.params.token));
+app.put('/api/patient/session/summary', (req, res) => handlePatientSessionSummaryPut(req, res));
+
+async function handlePatientSessionSubmit(req, res, linkToken) {
   try {
-    const s = await getPatientContext(req.params.token, res);
+    const s = await getPatientContext(req, res, linkToken);
     if (!s) return;
-    if (!(await hasActiveConsent(s.screening_id, 'pre_consultation_clinical_screening_and_sharing_with_treating_clinic', 'screening-notice-2026-10-v1'))) {
+    if (!(await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION))) {
       return res.status(403).json({ error: 'A valid patient consent record is required before submission.' });
     }
     if (s.status !== 'awaiting_review') return res.status(409).json({ error: 'The screening is not ready to submit.' });
@@ -715,8 +811,9 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     s.submitted_at = finalOutput.submitted_at;
     await saveSession(s);
 
-    const complaintLink = String(req.params.token ? `${String(process.env.PATIENT_APP_URL || process.env.BASE_URL || '').replace(/\/$/, '')}/s/${encodeURIComponent(req.params.token)}` : '').trim();
-    const whatsapp = complaintLink ? await sendComplaintLink(s.patient.phone, complaintLink, s.patient?.ui_language) : { ok: false, error: 'Patient link unavailable' };
+    // The URL token has been consumed by redemption. Do not send that dead
+    // bearer URL again; a separate resumable-link credential needs its own field.
+    const whatsapp = { ok: false, error: 'A fresh patient link is not issued from a redeemed session.' };
 
     res.json({
       status: 'submitted',
@@ -730,7 +827,10 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     console.error('patient submit error', e);
     res.status(500).json({ error: 'Unable to submit the screening.' });
   }
-});
+}
+
+app.post('/api/patient/s/:token/submit', (req, res) => handlePatientSessionSubmit(req, res, req.params.token));
+app.post('/api/patient/session/submit', (req, res) => handlePatientSessionSubmit(req, res));
 
 app.post('/api/screenings', async (req, res) => {
   try {
@@ -765,6 +865,9 @@ app.get('/api/screenings/:id', async (req, res) => {
     const s = await getSession(req.params.id);
     if (!s) return res.status(404).json({ error: 'Screening not found.' });
     if (!serviceClinicMatches(req, s)) return res.status(404).json({ error: 'Screening not found.' });
+    if (!(await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION))) {
+      return res.status(403).json({ error: 'Active patient consent is required to access screening data.' });
+    }
     res.json(publicSession(s));
   } catch (e) {
     console.error('screening get error', e);
@@ -794,6 +897,9 @@ app.get('/api/screenings/:id/output', async (req, res) => {
     const s = await getSession(req.params.id);
     if (!s) return res.status(404).json({ error: 'Screening not found.' });
     if (!serviceClinicMatches(req, s)) return res.status(404).json({ error: 'Screening not found.' });
+    if (!(await hasActiveConsent(s.screening_id, SCREENING_CONSENT_PURPOSE, SCREENING_CONSENT_VERSION))) {
+      return res.status(403).json({ error: 'Active patient consent is required to access screening output.' });
+    }
     const output = await getOutput(req.params.id);
     if (!output) {
       return res.json({
