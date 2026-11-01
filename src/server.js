@@ -199,7 +199,7 @@ async function sendComplaintLink(phone, patientUrl, preferredLang) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.error('WhatsApp complaint link send failed', { status: response.status, data });
+    console.error('WhatsApp complaint link send failed', { status: response.status });
     return { ok: false, error: data?.error?.message || `WhatsApp API returned HTTP ${response.status}` };
   }
 
@@ -580,7 +580,7 @@ async function handlePatientSessionGet(req, res, linkToken) {
     if (!s) return;
     res.json(await patientSessionPayload(s));
   } catch (e) {
-    console.error('patient session error', e);
+    console.error('patient session error');
     res.status(500).json({ error: 'Unable to load screening.' });
   }
 }
@@ -660,7 +660,7 @@ async function handlePatientSessionStart(req, res, linkToken) {
     const result = await continueBrowserSession(s);
     res.json(result);
   } catch (e) {
-    console.error('patient start error', e);
+    console.error('patient start error');
     res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
   }
 }
@@ -700,7 +700,7 @@ async function handlePatientSessionWithdraw(req, res, linkToken) {
     clearPatientSessionCookie(res);
     return res.json({ ok: true, consent_withdrawn: true, withdrawn_at: withdrawnAt });
   } catch (e) {
-    console.error('patient consent withdrawal failed', e);
+    console.error('patient consent withdrawal failed');
     return res.status(500).json({ error: 'Unable to record consent withdrawal.' });
   }
 }
@@ -745,7 +745,7 @@ async function handlePatientSessionMessage(req, res, linkToken) {
     await saveSession(s);
     res.json(await continueBrowserSession(s));
   } catch (e) {
-    console.error('patient message error', e);
+    console.error('patient message error');
     res.status(502).json({ error: 'Clinical assistant is temporarily unavailable. Please try again.' });
   }
 }
@@ -765,7 +765,7 @@ async function handlePatientSessionSummaryGet(req, res, linkToken) {
     if (!output) return res.status(409).json({ error: 'The screening is still in progress.' });
     res.json({ output: publicOutput(output) });
   } catch (e) {
-    console.error('patient summary error', e);
+    console.error('patient summary error');
     res.status(500).json({ error: 'Unable to load screening summary.' });
   }
 }
@@ -787,7 +787,7 @@ async function handlePatientSessionSummaryPut(req, res, linkToken) {
     await saveOutput(s.screening_id, updated);
     res.json({ output: updated });
   } catch (e) {
-    console.error('patient summary update error', e);
+    console.error('patient summary update error');
     res.status(500).json({ error: 'Unable to save your changes.' });
   }
 }
@@ -830,7 +830,7 @@ async function handlePatientSessionSubmit(req, res, linkToken) {
       whatsapp_error: whatsapp.ok ? null : whatsapp.error
     });
   } catch (e) {
-    console.error('patient submit error', e);
+    console.error('patient submit error');
     res.status(500).json({ error: 'Unable to submit the screening.' });
   }
 }
@@ -860,7 +860,7 @@ app.post('/api/screenings', async (req, res) => {
       queue_status_url: queueStatusUrl()
     });
   } catch (e) {
-    console.error('screening creation error', e);
+    console.error('screening creation error');
     res.status(500).json({ error: e.message });
   }
 });
@@ -876,7 +876,7 @@ app.get('/api/screenings/:id', async (req, res) => {
     }
     res.json(publicSession(s));
   } catch (e) {
-    console.error('screening get error', e);
+    console.error('screening get error');
     res.status(500).json({ error: e.message });
   }
 });
@@ -892,7 +892,7 @@ app.post('/api/screenings/:id/revoke-token', async (req, res) => {
     if (!revoked) return res.status(404).json({ error: 'Screening not found.' });
     res.json({ ok: true, token_revoked: true });
   } catch (e) {
-    console.error('patient token revocation failed', e);
+    console.error('patient token revocation failed');
     res.status(500).json({ error: 'Unable to revoke patient screening link.' });
   }
 });
@@ -918,7 +918,7 @@ app.get('/api/screenings/:id/output', async (req, res) => {
     }
     res.json({ ...output, status: s.status });
   } catch (e) {
-    console.error('screening output error', e);
+    console.error('screening output error');
     res.status(500).json({ error: e.message });
   }
 });
