@@ -528,6 +528,7 @@ async function patientSessionPayload(s) {
   if (!active) {
     view.patient = {
       patient_name: s.patient?.patient_name || '',
+      clinic_name: s.patient?.clinic_name || '',
       queue_token: s.patient?.queue_token || null,
       waiting_ahead: s.patient?.waiting_ahead ?? null,
       ui_language: s.patient?.ui_language || 'en',
