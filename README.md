@@ -335,3 +335,16 @@ Neither codebase should embed the other.
 Preserve: simple patient UX · one question at a time · structured Contract 1.1 · explicit patient approval · authenticated MediLoop integration · secure tokens · durable Cloudflare D1 state · clinician owns diagnosis and prescribing.
 
 When changing behaviour, start at `src/server.js`, then `src/flow.js` / `src/specialties/`, then `src/ai.js` and `src/store.js`.
+
+## Compliance implementation programme
+
+The current engineering readiness pack is under [`docs/compliance/`](docs/compliance/):
+- [Data inventory, data flows and role allocation](docs/compliance/01-data-inventory-and-roles.md)
+- [Privacy notice and consent requirements](docs/compliance/02-privacy-notice-and-consent.md)
+- [Rights and grievance workflow](docs/compliance/03-rights-and-grievance-sop.md)
+- [Retention and deletion](docs/compliance/04-retention-and-deletion.md)
+- [Vendor governance, security and incident response](docs/compliance/05-vendors-security-and-incident-response.md)
+- [Verification and release gates](docs/compliance/06-verification-and-release-gates.md)
+- [Legal-to-control-to-test traceability matrix](docs/compliance/07-legal-traceability-matrix.md)
+
+These are implementation documents, not a legal opinion or compliance certificate. Clinic identity, purposes, retention, privacy contacts, vendors and contracts require confirmation. Production migration, secrets/configuration and deployment require separate approval.
