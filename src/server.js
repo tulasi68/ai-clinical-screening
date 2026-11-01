@@ -466,7 +466,23 @@ function serviceClinicMatches(req, session) {
 }
 
 function patientUrl(req, token) {
-  const base = String(process.env.PATIENT_APP_URL || (req.protocol + '://' + req.get('host'))).replace(/\/$/, '');
+  // Patient URLs are bearer credentials. Never derive their destination from
+  // an incoming Host / forwarded-host header.
+  const configured = String(process.env.PATIENT_APP_URL || '').trim();
+  if (!configured) {
+    throw new Error('PATIENT_APP_URL must be configured to a trusted HTTPS origin before patient links can be issued.');
+  }
+  let parsed;
+  try { parsed = new URL(configured); } catch {
+    throw new Error('PATIENT_APP_URL must be a valid absolute URL.');
+  }
+  const localDevelopment = process.env.NODE_ENV !== 'production' &&
+    ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  if ((parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) ||
+      parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('PATIENT_APP_URL must use HTTPS and must not contain credentials, query parameters or fragments.');
+  }
+  const base = parsed.toString().replace(/\/$/, '');
   return base + '/s/' + encodeURIComponent(token);
 }
 
