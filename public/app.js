@@ -39,6 +39,7 @@ const I18N = {
     notDx: 'This is not a diagnosis or prescription.',
     start: 'Start Chat',
     consentTitle: 'Before you begin',
+    clinicResponsible: (name) => 'Clinic responsible for your care: ' + name,
     consentBody: 'This screening collects your name, age, gender, contact number, symptoms and answers to health questions so the clinic that sent you this link can prepare for your consultation. Your answers and screening summary are shared with that clinic’s authorised care team. The clinic decides how your clinical record is retained. The screening service and its hosting provider process information to operate this service for the clinic. You can stop and withdraw consent; this stops further screening, but information already lawfully processed or included in a clinical record may need to be retained by the clinic. For privacy questions or requests, contact the clinic that sent you this link.',
     consentCheck: 'I understand and agree to share my answers with the clinic for my consultation.',
     consentRequired: 'Please tick the consent box to continue.',
@@ -77,6 +78,7 @@ const I18N = {
     notDx: 'ಇದು ರೋಗ ನಿರ್ಣಯ ಅಥವಾ ಔಷಧ ನಿರ್ದೇಶನವಲ್ಲ.',
     start: 'ಚಾಟ್ ಪ್ರಾರಂಭಿಸಿ',
     consentTitle: 'ಮುಂದುವರಿಯುವ ಮೊದಲು',
+    clinicResponsible: (name) => 'ನಿಮ್ಮ ಆರೈಕೆಗೆ ಜವಾಬ್ದಾರಿಯ ಕ್ಲಿನಿಕ್: ' + name,
     consentBody: 'ಈ ಸ್ಕ್ರೀನಿಂಗ್ ನಿಮ್ಮ ಹೆಸರು, ವಯಸ್ಸು, ಲಿಂಗ, ಸಂಪರ್ಕ ಸಂಖ್ಯೆ, ಲಕ್ಷಣಗಳು ಮತ್ತು ಆರೋಗ್ಯ ಪ್ರಶ್ನೆಗಳಿಗೆ ನಿಮ್ಮ ಉತ್ತರಗಳನ್ನು ಸಂಗ್ರಹಿಸುತ್ತದೆ. ನೀವು ಈ ಲಿಂಕ್ ಪಡೆದ ಕ್ಲಿನಿಕ್‌ನ ಅಧಿಕೃತ ಆರೈಕೆ ತಂಡದೊಂದಿಗೆ ನಿಮ್ಮ ಉತ್ತರಗಳು ಮತ್ತು ಸ್ಕ್ರೀನಿಂಗ್ ಸಾರಾಂಶ ಹಂಚಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ವೈದ್ಯಕೀಯ ದಾಖಲೆಯನ್ನು ಎಷ್ಟು ಕಾಲ ಉಳಿಸಬೇಕು ಎಂಬುದನ್ನು ಕ್ಲಿನಿಕ್ ನಿರ್ಧರಿಸುತ್ತದೆ. ಕ್ಲಿನಿಕ್ ಪರವಾಗಿ ಸ್ಕ್ರೀನಿಂಗ್ ಸೇವೆ ಮತ್ತು ಅದರ ಹೋಸ್ಟಿಂಗ್ ಪೂರೈಕೆದಾರರು ಮಾಹಿತಿಯನ್ನು ಸಂಸ್ಕರಿಸುತ್ತಾರೆ. ನೀವು ನಿಲ್ಲಿಸಿ ಸಮ್ಮತಿಯನ್ನು ಹಿಂಪಡೆಯಬಹುದು; ಇದರಿಂದ ಮುಂದಿನ ಸ್ಕ್ರೀನಿಂಗ್ ನಿಲ್ಲುತ್ತದೆ. ಆದರೆ ಕಾನೂನುಬದ್ಧವಾಗಿ ಸಂಸ್ಕರಿಸಿದ ಅಥವಾ ವೈದ್ಯಕೀಯ ದಾಖಲೆಯಲ್ಲಿ ಸೇರಿಸಿದ ಮಾಹಿತಿಯನ್ನು ಕ್ಲಿನಿಕ್ ಉಳಿಸಬೇಕಾಗಬಹುದು. ಗೌಪ್ಯತೆ ಪ್ರಶ್ನೆಗಳು ಅಥವಾ ವಿನಂತಿಗಳಿಗಾಗಿ ಈ ಲಿಂಕ್ ಕಳುಹಿಸಿದ ಕ್ಲಿನಿಕ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.',
     consentCheck: 'ನನ್ನ ಸಮಾಲೋಚನೆಗಾಗಿ ನನ್ನ ಉತ್ತರಗಳನ್ನು ಕ್ಲಿನಿಕ್‌ನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಲು ನಾನು ಒಪ್ಪುತ್ತೇನೆ.',
     consentRequired: 'ಮುಂದುವರಿಯಲು ದಯವಿಟ್ಟು ಸಮ್ಮತಿ ಪೆಟ್ಟಿಗೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
@@ -115,6 +117,7 @@ const I18N = {
     notDx: 'यह निदान या नुस्खा नहीं है।',
     start: 'चैट शुरू करें',
     consentTitle: 'आगे बढ़ने से पहले',
+    clinicResponsible: (name) => 'आपकी देखभाल के लिए जिम्मेदार क्लिनिक: ' + name,
     consentBody: 'यह स्क्रीनिंग आपका नाम, आयु, लिंग, संपर्क नंबर, लक्षण और स्वास्थ्य प्रश्नों के उत्तर एकत्र करती है ताकि यह लिंक भेजने वाला क्लिनिक आपके परामर्श की तैयारी कर सके। आपके उत्तर और स्क्रीनिंग सारांश उस क्लिनिक की अधिकृत देखभाल टीम के साथ साझा किए जाएंगे। आपके चिकित्सकीय रिकॉर्ड को कितने समय तक रखना है, यह क्लिनिक तय करता है। स्क्रीनिंग सेवा और उसका होस्टिंग प्रदाता क्लिनिक के लिए जानकारी संसाधित करते हैं। आप स्क्रीनिंग रोक सकते हैं और सहमति वापस ले सकते हैं; इससे आगे की स्क्रीनिंग रुक जाएगी, लेकिन पहले से वैध रूप से संसाधित या चिकित्सकीय रिकॉर्ड में शामिल जानकारी क्लिनिक को रखनी पड़ सकती है। गोपनीयता संबंधी प्रश्नों या अनुरोधों के लिए यह लिंक भेजने वाले क्लिनिक से संपर्क करें।',
     consentCheck: 'मैं अपने परामर्श के लिए अपने उत्तर क्लिनिक के साथ साझा करने पर सहमत हूँ।',
     consentRequired: 'जारी रखने के लिए कृपया सहमति बॉक्स चुनें.',
@@ -695,6 +698,7 @@ function renderWelcome(){
   app.innerHTML=langSelectHtml()+'<div class="center"><div class="eyebrow">'+esc(t('private'))+'</div><h1>'+esc(t('title'))+'</h1>'+
   '<p class="muted start-note">'+esc(t('hello', p.patient_name))+'</p>'+
   '<p class="small">'+esc(t('notDx'))+'</p>'+
+  (p.clinic_name ? '<p class="small" style="margin-top:8px">'+esc(t('clinicResponsible', p.clinic_name))+'</p>' : '')+
   '<div class="consent-box" style="margin-top:18px;text-align:left;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc">'+
   '<p class="small" style="font-weight:600;margin:0 0 6px">'+esc(t('consentTitle'))+'</p>'+
   '<p class="small" style="margin:0 0 10px;line-height:1.45">'+esc(t('consentBody'))+'</p>'+
