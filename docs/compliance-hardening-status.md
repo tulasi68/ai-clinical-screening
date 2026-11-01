@@ -140,3 +140,5 @@ These findings were source-reviewed only; no runtime tests, D1 migration, deploy
 - Vendor/subprocessor contracts and region/support/backup evidence.
 - Review, backup, staging test and separately approved application of migration `0002_preserve_consent_evidence.sql`.
 - Live D1 concurrency, token/cookie, consent withdrawal, cross-clinic and backup-restore tests.
+
+- Follow-up: MediLoop now passes the referring clinic's display name into the Screening session; the patient notice displays the clinic name before consent when the name is available. This improves identification but does not replace the missing clinic privacy/grievance contact and approved legal notice.
