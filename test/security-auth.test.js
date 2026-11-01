@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidServiceCredential } from '../src/security.js';
+import { isValidServiceCredential, buildPatientUrl } from '../src/security.js';
+
 
 test('tenant keys authorize only the clinic bound to the request header', () => {
   const tenantKeysJson = JSON.stringify({ 'clinic-a': 'key-a', 'clinic-b': 'key-b' });
@@ -21,7 +22,6 @@ test('managed runtimes reject shared-key-only authentication unless explicitly e
   assert.equal(isValidServiceCredential({ clinicId:'clinic-a', suppliedKey:'shared', sharedKey:'shared', managedRuntime:false }), true);
 });
 
-import { buildPatientUrl } from '../src/security.js';
 
 test('patient links require a configured trusted HTTPS origin', () => {
   assert.throws(() => buildPatientUrl('', 'opaque-token', 'production'), /PATIENT_APP_URL must be configured/);
