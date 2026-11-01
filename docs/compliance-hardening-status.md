@@ -40,3 +40,25 @@ Assess DPDP Act 2023 and DPDP Rules 2025 according to the Gazette commencement s
 - D1 migration: `migrations/0001_initial.sql` (applied to the new D1 database; `d1_migrations` records `0001_initial.sql`).
 - Supabase credentials are no longer required by runtime code. The old Supabase project has not been modified or deleted and should be retained until any required data export/reconciliation is complete.
 - Worker deployment has intentionally not been performed. Do not treat the application as migrated in production until Worker binding, migration state, live create/start/answer/withdraw/submit/output flows and MediLoop integration are verified.
+
+
+## P0 hardening update — 2026-11-01
+
+### Implemented in source on `main`
+- Consent event timestamps are generated inside the storage layer; caller-supplied timestamps are ignored. The D1 schema already has triggers rejecting consent-event UPDATE and DELETE operations.
+- Patient URL tokens are atomically exchanged using a conditional D1 UPDATE for a short-lived session credential. The credential is delivered only as an HttpOnly, SameSite=Lax cookie (Secure on managed/HTTPS runtimes); the browser removes the URL token from the address bar after successful exchange. The original URL token digest is replaced, so replay from a browser without the session cookie fails. Session content, status, conversation and existing consent history are preserved during exchange.
+- Patient session reads return only minimum welcome/status data before active consent; conversation and output reads require the current purpose and notice version. Service-to-service detail/output endpoints also require active consent and clinic scope.
+- Consent withdrawal appends a server-timestamped event, stops further processing and revokes the active patient session credential. Token revocation updates only credential columns, avoiding a read/overwrite race with the full session document.
+- Service authentication supports unique per-clinic keys through `SCREENING_CLINIC_API_KEYS_JSON`. Managed runtimes reject shared-key-only authentication unless the temporary compatibility flag `SCREENING_ALLOW_SHARED_API_KEY=true` is explicitly set. Prefer unique keys per clinic; the shared flag is not tenant isolation.
+- Added store tests for one-time redemption/replay, expired/revoked links, server-generated consent timestamps and consent state transitions; added pure tests for cross-clinic service credential denial.
+
+### Verification evidence
+- `npm run test:security` now includes both store and tenant-auth tests; `npm run check` syntax-checks the server, store, security helper and browser app. These scripts have not been executed locally in this connector session; GitHub Actions results must be checked after commit.
+- The implementation has not been deployed. The D1 migration/binding, current live Worker version, cookie behavior and MediLoop end-to-end integration have not been production-verified.
+
+### P0 rollout blockers and risks
+- **Do not deploy until matching per-clinic keys are configured on both independent deployments.** Configure the same unique key for each clinic in `SCREENING_CLINIC_API_KEYS_JSON` and `CLINICAL_SCREENING_API_KEYS_JSON`. No secrets were changed. If only the old shared key is configured, the new managed-runtime Screening code fails closed unless the temporary compatibility flag is explicitly enabled.
+- The one-time exchange reuses existing credential columns, so it introduces no schema migration. An in-progress patient can resume only in a browser holding the session cookie after first redemption; opening the consumed URL in another browser fails. A future separately stored resumable-link credential is needed before re-issuing links after submission; the consumed URL is no longer sent again through the post-submit WhatsApp path.
+- Existing sessions without an active versioned consent event are not allowed to expose previous answers/output. They must re-affirm consent before the UI returns to the review flow; test this against real legacy records before rollout.
+- The D1 fake verifies conditional update behavior but is not a concurrency test against real D1. Verify atomic replay denial, D1 schema, expiry, cookie attributes, withdrawal and all patient/service routes in a staging Worker before production.
+- Distributed rate limiting, platform/log redaction, retention/deletion propagation, backup expiry and legal-hold workflows remain open. The prior Supabase project and data have not been modified or deleted; D1 deployment and any required export/reconciliation remain pending.
