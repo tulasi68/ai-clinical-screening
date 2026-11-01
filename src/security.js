@@ -32,3 +32,26 @@ export function isValidServiceCredential({
   if (!String(sharedKey || '').trim()) return !managedRuntime;
   return constantTimeEqual(sharedKey, supplied);
 }
+
+/**
+ * Build patient bearer links only from a deployment-configured origin.
+ * Request Host and forwarded-host headers are intentionally not inputs.
+ */
+export function buildPatientUrl(configuredUrl, token, nodeEnv = '') {
+  const configured = String(configuredUrl || '').trim();
+  if (!configured) {
+    throw new Error('PATIENT_APP_URL must be configured to a trusted HTTPS origin before patient links can be issued.');
+  }
+  let parsed;
+  try { parsed = new URL(configured); } catch {
+    throw new Error('PATIENT_APP_URL must be a valid absolute URL.');
+  }
+  const localDevelopment = nodeEnv !== 'production' &&
+    ['localhost', '127.0.0.1', '[::1]', '::1'].includes(parsed.hostname);
+  if ((parsed.protocol !== 'https:' && !(localDevelopment && parsed.protocol === 'http:')) ||
+      parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('PATIENT_APP_URL must use HTTPS and must not contain credentials, query parameters or fragments.');
+  }
+  const base = parsed.toString().replace(/\/$/, '');
+  return base + '/s/' + encodeURIComponent(String(token || ''));
+}
