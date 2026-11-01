@@ -123,3 +123,20 @@ These findings were source-reviewed only; no runtime tests, D1 migration, deploy
 - No production secrets, live D1 data, Redis data, migrations or deployment settings were changed. Automated tests and runtime integration tests have not been run as part of this work.
 - Open blockers include a server-side append-only consent ledger and non-mutable rights case workflow in MediLoop; rights-request processor endpoints and deletion propagation in Screening; distributed rate limiting; log redaction and retention verification; vendor/processor agreements; approved clinic-specific notices and retention periods; and staged integration/backup tests.
 - DPDP commencement is phased: the main processing duties are scheduled for 13 May 2027 under G.S.R. 843(E), with the limited one-year provisions scheduled for 13 November 2026. Apply the schedule provision-by-provision and have counsel confirm applicability. IT Act/SPDI and CERT-In duties must be assessed separately.
+
+
+## Six-phase programme — implementation updates (2026-11-01)
+
+- Added `docs/compliance/01-07` covering the preliminary data inventory and role allocation, patient notice/consent requirements, rights/grievance SOP, retention/deletion, vendor/security/incident response, verification/release gates and legal-to-control-to-test traceability.
+- Patient-facing screening notice was expanded in English, Kannada and Hindi; the responsible clinic name is now passed from MediLoop and displayed before consent where available. Notice version is now `screening-notice-2026-11-v2`; the server requires that exact version. Existing sessions with an older notice version may need re-consent; verify this in staging.
+- Removed raw error objects and provider response payloads from reviewed Screening server logs. This is targeted redaction, not a complete platform/access-log audit.
+- No D1 migration was applied and no production secrets, live data or deployment configuration were changed.
+- Tests, build and live HTTP/D1 integration were not run in this session.
+
+### Remaining implementation blockers
+- Authenticated rights-request/export/correction/deletion processor endpoints and deletion propagation to MediLoop, backups and downstream vendors.
+- Distributed rate limiting and complete log/access-log/analytics redaction and retention verification.
+- Clinic-specific privacy/grievance contact, approved purposes, final notice wording/translations and retention schedule.
+- Vendor/subprocessor contracts and region/support/backup evidence.
+- Review, backup, staging test and separately approved application of migration `0002_preserve_consent_evidence.sql`.
+- Live D1 concurrency, token/cookie, consent withdrawal, cross-clinic and backup-restore tests.
