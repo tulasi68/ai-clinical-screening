@@ -45,7 +45,7 @@ Approve:
 ```json
 {
   "decision": "approve",
-  "retention_basis": "Document the applicable legal/clinical retention basis and scope."
+  "retention_basis_code": "consent_evidence_retention"
 }
 ```
 
@@ -55,11 +55,11 @@ Reject:
 { "decision": "reject" }
 ```
 
-Approval deletes the screening session and its dependent output. Consent evidence remains in the independent append-only ledger. The case register retains only the screening reference, clinic reference, timestamps, reason/outcome codes and the documented retention basis. Rejection leaves the screening payload in place, but the patient link remains revoked and must be reissued through a separately authorized process if appropriate.
+Approval deletes the screening session and its dependent output. Consent evidence remains in the independent append-only ledger. The case register retains only the screening reference, clinic reference, timestamps, reason/outcome codes and the retention-basis code. Rejection leaves the screening payload in place, but the patient link remains revoked and must be reissued through a separately authorized process if appropriate.
 
 ## Important limitations
 
 - This is a clinic-authorized technical workflow, not a legal determination that a particular erasure request must be granted or rejected.
 - The application does not yet implement identity/authority verification, patient-facing status tracking, grievance escalation, legal hold review, backup expiry/purge, processor propagation, or a full staff role/approval separation inside MediLoop.
-- The clinic must determine applicable retention duties before approving deletion. Do not place patient names, phone numbers, diagnoses or complaint text in `reason_code` or `retention_basis`.
+- The clinic must determine applicable retention duties before approving deletion. Only allowlisted reason and retention-basis codes are accepted; never submit patient names, phone numbers, diagnoses or complaint text.
 - D1 migration application and live credentials are operational prerequisites; source code alone does not complete deployment.
