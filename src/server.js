@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import {
   createSession, getSession, saveSession, saveOutput, getOutput,
   getSessionByPatientToken, revokePatientToken, redeemPatientToken,
-  appendConsentEvent, hasActiveConsent
+  appendConsentEvent, hasActiveConsent, createErasureCase, getErasureCase, finalizeErasureCase
 } from './store.js';
 import { nextStep, consolidate, nextFollowUp } from './ai.js';
 import {
@@ -896,6 +896,75 @@ app.post('/api/screenings/:id/revoke-token', async (req, res) => {
   } catch (e) {
     console.error('patient token revocation failed');
     res.status(500).json({ error: 'Unable to revoke patient screening link.' });
+  }
+});
+
+// Clinic-authenticated rights-request intake. No patient identifiers or clinical details
+// are copied into the erasure case register.
+app.post('/api/screenings/:id/erasure-requests', async (req, res) => {
+  try {
+    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
+    const session = await getSession(req.params.id);
+    if (!session || !serviceClinicMatches(req, session)) {
+      return res.status(404).json({ error: 'Screening not found.' });
+    }
+    const reasonCode = String(req.body?.reason_code || 'patient_erasure_request').trim();
+    if (!/^[a-z0-9_ -]{3,80}$/i.test(reasonCode)) {
+      return res.status(400).json({ error: 'A valid reason code is required.' });
+    }
+    const created = await createErasureCase({
+      screeningId: session.screening_id,
+      clinicId: requestClinicId(req),
+      reasonCode
+    });
+    // Stop further patient access while the clinic reviews the request.
+    await revokePatientToken(session.screening_id);
+    return res.status(201).json(created);
+  } catch (e) {
+    console.error('erasure request intake failed');
+    return res.status(500).json({ error: 'Unable to register the erasure request.' });
+  }
+});
+
+// A clinic must make and record an explicit decision. Approval requires a
+// retention-basis statement for any evidence kept after clinical payload deletion.
+app.post('/api/erasure-requests/:requestId/decision', async (req, res) => {
+  try {
+    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
+    const clinicId = requestClinicId(req);
+    const item = await getErasureCase(req.params.requestId);
+    if (!item || item.clinic_id !== clinicId || item.status !== 'received') {
+      return res.status(404).json({ error: 'Erasure request not found.' });
+    }
+    const decision = String(req.body?.decision || '').trim().toLowerCase();
+    if (!['approve', 'reject'].includes(decision)) {
+      return res.status(400).json({ error: 'Decision must be approve or reject.' });
+    }
+    const retentionBasis = String(req.body?.retention_basis || '').trim();
+    if (decision === 'approve' && retentionBasis.length < 12) {
+      return res.status(400).json({ error: 'A documented retention basis is required before erasure can be approved.' });
+    }
+    const session = await getSession(item.screening_id);
+    if (!session || String(session.patient?.clinic_id || '') !== clinicId) {
+      return res.status(409).json({ error: 'The screening payload is no longer available for this request.' });
+    }
+    const updated = await finalizeErasureCase({
+      requestId: item,
+      clinicId,
+      decision,
+      retentionBasis: decision === 'approve' ? retentionBasis : null,
+      outcomeCode: decision === 'approve' ? 'clinical_payload_deleted' : 'clinic_declined_erasure'
+    });
+    if (!updated) return res.status(409).json({ error: 'The erasure request has already been processed.' });
+    return res.json({
+      request_id: item.request_id,
+      status: decision === 'approve' ? 'fulfilled' : 'rejected',
+      payload_deleted: decision === 'approve',
+      consent_evidence_retained: decision === 'approve'
+    });
+  } catch (e) {
+    console.error('erasure decision failed');
+    return res.status(500).json({ error: 'Unable to complete the erasure decision. Verify that the consent-evidence migration is applied.' });
   }
 });
 
