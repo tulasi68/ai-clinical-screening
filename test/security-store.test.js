@@ -101,6 +101,34 @@ test("consent evidence is appended as a server event", async () => {
   } finally { h.restore(); }
 });
 
+test("invalid consent events are rejected without changing the ledger", async () => {
+  const h=installDb();
+  try {
+    await assert.rejects(
+      appendConsentEvent({screening_id:"SCR-CONSENT",event_type:"changed",purpose:"screening",notice_version:"notice-v1"}),
+      /complete consent event/
+    );
+    await assert.rejects(
+      appendConsentEvent({screening_id:"",event_type:"granted",purpose:"screening",notice_version:"notice-v1"}),
+      /complete consent event/
+    );
+    assert.equal(h.db.events.length,0);
+  } finally { h.restore(); }
+});
+
+test("a fresh affirmative grant can reactivate consent after withdrawal", async () => {
+  const h=installDb();
+  try {
+    const base={screening_id:"SCR-REGRANT",purpose:"screening",notice_version:"notice-v1"};
+    await appendConsentEvent({...base,event_type:"granted"});
+    await appendConsentEvent({...base,event_type:"withdrawn"});
+    assert.equal(await hasActiveConsent(base.screening_id,base.purpose,base.notice_version),false);
+    await appendConsentEvent({...base,event_type:"granted"});
+    assert.equal(await hasActiveConsent(base.screening_id,base.purpose,base.notice_version),true);
+    assert.equal(h.db.events.length,3);
+  } finally { h.restore(); }
+});
+
 test("active consent follows the latest grant or withdrawal event", async () => {
   const h=installDb();
   try {
