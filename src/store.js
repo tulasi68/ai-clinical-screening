@@ -221,3 +221,48 @@ export async function findActiveByPhone(phone) {
   }
   return null;
 }
+
+
+/**
+ * Minimal erasure case register. It intentionally stores no patient name,
+ * phone number, complaint, conversation or screening output.
+ */
+export async function createErasureCase({ screeningId, clinicId, reasonCode = 'patient_erasure_request' }) {
+  const requestId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db().prepare(`INSERT INTO screening_erasure_cases
+    (request_id,screening_id,clinic_id,status,reason_code,requested_at,updated_at)
+    VALUES(?,?,?,'received',?,?,?)`)
+    .bind(requestId,String(screeningId),String(clinicId),String(reasonCode).slice(0,80),now,now).run();
+  return { request_id: requestId, screening_id: String(screeningId), status: 'received', requested_at: now };
+}
+
+export async function getErasureCase(requestId) {
+  return db().prepare(`SELECT request_id,screening_id,clinic_id,status,reason_code,
+    requested_at,updated_at,completed_at,outcome_code,retention_basis
+    FROM screening_erasure_cases WHERE request_id=? LIMIT 1`)
+    .bind(String(requestId)).first();
+}
+
+/**
+ * Fulfil/reject a case. D1 batch keeps payload deletion and case outcome atomic.
+ * The consent ledger is intentionally outside the session cascade after migration 0002.
+ */
+export async function finalizeErasureCase({ requestId, clinicId, decision, retentionBasis = null, outcomeCode }) {
+  const now = new Date().toISOString();
+  const status = decision === 'approve' ? 'fulfilled' : 'rejected';
+  const statements = [];
+  if (decision === 'approve') {
+    statements.push(db().prepare(`DELETE FROM screening_sessions
+      WHERE screening_id=? AND json_extract(patient_json, '$.clinic_id')=?`)
+      .bind(String(requestId.screening_id),String(clinicId)));
+  }
+  statements.push(db().prepare(`UPDATE screening_erasure_cases
+    SET status=?,updated_at=?,completed_at=?,outcome_code=?,retention_basis=?
+    WHERE request_id=? AND clinic_id=? AND status='received'`)
+    .bind(status,now,now,String(outcomeCode || (decision === 'approve' ? 'payload_erased' : 'erasure_not_approved')).slice(0,80),
+      retentionBasis ? String(retentionBasis).slice(0,500) : null,String(requestId.request_id),String(clinicId)));
+  const results = await db().batch(statements);
+  const finalResult = results[results.length - 1];
+  return Number(finalResult?.meta?.changes || 0) > 0;
+}
