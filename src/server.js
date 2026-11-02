@@ -456,6 +456,20 @@ function validServerApiKey(req) {
   });
 }
 
+function validErasureAdminKey(req) {
+  const authorization = String(req.headers.authorization || '').trim();
+  const bearerKey = authorization.replace(/^Bearer\\s+/i, '').trim();
+  const suppliedKey = String(req.headers['x-api-key'] || bearerKey).trim();
+  return isValidServiceCredential({
+    clinicId: requestClinicId(req),
+    suppliedKey,
+    tenantKeysJson: process.env.SCREENING_ERASURE_ADMIN_KEYS_JSON,
+    sharedKey: '',
+    allowSharedKey: false,
+    managedRuntime: true,
+  });
+}
+
 function requestClinicId(req) {
   return String(req.headers['x-clinic-id'] || '').trim().slice(0, 120);
 }
@@ -929,8 +943,9 @@ app.post('/api/screenings/:id/erasure-requests', async (req, res) => {
 // A clinic must make and record an explicit decision. Approval requires a
 // retention-basis statement for any evidence kept after clinical payload deletion.
 app.post('/api/erasure-requests/:requestId/decision', async (req, res) => {
+  // Approval/rejection uses a separate clinic-admin credential, never the integration key.
   try {
-    if (!validServerApiKey(req)) return res.status(401).json({ error: 'Unauthorized screening service request.' });
+    if (!validErasureAdminKey(req)) return res.status(401).json({ error: 'Unauthorized clinic erasure administrator.' });
     const clinicId = requestClinicId(req);
     const item = await getErasureCase(req.params.requestId);
     if (!item || item.clinic_id !== clinicId || item.status !== 'received') {
