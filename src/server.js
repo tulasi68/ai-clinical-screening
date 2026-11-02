@@ -923,8 +923,8 @@ app.post('/api/screenings/:id/erasure-requests', async (req, res) => {
       return res.status(404).json({ error: 'Screening not found.' });
     }
     const reasonCode = String(req.body?.reason_code || 'patient_erasure_request').trim();
-    if (!/^[a-z0-9_ -]{3,80}$/i.test(reasonCode)) {
-      return res.status(400).json({ error: 'A valid reason code is required.' });
+    if (!['patient_erasure_request', 'authorized_representative_request'].includes(reasonCode)) {
+      return res.status(400).json({ error: 'A supported erasure-request reason code is required.' });
     }
     const created = await createErasureCase({
       screeningId: session.screening_id,
@@ -955,9 +955,16 @@ app.post('/api/erasure-requests/:requestId/decision', async (req, res) => {
     if (!['approve', 'reject'].includes(decision)) {
       return res.status(400).json({ error: 'Decision must be approve or reject.' });
     }
-    const retentionBasis = String(req.body?.retention_basis || '').trim();
-    if (decision === 'approve' && retentionBasis.length < 12) {
-      return res.status(400).json({ error: 'A documented retention basis is required before erasure can be approved.' });
+    const retentionBasis = String(req.body?.retention_basis_code || '').trim();
+    const allowedRetentionBases = [
+      'statutory_or_regulatory_retention',
+      'clinical_record_retention',
+      'legal_hold',
+      'consent_evidence_retention',
+      'none'
+    ];
+    if (decision === 'approve' && !allowedRetentionBases.includes(retentionBasis)) {
+      return res.status(400).json({ error: 'A valid retention-basis code is required before erasure can be approved.' });
     }
     const session = await getSession(item.screening_id);
     if (!session || String(session.patient?.clinic_id || '') !== clinicId) {
