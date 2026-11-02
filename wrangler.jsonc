@@ -23,6 +23,6 @@
     "PATIENT_APP_URL": "https://ai-clinical-screening.tulasianand6.workers.dev",
     "MAX_QUESTIONS": "14",
     "MIN_QUESTIONS": "6",
-    "SCREENING_ALLOW_SHARED_API_KEY": "true"
+    "SCREENING_ALLOW_SHARED_API_KEY": "false"
   }
 }

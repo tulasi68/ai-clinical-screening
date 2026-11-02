@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test:security": "node --test test/security-store.test.js test/security-auth.test.js",
+    "test:security": "node --test test/security-store.test.js test/security-auth.test.js test/security-erasure.test.js",
     "check": "node --check src/server.js && node --check src/store.js && node --check src/security.js && node --check public/app.js"
   },
   "dependencies": {
