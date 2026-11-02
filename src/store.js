@@ -254,8 +254,10 @@ export async function finalizeErasureCase({ requestId, clinicId, decision, reten
   const statements = [];
   if (decision === 'approve') {
     statements.push(db().prepare(`DELETE FROM screening_sessions
-      WHERE screening_id=? AND json_extract(patient_json, '$.clinic_id')=?`)
-      .bind(String(requestId.screening_id),String(clinicId)));
+      WHERE screening_id=? AND json_extract(patient_json, '$.clinic_id')=?
+      AND EXISTS (SELECT 1 FROM screening_erasure_cases
+        WHERE request_id=? AND clinic_id=? AND status='received')`)
+      .bind(String(requestId.screening_id),String(clinicId),String(requestId.request_id),String(clinicId)));
   }
   statements.push(db().prepare(`UPDATE screening_erasure_cases
     SET status=?,updated_at=?,completed_at=?,outcome_code=?,retention_basis=?
