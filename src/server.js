@@ -458,7 +458,7 @@ function validServerApiKey(req) {
 
 function validErasureAdminKey(req) {
   const authorization = String(req.headers.authorization || '').trim();
-  const bearerKey = authorization.replace(/^Bearer\\s+/i, '').trim();
+  const bearerKey = authorization.replace(/^Bearer\s+/i, '').trim();
   const suppliedKey = String(req.headers['x-api-key'] || bearerKey).trim();
   return isValidServiceCredential({
     clinicId: requestClinicId(req),
