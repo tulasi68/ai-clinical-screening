@@ -567,7 +567,7 @@ app.get('/api/patient/session', async (req, res) => {
   }
 });
 
-app.get(['/api/patient/s/:token', '/api/patient/session'], async (req, res) => {
+app.get('/api/patient/s/:token', async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
