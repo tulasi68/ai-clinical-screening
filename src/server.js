@@ -537,7 +537,37 @@ app.get('/s/:token', servePatientPage);
 app.get('/app.js', serveStaticAsset('app.js', 'application/javascript'));
 app.get('/screening.css', serveStaticAsset('screening.css', 'text/css'));
 
-app.get('/api/patient/s/:token', async (req, res) => {
+// Exchange the single-use URL token for a short-lived, HttpOnly session cookie.
+app.post('/api/patient/redeem', async (req, res) => {
+  try {
+    const candidate = String(req.body?.token || '').trim();
+    const redeemed = await redeemPatientToken(candidate);
+    if (!redeemed) {
+      return res.status(404).json({ error: 'This screening link is invalid, expired or already used.' });
+    }
+    setPatientSessionCookie(req, res, redeemed.token, redeemed.expiresAt);
+    const output = await getOutput(redeemed.session.screening_id);
+    res.json({ ...publicSession(redeemed.session), output: publicOutput(output) });
+  } catch (e) {
+    console.error('patient token redemption error', e);
+    res.status(500).json({ error: 'Unable to open this screening link.' });
+  }
+});
+
+// Resume an already redeemed session using the HttpOnly cookie.
+app.get('/api/patient/session', async (req, res) => {
+  try {
+    const s = await getPatientContext(req, res, null);
+    if (!s) return;
+    const output = await getOutput(s.screening_id);
+    res.json({ ...publicSession(s), output: publicOutput(output) });
+  } catch (e) {
+    console.error('patient session error', e);
+    res.status(500).json({ error: 'Unable to load screening.' });
+  }
+});
+
+app.get(['/api/patient/s/:token', '/api/patient/session'], async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
@@ -549,7 +579,7 @@ app.get('/api/patient/s/:token', async (req, res) => {
   }
 });
 
-app.post('/api/patient/s/:token/start', async (req, res) => {
+app.post(['/api/patient/s/:token/start', '/api/patient/session/start'], async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
@@ -582,7 +612,7 @@ app.post('/api/patient/s/:token/start', async (req, res) => {
   }
 });
 
-app.post('/api/patient/s/:token/message', async (req, res) => {
+app.post(['/api/patient/s/:token/message', '/api/patient/session/message'], async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
@@ -621,7 +651,7 @@ app.post('/api/patient/s/:token/message', async (req, res) => {
   }
 });
 
-app.get('/api/patient/s/:token/summary', async (req, res) => {
+app.get(['/api/patient/s/:token/summary', '/api/patient/session/summary'], async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
@@ -634,7 +664,7 @@ app.get('/api/patient/s/:token/summary', async (req, res) => {
   }
 });
 
-app.put('/api/patient/s/:token/summary', async (req, res) => {
+app.put(['/api/patient/s/:token/summary', '/api/patient/session/summary'], async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
@@ -650,7 +680,7 @@ app.put('/api/patient/s/:token/summary', async (req, res) => {
   }
 });
 
-app.post('/api/patient/s/:token/submit', async (req, res) => {
+app.post(['/api/patient/s/:token/submit', '/api/patient/session/submit'], async (req, res) => {
   try {
     const s = await getPatientContext(req, res, req.params.token);
     if (!s) return;
@@ -669,19 +699,50 @@ app.post('/api/patient/s/:token/submit', async (req, res) => {
     s.submitted_at = finalOutput.submitted_at;
     await saveSession(s);
 
-    const link = patientUrl(req, req.params.token);
-    const whatsapp = await sendComplaintLink(s.patient.phone, link, s.patient.ui_language);
-
+    // The patient's one-time URL token has already been exchanged and invalidated.
+    // Do not send that consumed URL again; the browser session is cookie-authenticated.
     res.json({
       status: 'submitted',
       screening_id: s.screening_id,
       output: finalOutput,
-      whatsapp_sent: Boolean(whatsapp.ok),
-      whatsapp_error: whatsapp.ok ? null : whatsapp.error
+      whatsapp_sent: false,
+      whatsapp_error: null
     });
   } catch (e) {
     console.error('patient submit error', e);
     res.status(500).json({ error: 'Unable to submit the screening.' });
+  }
+});
+
+// Patient-requested consent withdrawal: stop the session and invalidate its cookie credential.
+app.post(['/api/patient/s/:token/withdraw', '/api/patient/session/withdraw'], async (req, res) => {
+  try {
+    const session = await getPatientContext(req, res, req.params.token || null);
+    if (!session) return;
+    if (session.status === 'submitted') {
+      return res.status(409).json({ error: 'This screening has already been submitted. Please contact the clinic for assistance.' });
+    }
+    if (session.status !== 'consent_withdrawn') {
+      await appendConsentEvent({
+        screening_id: session.screening_id,
+        event_type: 'withdrawn',
+        purpose: SCREENING_CONSENT_PURPOSE,
+        notice_version: SCREENING_CONSENT_VERSION,
+        language: session.patient?.ui_language || 'en',
+        method: 'patient_in_app_withdrawal',
+        channel: 'patient_screening_app',
+        actor_type: 'patient'
+      });
+    }
+    session.status = 'consent_withdrawn';
+    session.patient_token_hash = null;
+    session.patient_token_expires_at = new Date().toISOString();
+    await saveSession(session);
+    clearPatientSessionCookie(res);
+    res.json({ status: 'consent_withdrawn', screening_id: session.screening_id });
+  } catch (e) {
+    console.error('patient consent withdrawal error', e);
+    res.status(500).json({ error: 'Unable to withdraw consent. Please contact the clinic.' });
   }
 });
 
