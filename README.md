@@ -140,17 +140,23 @@ Response (shape):
 | `GET` | `/api/screenings/:id/output` | Structured intake when available / submitted |
 | `GET` | `/health` | Liveness + architecture flags |
 
-### Patient token routes
+### Patient browser session API
+
+The patient browser exchanges the single-use URL token for a short-lived, HttpOnly session cookie. The URL token is hashed in D1 and atomically rotated during redemption; it must not be reused after exchange.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/api/patient/s/:token` | Patient-safe session |
-| `POST` | `/api/patient/s/:token/start` | Start |
-| `POST` | `/api/patient/s/:token/message` | One answer |
-| `GET`/`PUT` | `/api/patient/s/:token/summary` | Read / edit allowed summary fields |
-| `POST` | `/api/patient/s/:token/submit` | Explicit patient approval |
+| `POST` | `/api/patient/redeem` | Exchange `{ "token": "..." }` for a cookie-authenticated patient session |
+| `GET` | `/api/patient/session` | Load / resume the current cookie-authenticated session |
+| `POST` | `/api/patient/session/start` | Start or resume questions |
+| `POST` | `/api/patient/session/message` | Submit one answer |
+| `GET`/`PUT` | `/api/patient/session/summary` | Read / edit allowed summary fields |
+| `POST` | `/api/patient/session/submit` | Explicit patient approval |
+| `POST` | `/api/patient/session/withdraw` | Withdraw consent, stop screening and invalidate the session |
 
-Tokens are **hashed (SHA-256)** in the DB; default TTL `PATIENT_TOKEN_TTL_HOURS=72`. Phone is stripped from public patient payloads.
+The older token-path endpoints (`/api/patient/s/:token` and its `start`, `message`, `summary`, `submit`, and `withdraw` subpaths) remain as compatibility aliases. They use the same token redemption and cookie rules.
+
+URL tokens are **hashed (SHA-256)** in D1, single-use, and expire after `PATIENT_TOKEN_TTL_HOURS=72` by default. Redeemed session cookies use `PATIENT_SESSION_TTL_HOURS=12` by default (bounded to 1–24 hours). Patient cookies are HttpOnly, SameSite=Lax, and Secure in production. Phone is stripped from public patient payloads.
 
 ---
 
