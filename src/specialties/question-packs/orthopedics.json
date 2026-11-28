@@ -3114,20 +3114,60 @@
           "label_kn": "ಮಧುಮೇಹ"
         },
         {
+          "id": "heart_disease",
+          "label": "Heart disease",
+          "label_kn": "ಹೃದಯ ಕಾಯಿಲೆ"
+        },
+        {
+          "id": "kidney_disease",
+          "label": "Kidney disease",
+          "label_kn": "ಮೂತ್ರಪಿಂಡದ ಕಾಯಿಲೆ"
+        },
+        {
+          "id": "ulcer_bleeding",
+          "label": "Stomach ulcer or bleeding",
+          "label_kn": "ಹೊಟ್ಟೆಯ ಹುಣ್ಣು ಅಥವಾ ರಕ್ತಸ್ರಾವ"
+        },
+        {
+          "id": "thyroid",
+          "label": "Thyroid condition",
+          "label_kn": "ಥೈರಾಯ್ಡ್ ಸಮಸ್ಯೆ"
+        },
+        {
           "id": "osteoporosis",
           "label": "Osteoporosis / weak bones",
           "label_kn": "ಅಸ್ಥಿಸಾಂದ್ರತೆ ಕಡಿಮೆ / ದುರ್ಬಲ ಮೂಳೆ"
         },
         {
-          "id": "arthritis",
-          "label": "Known arthritis",
-          "label_kn": "ತಿಳಿದಿರುವ ಸಂಧಿವಾತ"
+          "id": "rheumatoid_arthritis",
+          "label": "Rheumatoid / inflammatory arthritis",
+          "label_kn": "ರುಮಟಾಯ್ಡ್ / ಉರಿಯೂತದ ಸಂಧಿವಾತ"
+        },
+        {
+          "id": "gout",
+          "label": "Gout",
+          "label_kn": "ಗೌಟ್"
+        },
+        {
+          "id": "tuberculosis",
+          "label": "Tuberculosis (TB)",
+          "label_kn": "ಕ್ಷಯರೋಗ (ಟಿಬಿ)"
+        },
+        {
+          "id": "cancer",
+          "label": "Cancer",
+          "label_kn": "ಕ್ಯಾನ್ಸರ್"
         },
         {
           "id": "none",
-          "label": "None",
-          "label_kn": "ಯಾವುದೂ ಇಲ್ಲ",
+          "label": "None of these",
+          "label_kn": "ಇವುಗಳಲ್ಲಿ ಯಾವುದೂ ಇಲ್ಲ",
           "exclusive": true
+        },
+        {
+          "id": "other",
+          "label": "Other condition",
+          "label_kn": "ಇತರೆ ಕಾಯಿಲೆ"
         }
       ]
     },
@@ -3829,6 +3869,17 @@
           "label_kn": "ಖಚಿತವಿಲ್ಲ"
         }
       ]
+    },
+    {
+      "id": "drug_allergy_details",
+      "kind": "fixed",
+      "type": "text",
+      "text": "Which medicine caused the allergy or reaction, and what happened?",
+      "text_kn": "ಯಾವ ಔಷಧದಿಂದ ಅಲರ್ಜಿ ಅಥವಾ ಪ್ರತಿಕ್ರಿಯೆ ಉಂಟಾಯಿತು? ಏನಾಯಿತು?",
+      "showIf": {
+        "qid": "drug_allergies_exist",
+        "equals": "yes"
+      }
     }
   ]
 }
