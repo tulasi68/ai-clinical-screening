@@ -364,6 +364,39 @@
               "exclusive": true
             }
           ]
+        },
+        {
+          "id": "knee_pain_bilateral_difference",
+          "kind": "fixed",
+          "type": "single",
+          "text": "If both sides are affected, which side is worse?",
+          "text_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಸ್ಯೆಯಿದ್ದರೆ ಯಾವ ಬದಿಯಲ್ಲಿ ಹೆಚ್ಚು ತೊಂದರೆ ಇದೆ?",
+          "showIf": {
+            "qid": "knee_side",
+            "equals": "both"
+          },
+          "options": [
+            {
+              "id": "left",
+              "label": "Left is worse",
+              "label_kn": "ಎಡಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "right",
+              "label": "Right is worse",
+              "label_kn": "ಬಲಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "equal",
+              "label": "About the same on both sides",
+              "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಾನ"
+            },
+            {
+              "id": "unsure",
+              "label": "Not sure",
+              "label_kn": "ಖಚಿತವಿಲ್ಲ"
+            }
+          ]
         }
       ],
       "level3": [
@@ -1182,6 +1215,39 @@
               "label_kn": "ಖಚಿತವಿಲ್ಲ"
             }
           ]
+        },
+        {
+          "id": "shoulder_pain_bilateral_difference",
+          "kind": "fixed",
+          "type": "single",
+          "text": "If both sides are affected, which side is worse?",
+          "text_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಸ್ಯೆಯಿದ್ದರೆ ಯಾವ ಬದಿಯಲ್ಲಿ ಹೆಚ್ಚು ತೊಂದರೆ ಇದೆ?",
+          "showIf": {
+            "qid": "shoulder_side",
+            "equals": "both"
+          },
+          "options": [
+            {
+              "id": "left",
+              "label": "Left is worse",
+              "label_kn": "ಎಡಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "right",
+              "label": "Right is worse",
+              "label_kn": "ಬಲಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "equal",
+              "label": "About the same on both sides",
+              "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಾನ"
+            },
+            {
+              "id": "unsure",
+              "label": "Not sure",
+              "label_kn": "ಖಚಿತವಿಲ್ಲ"
+            }
+          ]
         }
       ],
       "level3": [
@@ -1407,6 +1473,39 @@
             },
             {
               "id": "not_sure",
+              "label": "Not sure",
+              "label_kn": "ಖಚಿತವಿಲ್ಲ"
+            }
+          ]
+        },
+        {
+          "id": "hip_pain_bilateral_difference",
+          "kind": "fixed",
+          "type": "single",
+          "text": "If both sides are affected, which side is worse?",
+          "text_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಸ್ಯೆಯಿದ್ದರೆ ಯಾವ ಬದಿಯಲ್ಲಿ ಹೆಚ್ಚು ತೊಂದರೆ ಇದೆ?",
+          "showIf": {
+            "qid": "hip_side",
+            "equals": "both"
+          },
+          "options": [
+            {
+              "id": "left",
+              "label": "Left is worse",
+              "label_kn": "ಎಡಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "right",
+              "label": "Right is worse",
+              "label_kn": "ಬಲಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "equal",
+              "label": "About the same on both sides",
+              "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಾನ"
+            },
+            {
+              "id": "unsure",
               "label": "Not sure",
               "label_kn": "ಖಚಿತವಿಲ್ಲ"
             }
@@ -1697,6 +1796,39 @@
             },
             {
               "id": "not_sure",
+              "label": "Not sure",
+              "label_kn": "ಖಚಿತವಿಲ್ಲ"
+            }
+          ]
+        },
+        {
+          "id": "ankle_foot_bilateral_difference",
+          "kind": "fixed",
+          "type": "single",
+          "text": "If both sides are affected, which side is worse?",
+          "text_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಸ್ಯೆಯಿದ್ದರೆ ಯಾವ ಬದಿಯಲ್ಲಿ ಹೆಚ್ಚು ತೊಂದರೆ ಇದೆ?",
+          "showIf": {
+            "qid": "ankle_side",
+            "equals": "both"
+          },
+          "options": [
+            {
+              "id": "left",
+              "label": "Left is worse",
+              "label_kn": "ಎಡಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "right",
+              "label": "Right is worse",
+              "label_kn": "ಬಲಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "equal",
+              "label": "About the same on both sides",
+              "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಾನ"
+            },
+            {
+              "id": "unsure",
               "label": "Not sure",
               "label_kn": "ಖಚಿತವಿಲ್ಲ"
             }
@@ -2000,6 +2132,39 @@
               "exclusive": true
             }
           ]
+        },
+        {
+          "id": "wrist_hand_bilateral_difference",
+          "kind": "fixed",
+          "type": "single",
+          "text": "If both sides are affected, which side is worse?",
+          "text_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಸ್ಯೆಯಿದ್ದರೆ ಯಾವ ಬದಿಯಲ್ಲಿ ಹೆಚ್ಚು ತೊಂದರೆ ಇದೆ?",
+          "showIf": {
+            "qid": "wrist_side",
+            "equals": "both"
+          },
+          "options": [
+            {
+              "id": "left",
+              "label": "Left is worse",
+              "label_kn": "ಎಡಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "right",
+              "label": "Right is worse",
+              "label_kn": "ಬಲಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "equal",
+              "label": "About the same on both sides",
+              "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಾನ"
+            },
+            {
+              "id": "unsure",
+              "label": "Not sure",
+              "label_kn": "ಖಚಿತವಿಲ್ಲ"
+            }
+          ]
         }
       ],
       "level3": [
@@ -2212,6 +2377,39 @@
             },
             {
               "id": "not_sure",
+              "label": "Not sure",
+              "label_kn": "ಖಚಿತವಿಲ್ಲ"
+            }
+          ]
+        },
+        {
+          "id": "elbow_pain_bilateral_difference",
+          "kind": "fixed",
+          "type": "single",
+          "text": "If both sides are affected, which side is worse?",
+          "text_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಸ್ಯೆಯಿದ್ದರೆ ಯಾವ ಬದಿಯಲ್ಲಿ ಹೆಚ್ಚು ತೊಂದರೆ ಇದೆ?",
+          "showIf": {
+            "qid": "elbow_side",
+            "equals": "both"
+          },
+          "options": [
+            {
+              "id": "left",
+              "label": "Left is worse",
+              "label_kn": "ಎಡಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "right",
+              "label": "Right is worse",
+              "label_kn": "ಬಲಭಾಗದಲ್ಲಿ ಹೆಚ್ಚು"
+            },
+            {
+              "id": "equal",
+              "label": "About the same on both sides",
+              "label_kn": "ಎರಡೂ ಬದಿಗಳಲ್ಲಿ ಸಮಾನ"
+            },
+            {
+              "id": "unsure",
               "label": "Not sure",
               "label_kn": "ಖಚಿತವಿಲ್ಲ"
             }
@@ -2458,6 +2656,35 @@
               "id": "other",
               "label": "Other",
               "label_kn": "ಇತರೆ"
+            }
+          ]
+        },
+        {
+          "id": "injury_side",
+          "kind": "fixed",
+          "type": "single",
+          "text": "Which side was injured?",
+          "text_kn": "ಯಾವ ಬದಿಗೆ ಗಾಯವಾಗಿದೆ?",
+          "options": [
+            {
+              "id": "left",
+              "label": "Left",
+              "label_kn": "ಎಡ"
+            },
+            {
+              "id": "right",
+              "label": "Right",
+              "label_kn": "ಬಲ"
+            },
+            {
+              "id": "both",
+              "label": "Both",
+              "label_kn": "ಎರಡೂ"
+            },
+            {
+              "id": "not_applicable",
+              "label": "Not applicable / unsure",
+              "label_kn": "ಅನ್ವಯಿಸುವುದಿಲ್ಲ / ಖಚಿತವಿಲ್ಲ"
             }
           ]
         }
